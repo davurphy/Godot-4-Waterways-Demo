@@ -101,6 +101,16 @@ It should include:
 
 Output goes in `plan.md`.
 
+Before moving into implementation, adversarially review the plan with the user:
+
+- What is the most likely way this plan could damage working behavior?
+- What project state, generated resource, scene, or user workflow could the plan accidentally break?
+- What files or data are riskier than they look?
+- What simpler or safer approach should be considered before editing code?
+- What validation will catch the riskiest failure early?
+
+Record the important findings in `plan.md` or `review.md` before coding.
+
 ## Phase 4: Tasks
 
 Tasks should be small enough that an agent can complete and verify them one at a time.
@@ -114,6 +124,18 @@ Good task shape:
 ```
 
 Output goes in `tasks.md`.
+
+## Phase 4.5: Branch Safety Check
+
+After the plan and adversarial plan review are complete, but before code or generated-resource changes begin, remind the user to create or switch to a dedicated Git branch for the work. The user can do this in GitHub Desktop / GitHub for Windows, or ask Codex to create the branch if local Git access is available.
+
+For substantial or potentially breaking work, do not start implementation until one of these is true:
+
+- the user confirms they created or switched to a feature branch;
+- Codex successfully creates or switches to a feature branch;
+- the user explicitly says to continue on the current branch despite the risk.
+
+Use a short branch name related to the feature or fix. The goal is to keep experiments, generated resources, and risky code changes away from `main` until they are reviewed.
 
 ## Phase 5: Implementation
 

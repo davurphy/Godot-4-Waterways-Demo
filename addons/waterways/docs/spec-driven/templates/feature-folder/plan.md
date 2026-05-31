@@ -16,6 +16,7 @@ Keep this section short and update it whenever the plan changes.
 - Open architectural decisions:
 - Last validation that proves the plan still works:
 - Next planned implementation slice:
+- Branch safety before implementation: <Not checked / User will create branch / Codex created branch / User approved current branch>
 - Sections below that are historical or superseded:
 
 ## Premise Check
@@ -135,6 +136,17 @@ For async, rendering, editor, or bake work, answer these explicitly before imple
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
 | <Risk> | <Impact> | <Mitigation> |
+
+## Adversarial Plan Review
+
+Complete this with the user after the plan is drafted and before implementation starts.
+
+- Most likely way this plan could damage working behavior:
+- Project state, generated resource, scene, or workflow most at risk:
+- Files or data that are riskier than they look:
+- Simpler or safer approach considered:
+- Validation that will catch the riskiest failure early:
+- Branch safety reminder sent before code changes: <Yes / No>
 
 ## Migration and Compatibility
 

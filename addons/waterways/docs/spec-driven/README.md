@@ -15,7 +15,7 @@ For any non-trivial Waterways change, read these files before editing code:
 If no feature folder exists for the work, create one under `features/<feature-slug>/`.
 Do not skip directly from a vague idea to implementation unless the requested change is clearly small and local.
 
-After the planning documents for a new feature are drafted and before implementation begins, remind the user to create or switch to a dedicated GitHub branch for that feature. If the user wants Codex to handle it, create the branch before making potentially feature-breaking changes. This keeps experiments isolated and protects the project's main working state.
+After the plan is drafted and adversarially reviewed, but before implementation begins, remind the user to create or switch to a dedicated Git branch for that feature. The user can do this in GitHub Desktop / GitHub for Windows, or ask Codex to create the branch if local Git access is available. This keeps experiments isolated and protects `main` from catastrophic or hard-to-unwind changes.
 
 ## Current Orientation
 
@@ -83,10 +83,11 @@ Use this order:
 2. Write the behavior/spec: what, why, success criteria.
 3. Plan the technical design: architecture, data flow, risks.
 4. Break the plan into small tasks.
-5. Before implementation, remind the user to create or switch to a dedicated GitHub branch for the feature.
-6. Implement one task at a time.
-7. Validate with automated checks and visual test scenes where relevant.
-8. Review against the spec before broadening or polishing.
+5. Adversarially review the plan before implementation.
+6. Before code changes, remind the user to create or switch to a dedicated Git branch for the feature.
+7. Implement one task at a time.
+8. Validate with automated checks and visual test scenes where relevant.
+9. Review against the spec before broadening or polishing.
 
 ## Core Rule
 
