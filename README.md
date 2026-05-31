@@ -1,10 +1,10 @@
-# Waterways Add-on for Godot Engine - Demo
+# Waterways Add-on for Godot 4.x Engine - Demo
 
 ![image](https://user-images.githubusercontent.com/4955051/102626754-21c16680-413f-11eb-8dd8-f5a31d428fd1.png)
 
-Demo project for [Waterways add-on](https://github.com/Arnklit/WaterGenGodot) 
+Original Demo project for Godot 3.x [Waterways add-on](https://github.com/Arnklit/WaterGenGodot) 
 
-[Discord Server](https://discord.gg/mjGvWwQwv2)
+Original project's discord [Discord Server](https://discord.gg/mjGvWwQwv2)
 
 [Patreon](https://www.patreon.com/arnklit)
 
