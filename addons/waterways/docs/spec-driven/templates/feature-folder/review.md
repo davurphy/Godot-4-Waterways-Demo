@@ -7,6 +7,7 @@
 ## Scope Reviewed
 
 - <Files, scenes, resources, shaders, editor tools, or behaviors reviewed>
+- `addons/waterways/docs/research/river-research-citations.md` when external river, water, shader, or production references shaped the feature decision.
 
 ## Current Truth
 
@@ -81,6 +82,7 @@ Use this as the review dashboard. Keep it concise and update it before handing o
 - [ ] `plan.md` reflects actual architecture and lifecycle behavior.
 - [ ] `validation.md` current snapshot and matrix match the detailed recorded results.
 - [ ] Latest handoff points to the true next action.
+- [ ] Shared works-cited index checked or updated: `addons/waterways/docs/research/river-research-citations.md`.
 
 ## Follow-Up Tasks
 

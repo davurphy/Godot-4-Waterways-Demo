@@ -39,6 +39,7 @@ Read these first:
 6. `addons\waterways\docs\spec-driven\features\<feature-slug>\validation.md`
 7. `addons\waterways\docs\spec-driven\features\<feature-slug>\plan.md`
 8. `addons\waterways\docs\spec-driven\features\<feature-slug>\spec.md`
+9. `addons\waterways\docs\research\river-research-citations.md`
 
 Then do this next:
 
@@ -98,6 +99,7 @@ Validation status:
 ## Important Context
 
 - <Constraint, assumption, design note, or project-specific context>
+- Shared works-cited index: `addons\waterways\docs\research\river-research-citations.md`. Future Codex sessions should use it as the project-level list of river-reading, hydrology, flow-map, shader-water, and production-example sources, and update it when new external references influence this feature.
 - <Known Godot 4.6+ API detail>
 - <Legacy Godot 3 behavior to preserve or intentionally change>
 - <Any user/agent misunderstanding risk that should be raised directly instead of silently worked around>

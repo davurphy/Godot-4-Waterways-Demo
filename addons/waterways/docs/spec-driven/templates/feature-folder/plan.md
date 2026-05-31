@@ -116,6 +116,7 @@ For async, rendering, editor, or bake work, answer these explicitly before imple
 - Feature docs to update:
 - Architecture or data-flow docs to update:
 - Validation docs to update:
+- Research citations index: `addons/waterways/docs/research/river-research-citations.md` is the shared works-cited list for river behavior, flow-map, shader-water, and production-reference sources. Consult it before research-driven changes and update it when adding new sources.
 - Migration notes to update:
 
 ## Validation Strategy

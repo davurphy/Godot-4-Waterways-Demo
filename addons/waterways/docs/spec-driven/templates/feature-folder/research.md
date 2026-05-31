@@ -3,6 +3,7 @@
 ## Purpose
 
 Describe why this research is needed and what decision it should unlock for Waterways.
+Use `addons/waterways/docs/research/river-research-citations.md` as the shared works-cited index for river behavior, hydrology, flow maps, shader-water references, and production examples. Update that file when new external sources inform this feature.
 
 ## Current Research Outcome
 
@@ -103,4 +104,5 @@ Record any evidence that the reported issue may be expected behavior, stale data
 
 ## Sources
 
+- `addons/waterways/docs/research/river-research-citations.md`: shared works-cited index for Waterways river behavior, hydrology, flow-map, shader-water, and production-reference sources.
 - <Link or local reference>

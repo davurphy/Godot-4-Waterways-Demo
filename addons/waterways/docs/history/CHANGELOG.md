@@ -2,6 +2,24 @@
 
 ## Unreleased - 2026-05-26
 
+### River Pillows Spec-Driven Feature Folder
+
+- Added `docs/spec-driven/features/river-pillows/` as the feature-local source of truth for pillow placement work.
+- Converted the pillow-relevant Phase 6 history and `handoffs/handoff-latest.md` guidance into focused `research.md`, `spec.md`, `plan.md`, `tasks.md`, `validation.md`, `review.md`, and `handoff-latest.md` documents.
+- Folded the pillow-relevant sections of `roadmaps/river-feature-detection-roadmap.md` and `roadmaps/river-improvements-roadmap.md` into the feature docs, including the raw/final/visible review loop, feature definitions, generalization checks, raw-reading expectations, Phase 6 design rules, and change boundaries.
+- Folded `audit/pillow-system-audit.md` into the feature plan, tasks, validation, review, and roadmaps. The audit makes diagnostic split views/probe output the first implementation step and records direct-contact-first raw pillow anchoring as the leading formula direction if live review confirms the audit.
+- Recorded the current next step as audit-guided diagnostic split views/probe output, followed by a dedicated pillow formula review before any further classifier, shader, bake, or material changes.
+- Kept this consolidation documentation-only: no shader code, bake resources, source signatures, final flow, WaterSystem data, probes, or generated captures changed.
+
+### River Eddies Spec-Driven Feature Folder
+
+- Added `docs/spec-driven/features/river-eddies/` as the feature-local source of truth for wake, eddy-line, and future eddy-flow work.
+- Converted the eddy/wake/eddy-line relevant Phase 7 history and `handoffs/handoff-latest.md` guidance into focused `research.md`, `spec.md`, `plan.md`, `tasks.md`, `validation.md`, `review.md`, and `handoff-latest.md` documents.
+- Folded the eddy-relevant sections of `roadmaps/river-feature-detection-roadmap.md` and `roadmaps/river-improvements-roadmap.md` into the feature docs, including the raw/final/visible review loop, channel/phase alignment lesson, accepted Phase 7B baseline, visual validation expectations, and Phase 7C/7D change boundaries.
+- Recorded the current accepted baseline: Phase 7B remains a visual-only wake/eddy-line material preview, and `Eddy-Line Visual Mask` uses the raw-G wake-edge candidate plus nearby wake/obstruction context at `wake_edge_sample_tiles = 0.024`.
+- Preserved the old raw-B path as diagnostics through B-based debug views, and recorded that real reverse/circulating flow, WaterSystem/physics alignment, new eddy vector data, and Phase 7C/7D remain deferred.
+- Kept this consolidation documentation-only: no shader code, bake resources, source signatures, source flow, final flow, WaterSystem data, probes, or generated captures changed.
+
 ### Debug View Menu Label Cleanup
 
 - Removed the leading `Display` prefix from every editor Debug View menu item, including quick views and grouped feature submenus. Debug mode IDs are unchanged, so this is an editor-label-only update.

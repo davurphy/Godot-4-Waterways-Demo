@@ -4,7 +4,11 @@
 
 We are working on river feature detection for the Waterways add-on: pillows, wakes, eddy-line placement, and the raw/debug tools needed to judge those features accurately. A targeted pillow placement diagnosis first found the obvious forward pillow offset was shader-side reach, so the default `pillow_forward_reach_tiles` is now `0.0`. The user then tested raw `Pillow / Impact Mask` / `obstacle_features.r` and found it still too far ahead of rocks. Phase 6D responded with a scoped bake/classifier pass: raw pillow R now uses tighter pillow-specific support and a nearby hard-contact/protrusion anchor. Phase 6E then halved the raw pillow contact-search distance from `0.14` to `0.07` source tiles for in-game review. The user still reports the pillow starts too far ahead on the actual object. A follow-up inspection found the start is now governed by the baked pillow formula, especially the dilated collision support and hard-boundary context, not by visible shader reach. The latest review clarified that the explicit `0.07` contact search is not the full effective anchor reach because it samples `hard_boundary_at()`, which includes forward-looking `bank_response.a`. The main and obstacle-test river bakes are signature `19`, and the WaterSystem/physics bake was not regenerated.
 
-Start from `../roadmaps/river-feature-detection-roadmap.md`, `../roadmaps/river-improvements-roadmap.md`, `.codex-research/phase7b_eddy_line_cpu_diagnostic.gd`, `.codex-research/phase7b_wake_edge_sample_sweep/`, and the pillow review outputs under `.codex-research/phase6b_pillows_demo_debug/`. The old eddy hypothesis that the main fix might be a larger `wake_edge_sample_tiles` value alone was rejected. The accepted eddy direction was a raw wake-edge-from-G prototype at the reviewed `0.024` edge scale, now promoted into `Eddy-Line Visual Mask`.
+Feature-local spec-driven docs now exist at `addons/waterways/docs/spec-driven/features/river-pillows/`. For pillow work, treat that folder as the current source of truth before returning to this shared handoff; the pillow-relevant roadmap and audit guidance has been folded into that feature folder. The audit now makes diagnostic split views/probe output the next implementation step before another classifier edit.
+
+Feature-local spec-driven docs now also exist at `addons/waterways/docs/spec-driven/features/river-eddies/`. For wake, eddy-line, or future Phase 7C/7D flow work, treat that folder as the current source of truth before returning to this shared handoff. The current eddy baseline is Phase 7B visual-only: `Eddy-Line Visual Mask` uses the raw-G wake-edge candidate plus nearby wake/obstruction context at `wake_edge_sample_tiles = 0.024`; old raw-B paths remain diagnostic; real reverse/circulating flow and WaterSystem/physics alignment remain deferred.
+
+Start from the feature-local folders first, then `../roadmaps/river-feature-detection-roadmap.md`, `../roadmaps/river-improvements-roadmap.md`, `.codex-research/phase7b_eddy_line_cpu_diagnostic.gd`, `.codex-research/phase7b_wake_edge_sample_sweep/`, and the pillow review outputs under `.codex-research/phase6b_pillows_demo_debug/`. The old eddy hypothesis that the main fix might be a larger `wake_edge_sample_tiles` value alone was rejected. The accepted eddy direction was a raw wake-edge-from-G prototype at the reviewed `0.024` edge scale, now promoted into `Eddy-Line Visual Mask`.
 
 Recommended next move: schedule a dedicated discussion/review session for the pillow placement formula before changing code again. The question is no longer just "how much distance should be halved?" but "which signals should be allowed to define the upstream impact start?" Keep `pillow_forward_reach_tiles = 0.0` while reviewing. If the agreed formula needs a code change, make it a scoped bake/classifier pass after the discussion, with source-signature bump, rebakes, probes, and fresh review captures.
 
@@ -20,6 +24,17 @@ Preferred next review path:
 
 ## Read First
 
+- `addons/waterways/docs/spec-driven/features/river-pillows/handoff-latest.md`
+- `addons/waterways/docs/spec-driven/features/river-pillows/tasks.md`
+- `addons/waterways/docs/spec-driven/features/river-pillows/validation.md`
+- `addons/waterways/docs/spec-driven/features/river-pillows/plan.md`
+- `addons/waterways/docs/spec-driven/features/river-pillows/spec.md`
+- `addons/waterways/docs/audit/pillow-system-audit.md`
+- `addons/waterways/docs/spec-driven/features/river-eddies/handoff-latest.md`
+- `addons/waterways/docs/spec-driven/features/river-eddies/tasks.md`
+- `addons/waterways/docs/spec-driven/features/river-eddies/validation.md`
+- `addons/waterways/docs/spec-driven/features/river-eddies/plan.md`
+- `addons/waterways/docs/spec-driven/features/river-eddies/spec.md`
 - `addons/waterways/docs/roadmaps/river-improvements-roadmap.md`
 - `addons/waterways/docs/roadmaps/river-feature-detection-roadmap.md`
 - `addons/waterways/docs/research/river-research-citations.md`
@@ -45,7 +60,7 @@ Preferred next review path:
 - `waterways_bakes/Demo/Water_River_legacy_test.river_bake.res` remains source-signature version `5`.
 - `waterways_bakes/Demo/WaterSystem.water_system_bake.res` was last regenerated after the Phase 5B signature-`16` main river rebake. Do not regenerate it unless final/physics flow changes are explicitly scoped.
 - Phase 7A2 classifier refinement is complete as data-only. It updated `obstacle_features.b` and rebaked the main and obstacle-test river resources to signature `17`; Phase 6D/6E later updated `obstacle_features.r` and bumped the current river bakes to signature `19`.
-- Phase 7B visual-only wake/eddy-line material preview is implemented. It added `wake_` controls and debug modes `Wake Visual Mask`, `Eddy-Line Visual Mask`, and `Wake Edge Thinness`.
+- Phase 7B visual-only wake/eddy-line material preview is implemented and accepted. It added `wake_` controls and debug modes `Wake Visual Mask`, `Eddy-Line Visual Mask`, and `Wake Edge Thinness`. For wake/eddy work, use `addons/waterways/docs/spec-driven/features/river-eddies/` as the feature-local source of truth.
 - Phase 7B follow-up debug modes now include `Wake Shared Gate`, `Gated Eddy-Line Source (B * Wake Gate)`, `Wake Confidence Gate`, `Wake Hard/Protrusion Gate`, `Wake Bank Keep Gate`, `Wake Energy Gate`, `Wake Flow Gate`, `Eddy-Line Context Gate`, `Experimental Gated Eddy Source`, `Eddy-Line Raw Low Range (B x4)`, `Eddy-Line Candidate Gate`, `Eddy-Line Hard Context Search`, `Eddy-Line Wake Context Search`, `Raw Wake-Edge Candidate (from G)`, and `Experimental Wake-Edge Eddy Source`.
 - Editor Debug View menu entries no longer use a leading `Display` prefix, and the toolbar button now shows the selected mode, for example `Debug View: Normal` or `Debug View: Foam Mix`. This was a label/caption-only cleanup; debug mode IDs and shader wiring stayed unchanged and are covered by `.codex-research/debug_view_menu_wiring_probe.gd`.
 - `.codex-research/phase7b_eddy_line_cpu_diagnostic.gd` is implemented and validated. It samples the existing main and obstacle-test signature-`19` bakes and reports raw B/G/A, `wake_shared_gate`, edge gradient, nearby wake, `wake_edge_thinness`, and final `B * wake_shared_gate * wake_edge_thinness * 1.35` for marked regions.

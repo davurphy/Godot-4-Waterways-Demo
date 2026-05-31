@@ -26,6 +26,8 @@ Use this as the durable map from requirements to proof. Prefer stable probe name
 
 - Expected behavior that could look like a bug:
 - Scene geometry, stale resources, generated data, or editor/runtime state to rule out:
+- Research/source context to check:
+  - `addons/waterways/docs/research/river-research-citations.md` is the shared works-cited index for river behavior, hydrology, flow maps, shader water, and production examples. Consult it when validating whether a behavior matches external references, and update it when new sources are used.
 - Evidence that would mean the user or agent is misreading the situation:
 - What the agent should say to the user if that evidence appears:
 - Quick falsifying check before patching:
@@ -206,3 +208,4 @@ Failure signs:
 - [ ] Runtime sampling/API behavior matches generated data.
 - [ ] Performance-sensitive paths have been checked.
 - [ ] Known limitations are documented.
+- [ ] Shared research citations were checked or updated when external river/water references affected the decision.

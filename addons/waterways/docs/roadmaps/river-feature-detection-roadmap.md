@@ -29,7 +29,7 @@ Supporting external and local references live in `../research/river-research-cit
 ## Current Baseline
 
 - Phase 5A/5B flow behavior is accepted as the downstream-preserving baseline.
-- Phase 6B pillow visuals are the accepted current visual baseline. `Pillow / Impact Mask` is the raw `obstacle_features.r` source, and `Pillow Visual Mask` is the shader-gated material mask. Follow-up diagnosis found the obvious forward offset came from shader-side forward reach, so the default `pillow_forward_reach_tiles` is now `0.0`; the material slider remains available for explicit review. Later raw-classifier passes tightened `obstacle_features.r` with pillow-specific support thresholds, a nearby hard-contact anchor, and then a halved contact-search distance after live/in-game review showed raw/visible pillows still too far ahead of rocks. The current pillow issue needs a formula review: the remaining forward start appears to come from baked support/contact signals, especially dilated collision support and hard-boundary context, not from visible reach. The latest review found that the explicit `0.07` pillow search is not the full effective anchor reach because it samples `hard_boundary_at()`, which includes forward-looking `bank_response.a`.
+- Phase 6B pillow visuals are the accepted current visual baseline. `Pillow / Impact Mask` is the raw `obstacle_features.r` source, and `Pillow Visual Mask` is the shader-gated material mask. Follow-up diagnosis found the obvious forward offset came from shader-side forward reach, so the default `pillow_forward_reach_tiles` is now `0.0`; the material slider remains available for explicit review. Later raw-classifier passes tightened `obstacle_features.r` with pillow-specific support thresholds, a nearby hard-contact anchor, and then a halved contact-search distance after live/in-game review showed raw/visible pillows still too far ahead of rocks. The current pillow issue needs a formula review: the remaining forward start appears to come from baked support/contact signals, especially dilated collision support and hard-boundary context, not from visible reach. The latest review found that the explicit `0.07` pillow search is not the full effective anchor reach because it samples `hard_boundary_at()`, which includes forward-looking `bank_response.a`. The 2026-05-30 pillow audit adds stronger evidence: about `35.17%` of main-river and `35.88%` of obstacle-test raw pillow pixels above `0.05` are strongly bank-response anchored while direct terrain protrusion is weak or absent, so the next pass should add diagnostic split views before another classifier edit.
 - Phase 7B wake/eddy-line visuals are implemented as surface-only and accepted as a visible preview. `Wake Visual Mask` is the shader-gated downstream wake mask. `Eddy-Line Visual Mask` now uses paired wake-edge margins derived from raw `obstacle_features.g` plus nearby wake/obstruction context, instead of the older raw-B exact-gate path.
 - The Phase 7B eddy-line fix was a channel/phase alignment fix, not primarily a brightness fix. Raw `obstacle_features.b` was semantically plausible but landed too far downstream or away from the close-behind-rock shoulders. Raw wake seed `obstacle_features.g`, when sampled as a wake-edge candidate at the reviewed `wake_edge_sample_tiles = 0.024`, produced the accepted two trailing margins with a quieter wake center.
 - Current river bakes are signature version `19`. Do not bump the signature, rebake, or regenerate WaterSystem data unless the chosen change really needs it.
@@ -140,16 +140,31 @@ Current pillow follow-up:
 - Halving the pillow contact-search distance reduced only one downstream sampling term. It did not change the forward-looking `bank_response.a` contribution or the size/thresholds of the dilated support field. This is why another blind distance reduction may not address the actual start rule.
 - The effective contact anchor is broader than the `0.07` source-tile constant suggests. `pillow_contact_gate_at()` samples up to `1.5 * pillow_contact_search_uv`; each sample can accept `bank_response.a`; and `bank_response.a` uses `forward_protrusion()` up to `1.5 * RIVER_BANK_RESPONSE_PROBE_TILES`, currently `0.20` source tiles. This can gate a pillow from a downstream semantic halo even where direct `terrain_contact.b` is tight.
 - The source side has a second placement risk: `pillow_source_at()` uses the same dilated collision support generated from `baking_dilate = 0.6`, so support and obstacle normals can be present before the visible object contact that the user is judging in the viewport.
+- The pillow audit's anchor split found over one third of raw pillow pixels are strongly bank-response anchored while direct terrain protrusion is weak or absent. Treat that as high-severity evidence that current views are missing the exact source split needed for the next review.
 - The shader-side contact-pull controls remain default-off review tools, but the first placement check should now be against the refreshed raw R, not against material brightness or height.
 - Keep reviewing `Pillow / Impact Mask`, `Pillow Visual Mask`, `Obstacle Confidence`, `Hard-Boundary / Protrusion Response`, terrain contact, and final flow at the same rock/protrusion targets.
 - If the refreshed raw/final masks still look ahead of a source rock in live viewport review, treat that as a remaining classifier-placement issue before tuning pillow brightness, foam, or height.
 
+Audit-guided next pass:
+
+1. Add diagnostic split views or probe output before changing the classifier:
+   - pillow support/facing source;
+   - direct `terrain_contact.b` anchor;
+   - `bank_response.a` anchor;
+   - combined pillow contact gate;
+   - bank-only anchor contribution.
+2. Review those views live in the editor on the same rocks/protrusions where the user sees the forward offset.
+3. If the split confirms bank-response anchoring is the cause, change raw pillow R so direct protrusion/contact is required or near-required.
+4. Keep `bank_response.a` as context only for pillows.
+5. Tighten pillow-specific support if needed, but do not globally reduce `baking_dilate = 0.6` without reviewing flow, foam, pressure, wakes, and obstacle avoidance.
+6. Report effective chain reach in docs/diagnostics so future sessions stop treating `0.07` as the whole reach.
+
 Formula review questions before the next classifier change:
 
-- Should pillow anchoring require direct contact/protrusion (`terrain_contact.b`) instead of the broader semantic `bank_response.a`?
-- Should `bank_response.a` be allowed only as a weak context multiplier, not as a contact anchor?
+- Should pillow anchoring require direct contact/protrusion (`terrain_contact.b`) instead of the broader semantic `bank_response.a`? The audit recommends yes unless live review disproves it.
+- Should `bank_response.a` be allowed only as a weak context multiplier, not as a contact anchor? The audit recommends yes.
 - Should pillow support use a tighter support texture or higher `pillow_support_start` so the dilated collision halo cannot define the start too early?
-- Do we need a temporary diagnostic view that splits raw pillow source into direct contact, bank-response contribution, support/facing contribution, and final contact-gate contribution before changing the formula?
+- What is the smallest diagnostic split that answers direct contact, bank-response contribution, support/facing contribution, final contact-gate contribution, and bank-only contribution before changing the formula?
 
 ## Wake And Eddy-Line Detection
 

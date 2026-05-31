@@ -785,6 +785,27 @@ Phase 6F formula review finding:
 - Treat the next pillow step as a formula/diagnostic decision, not another scalar distance reduction. The likely first diagnostic split is support/facing, direct `terrain_contact.b` anchoring, `bank_response.a` anchoring, and final contact-gate contribution.
 - Documentation-only: no shader code, bake resources, source signatures, final flow, WaterSystem data, or validation probes changed.
 
+Phase 6G audit-guided diagnostic and formula direction:
+
+- `docs/audit/pillow-system-audit.md` reviewed the signature-`19` pillow baseline and confirmed the remaining forward-start issue is primarily a bake/formula issue, not a visible-material reach issue.
+- The audit-reported anchor split found about `35.17%` of main-river and `35.88%` of obstacle-test raw pillow pixels above `0.05` are strongly `bank_response.a` anchored while direct `terrain_contact.b` is weak or absent. Over half of raw pillow pixels have `bank_response.a` meaningfully higher than direct `terrain_contact.b`.
+- Treat this as high-severity evidence that `bank_response.a` is too semantic and forward-looking to define literal pillow contact by itself.
+- The next implementation pass should add diagnostic split views or probe output before another classifier edit:
+  - pillow support/facing source;
+  - direct terrain protrusion anchor;
+  - bank-response anchor;
+  - combined pillow contact gate;
+  - bank-only anchor contribution.
+- If live review confirms the audit, revise raw pillow R toward a direct-contact-first formula:
+  - `direct_anchor = tight local search of terrain_contact.b`;
+  - `semantic_context = low-weight bank_response.a overlap/context`;
+  - `source = tight support * facing^2 * bank suppression`;
+  - `raw_pillow = source * direct_anchor_gate * context_gate`.
+- Keep `bank_response.a` as context for pillows, not as a standalone contact anchor.
+- If support/facing still starts too early, tighten pillow-specific support or thresholds. Do not globally reduce `baking_dilate = 0.6` unless the impact on flow, foam, pressure, wakes, and obstacle avoidance is reviewed.
+- After the next formula is accepted, consider moving duplicated visible/debug pillow helper math into `.gdshaderinc` files and add parity probe coverage. Do this after formula agreement, not before the placement diagnosis.
+- Re-run `PILLOW_FORMULA_ANCHOR_AUDIT_OK`, `PHASE6C_PILLOW_PLACEMENT_DIAGNOSTIC_OK`, `PHASE6C_PILLOW_EDITOR_WIRING_PROBE_OK`, `PHASE6B_PILLOW_TUNING_PROBE_OK`, and relevant Phase 7B wake/eddy probes after any raw pillow formula change.
+
 Future pillow detection review workflow:
 
 - See `river-feature-detection-roadmap.md` for the shared review workflow for pillows, wakes, and eddy lines.
@@ -914,17 +935,18 @@ Phase 7 decision table:
 
 Recommended next action:
 
-Use the Phase 7B eddy-line fix as the model for any remaining pillow placement review. The first pillow follow-up found the visible forward offset in shader-side reach and changed the default reach to `0.0`; later reviews found raw R still too far ahead, so Phase 6D moved the raw pillow classifier closer to hard contact/protrusion support and Phase 6E halved the contact-search distance. The current river resources are signature `19`. A formula review then found that the remaining offset can still come from the effective anchor stack: `pillow_contact_gate_at()` samples a hard-boundary term that includes forward-looking `bank_response.a`, and `pillow_source_at()` still uses the broad dilated collision support. Review the refreshed raw/final pillow masks in live viewport before doing any material-strength, foam, or height tuning. Only start Phase 7C after the user explicitly wants real reverse/circulating flow; that milestone must update visible/debug final-flow logic and WaterSystem generation together.
+Use the Phase 7B eddy-line fix as the model for any remaining pillow placement review. The first pillow follow-up found the visible forward offset in shader-side reach and changed the default reach to `0.0`; later reviews found raw R still too far ahead, so Phase 6D moved the raw pillow classifier closer to hard contact/protrusion support and Phase 6E halved the contact-search distance. The current river resources are signature `19`. A formula review and the 2026-05-30 pillow audit then found that the remaining offset can still come from the effective anchor stack: `pillow_contact_gate_at()` samples a hard-boundary term that includes forward-looking `bank_response.a`, and `pillow_source_at()` still uses the broad dilated collision support. Add the audit-recommended diagnostic split, review the refreshed raw/final/source-term pillow masks in live viewport, and only then change classifier constants. Do not do material-strength, foam, or height tuning until placement is accepted. Only start Phase 7C after the user explicitly wants real reverse/circulating flow; that milestone must update visible/debug final-flow logic and WaterSystem generation together.
 
 Next-session triage order:
 
 1. Review the signature-`19` halved-distance contact-anchored `Pillow / Impact Mask` in live viewport at upstream impact faces of rocks/protrusions and "should not detect" controls ahead of those rocks, downstream wakes, and smooth banks.
 2. Compare `Pillow / Impact Mask`, `Pillow Visual Mask`, `Obstacle Confidence`, `Hard-Boundary / Protrusion Response`, terrain contact, and final-flow strength at the same targets.
 3. Keep `pillow_forward_reach_tiles = 0.0` while judging placement so the old shader reach does not confuse the raw classifier review.
-4. If the refreshed raw/final masks are still ahead of the rock, first split the formula inputs instead of reducing the same contact distance again. Compare support/facing, direct `terrain_contact.b`, `bank_response.a`, and the final pillow contact gate.
-5. If the split proves raw R is misplaced, plan another classifier/source-support diagnosis before using material response or height as a workaround.
-6. If placement is accepted but the pillow now reads too sparse or subtle, tune shader-only gates/material response before considering any bake changes.
-7. Preserve the accepted Phase 7B eddy-line behavior while working on pillows; do not touch final flow, WaterSystem output, or Phase 7C unless explicitly scoped.
+4. Add or use the audit-recommended split before reducing the same contact distance again. Compare support/facing, direct `terrain_contact.b`, `bank_response.a`, combined pillow contact gate, and bank-only contribution.
+5. If the split proves bank-response anchoring is the cause, make direct `terrain_contact.b` or a tight local direct-contact search mandatory or near-mandatory for raw R, and keep `bank_response.a` as context only.
+6. If the split proves support/facing starts too early, tighten pillow-specific support or thresholds without globally reducing `baking_dilate`.
+7. If placement is accepted but the pillow now reads too sparse or subtle, tune shader-only gates/material response before considering any bake changes.
+8. Preserve the accepted Phase 7B eddy-line behavior while working on pillows; do not touch final flow, WaterSystem output, or Phase 7C unless explicitly scoped.
 
 ## Phase 8: Visual Flow And Physics Together
 
@@ -973,9 +995,9 @@ These should wait until grade, bends, obstacles, actual flow-map corrections, pi
 
 ## Recommended Next Milestone
 
-Review the signature-`19` halved-distance contact-anchored pillow classifier in the editor viewport. The first diagnosis identified shader-side `pillow_forward_reach_tiles = 0.075` as the source of the obvious ahead-of-rock visual offset and changed the default to `0.0`; later raw-classifier passes tightened `obstacle_features.r` and halved the contact-search distance after review showed raw/visible pillows still too far ahead. The current review finding is that the explicit contact-search distance is only one part of the start rule: the contact gate can still accept forward-looking `bank_response.a`, and the pillow source still uses broad dilated collision support.
+Review the signature-`19` halved-distance contact-anchored pillow classifier in the editor viewport using the audit-recommended diagnostic split. The first diagnosis identified shader-side `pillow_forward_reach_tiles = 0.075` as the source of the obvious ahead-of-rock visual offset and changed the default to `0.0`; later raw-classifier passes tightened `obstacle_features.r` and halved the contact-search distance after review showed raw/visible pillows still too far ahead. The current review finding is that the explicit contact-search distance is only one part of the start rule: the contact gate can still accept forward-looking `bank_response.a`, and the pillow source still uses broad dilated collision support. The pillow audit adds quantitative evidence that bank-response anchoring is defining too much of raw R, so diagnostics should come before another classifier edit.
 
-Start with `Pillow / Impact Mask`, `Pillow Visual Mask`, `Obstacle Confidence`, `Hard-Boundary / Protrusion Response`, terrain contact, and `Final Flow Strength`. If those views cannot explain the offset, add a temporary split for support/facing, direct protrusion contact, bank-response anchoring, and contact-gate contribution before changing classifier constants. If placement is accepted, any next pillow work should be shader-only material/gate tuning; if raw/no-reach placement is still wrong, plan a focused classifier pass. Do not touch final flow, WaterSystem flow, reverse/circulating physics, or saved WaterSystem bake unless explicitly scoped.
+Start with `Pillow / Impact Mask`, `Pillow Visual Mask`, `Obstacle Confidence`, `Hard-Boundary / Protrusion Response`, terrain contact, and `Final Flow Strength`, but add direct diagnostic views/probe output for support/facing, direct protrusion contact, bank-response anchoring, contact-gate contribution, and bank-only contribution before changing classifier constants. If placement is accepted, any next pillow work should be shader-only material/gate tuning; if raw/no-reach placement is still wrong, plan a focused classifier pass using direct-contact-first anchoring. Do not touch final flow, WaterSystem flow, reverse/circulating physics, or saved WaterSystem bake unless explicitly scoped.
 
 ## Godot Verification Setup
 

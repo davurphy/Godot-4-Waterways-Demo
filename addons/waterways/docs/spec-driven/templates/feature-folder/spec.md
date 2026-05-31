@@ -24,6 +24,7 @@ Use this short section as the dashboard for the current spec state. Keep it curr
 
 ## Context and Assumptions
 
+- Shared works-cited index: `addons/waterways/docs/research/river-research-citations.md`. Future Codex sessions should use it as the project-level source list for river behavior, hydrology, flow maps, shader-water references, and production examples, and should update it when new external research informs this feature.
 - Known scene/data/context facts:
 - User-reported observations:
 - Agent confidence in the premise:
