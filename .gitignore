@@ -1,0 +1,35 @@
+# Godot generated cache
+.godot/
+.import/
+
+# Godot generated/temp files
+*.tmp
+*.translation
+.nomedia
+~*.dll
+
+# Local export credentials / generated export state
+export.cfg
+export_credentials.cfg
+
+# C# / Mono, harmless if unused
+.mono/
+data_*/
+mono_crash.*.json
+
+# Local machine/editor clutter
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Project-local debug/backups found here
+debugger/
+*~
+
+# Accidental nested copy/repo from moving this project folder
+/Godot 4 Waterways Demo/
+
+# Codex / local assistant workspace files, if ever created in-project
+.codex/
+.codex-research/

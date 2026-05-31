@@ -1,0 +1,14 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://addons/waterways/gui/water_system_controls.gd" id="1"]
+[ext_resource type="Script" path="res://addons/waterways/gui/water_system_menu.gd" id="2"]
+
+[node name="WaterSystemControls" type="HBoxContainer"]
+offset_right = 97.0
+offset_bottom = 26.0
+script = ExtResource("1")
+
+[node name="WaterSystemMenu" type="MenuButton" parent="."]
+layout_mode = 2
+text = "WaterSystem"
+script = ExtResource("2")
