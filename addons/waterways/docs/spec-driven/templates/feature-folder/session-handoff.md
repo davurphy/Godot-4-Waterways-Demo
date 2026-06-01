@@ -12,8 +12,6 @@ Briefly state what this session was trying to accomplish.
   - `addons\waterways\docs\spec-driven\features\<feature-slug>\`
 - Active add-on path:
   - `addons\waterways`
-- Legacy reference path:
-  - `legacy\godot-3\addons\waterways`
 
 ## Current Truth
 
@@ -109,7 +107,6 @@ Validation status:
 - <Constraint, assumption, design note, or project-specific context>
 - Shared works-cited index: `addons\waterways\docs\research\river-research-citations.md`. Future Codex sessions should use it as the project-level list of river-reading, hydrology, flow-map, shader-water, and production-example sources, and update it when new external references influence this feature.
 - <Known Godot 4.6+ API detail>
-- <Legacy Godot 3 behavior to preserve or intentionally change>
 - <Any user/agent misunderstanding risk that should be raised directly instead of silently worked around>
 
 ## Artifact Hygiene
@@ -166,4 +163,4 @@ Result summary:
 
 ## Notes for the Next Agent
 
-Plain-language guidance for the next session. Include anything that would prevent rediscovering context, repeating a mistake, or accidentally editing the legacy snapshot instead of the active Godot 4.6+ add-on.
+Plain-language guidance for the next session. Include anything that would prevent rediscovering context, repeating a mistake, or editing the wrong project area.

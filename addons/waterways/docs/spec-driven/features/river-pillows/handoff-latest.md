@@ -12,8 +12,6 @@ Create a feature-local spec-driven home for pillow placement work by converting 
   - `addons\waterways\docs\spec-driven\features\river-pillows\`
 - Active add-on path:
   - `addons\waterways`
-- Legacy reference path:
-  - `legacy\godot-3\addons\waterways`
 
 ## Current Truth
 
