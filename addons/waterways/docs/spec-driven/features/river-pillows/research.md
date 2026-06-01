@@ -6,6 +6,8 @@ Consolidate the pillow-related findings from the shared changelog and latest han
 
 ## Current Research Outcome
 
+This is the research dashboard. Keep the recommended direction here and use the lower sections for evidence, options, cited sources, and rejected paths.
+
 - Status: Complete enough for formula review; roadmap details folded in
 - Recommendation: Add the audit-recommended diagnostic split and a readable final-mask diagnostic, then do live formula review before changing classifier constants again.
 - Confidence: Medium-high that the remaining forward offset is a baked raw-mask/formula issue, not default visible shader reach.

@@ -17,6 +17,8 @@
 
 ## Current Truth
 
+This is the review dashboard. Lead with unresolved risks and next action; keep detailed findings, compliance checks, and history lower in the file.
+
 - Overall review status: Partial
 - Blocking issues remaining: A human-assisted pillow formula review is still needed before code changes.
 - Important issues remaining: The remaining forward pillow offset is now confirmed in raw `Pillow / Impact Mask` and final visible water, but not yet attributed to one source term.

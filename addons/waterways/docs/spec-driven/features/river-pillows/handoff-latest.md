@@ -26,6 +26,13 @@ Create a feature-local spec-driven home for pillow placement work by converting 
 - Packaging/artifact hygiene status: No new generated artifacts from this docs conversion.
 - Historical detail starts at: `Historical Change Log`
 
+## How To Use This Feature Folder
+
+- Treat this handoff and the `Current Truth` sections as the dashboard.
+- Use `tasks.md` for active work, `review.md` for unresolved risks, and `validation.md` for what is currently proven.
+- Open `plan.md`, `spec.md`, `research.md`, and `addons\waterways\docs\research\river-research-citations.md` only when the dashboard needs explanation or source provenance.
+- Move old session notes, superseded assumptions, and closed work into historical sections instead of growing the dashboard.
+
 ## Start Here Next Session
 
 Read these first:

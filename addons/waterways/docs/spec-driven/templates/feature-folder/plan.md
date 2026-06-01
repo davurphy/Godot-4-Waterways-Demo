@@ -11,6 +11,7 @@ Describe the chosen architecture and why it satisfies the spec.
 ## Current Truth
 
 Keep this section short and update it whenever the plan changes.
+This is the plan dashboard: current implementation state first, detailed architecture and historical reasoning later.
 
 - Implementation status: <Not started / In progress / Complete / Blocked>
 - Open architectural decisions:

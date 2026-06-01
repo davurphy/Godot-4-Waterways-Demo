@@ -7,6 +7,7 @@
 ## Current Validation Snapshot
 
 Keep this short and current. Older detailed runs belong in "Recorded Results" below.
+This is the validation dashboard. The matrix answers what is currently proven; recorded results and archives explain how those conclusions were reached.
 
 - Overall status: <Unrun / Partial / Pass / Blocked>
 - Last automated pass:

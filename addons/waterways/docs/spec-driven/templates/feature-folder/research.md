@@ -8,6 +8,7 @@ Use `addons/waterways/docs/research/river-research-citations.md` as the shared w
 ## Current Research Outcome
 
 Keep this short once research has produced a direction.
+This is the research dashboard. Keep the recommended direction here and put evidence, options, citations, and rejected paths lower in the file.
 
 - Status: <Needed / In progress / Complete / Superseded>
 - Recommendation:

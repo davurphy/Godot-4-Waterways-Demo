@@ -10,7 +10,7 @@ For each substantial feature, create a dedicated feature subfolder under:
 addons\waterways\docs\spec-driven\features
 ```
 
-Copy the template files from `spec-driven/templates/feature-folder/` into that feature subfolder. All feature-specific `research.md`, `spec.md`, `plan.md`, `tasks.md`, `validation.md`, and `review.md` work should live there.
+Copy the template files from `spec-driven/templates/feature-folder/` into that feature subfolder. Rename the copied `session-handoff.md` to `handoff-latest.md`. All feature-specific `research.md`, `spec.md`, `plan.md`, `tasks.md`, `validation.md`, and `review.md` work should live beside it.
 
 Keep each long-running feature folder scan-friendly:
 
@@ -20,6 +20,28 @@ Keep each long-running feature folder scan-friendly:
 - Keep detailed historical validation, but summarize the current state in a validation matrix.
 - When a task closes, sweep the docs for stale "open follow-up" language before handing off.
 - Separate current-session changes from historical change logs once files become long.
+
+## Dashboard-First Document Pattern
+
+Every long-running feature file should have a short dashboard near the top and deeper context lower down.
+
+- Dashboard: current truth, next action, validation status, known risk, and "do not do yet" constraints.
+- Drilldown: requirements, architecture, implementation plan, task details, and review findings.
+- Evidence: validation results, cited research, source paths, decision logs, and copied user observations.
+- Archive: historical or closed tasks, superseded assumptions, and older validation runs.
+
+When updating docs, replace stale dashboard facts instead of appending another summary above them. Use links or file paths from the dashboard to point at deeper evidence rather than duplicating long context.
+
+Suggested read order inside an active feature folder:
+
+1. `handoff-latest.md`
+2. `tasks.md`
+3. `review.md`
+4. `validation.md`
+5. `plan.md`
+6. `spec.md`
+7. `research.md`
+8. `addons\waterways\docs\research\river-research-citations.md` when the session needs source provenance
 
 ## Phase 0: Intake
 
@@ -58,6 +80,7 @@ Research should cover:
 - recommended direction for Waterways
 
 Research output goes in `research.md`.
+Shared citations and source provenance should link to `addons\waterways\docs\research\river-research-citations.md` when relevant.
 Do not turn research directly into code. Turn it into a spec first.
 
 The legacy Godot 3 add-on is a reference implementation, not a design mandate.
@@ -201,6 +224,7 @@ Ask:
 - Are docs, tasks, and open questions updated?
 - Does the latest handoff, review, and tasks file agree on what remains open?
 - Did completed work leave stale "open issue" language behind?
+- Do the dashboard sections still match the deeper evidence and historical notes?
 
 Output goes in `review.md`.
 
@@ -210,7 +234,7 @@ If something fails:
 
 1. Decide whether the spec, plan, task, code, validation fixture, or user/agent interpretation is wrong.
 2. If the user or agent appears to be misreading expected behavior as a defect, say so plainly with evidence before patching.
-3. Update the earliest wrong document.
+3. Update the earliest wrong document, then refresh the dashboard sections that summarized it.
 4. Re-run implementation from the corrected source.
 5. Record what changed.
 

@@ -6,6 +6,7 @@ Each task should be independently reviewable.
 ## Current Truth
 
 Keep this as the single fastest way to understand open work.
+This is the task dashboard. Keep active work here and move completed or superseded task detail to `Historical or Closed Tasks`.
 
 - Current status: <Not started / In progress / Complete / Blocked>
 - Current implementation slice:
@@ -26,7 +27,7 @@ Use this section as the canonical checklist for unfinished work. When items clos
 - [ ] Read `spec.md`, `plan.md`, and `validation.md`.
 - [ ] Check `docs/research/river-research-citations.md` before research-driven changes; it is the shared works-cited list for river-reading, flow-map, shader-water, and production-reference sources, and should be updated when new cited sources affect this feature.
 - [ ] Check `audit/code-audit.md` for relevant known risks.
-- [ ] Confirm whether the task affects active code in `addons/waterways`, legacy reference code in `legacy/godot-3/addons/waterways`, or both.
+- [ ] Confirm whether the task affects active code in `addons/waterways`, generated resources, demo scenes, docs, or validation tooling.
 - [ ] Run the context challenge check: if the user or agent may be misreading expected behavior, stale generated data, validation geometry, or engine limitations as a defect, raise that with evidence before patching.
 
 ## Implementation

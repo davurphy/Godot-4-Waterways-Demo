@@ -7,6 +7,7 @@ Describe the feature in plain language.
 ## Current Truth
 
 Use this short section as the dashboard for the current spec state. Keep it current; move older detail into the sections below instead of letting stale open questions linger.
+Limit this section to the facts a future session needs before deciding whether to read deeper. Link to `Context and Assumptions`, `Resolved Questions`, or `Decision Log` instead of repeating long rationale here.
 
 - Status: <Draft / Accepted / In progress / Complete / Blocked>
 - Source of truth for open work: `<tasks.md section or issue>`

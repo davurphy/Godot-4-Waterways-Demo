@@ -12,6 +12,7 @@
 ## Current Truth
 
 Use this as the review dashboard. Keep it concise and update it before handing off.
+Lead with unresolved risks and next action. Put detailed compliance checks, follow-ups, and decision updates lower in the file.
 
 - Overall review status: <Pass / Partial / Blocked>
 - Blocking issues remaining:

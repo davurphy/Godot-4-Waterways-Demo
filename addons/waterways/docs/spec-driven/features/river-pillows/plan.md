@@ -27,6 +27,8 @@ The review architecture follows the shared feature-detection loop:
 
 ## Current Truth
 
+This is the plan dashboard. Keep current implementation state here and leave the detailed architecture, risks, and historical reasoning in the sections below.
+
 - Implementation status: Existing implementation is in progress; next slice not started.
 - Open architectural decisions: Which source terms may anchor the upstream pillow start.
 - Last validation that proves the plan still works: Phase 6E/6F documentation and earlier Godot 4.6.3 probes; visible user review now confirms raw and visible pillow starts are about `0.3` to `0.5` ahead of the intended contact point.

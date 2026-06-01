@@ -11,6 +11,8 @@
 
 ## Current Validation Snapshot
 
+This is the validation dashboard. The matrix answers what is currently proven; recorded results and archives explain how those conclusions were reached.
+
 - Overall status: Partial
 - Last automated pass: Historical Godot 4.6.3 probes passed after Phase 6E, including `PHASE7A2_OBSTACLE_FEATURES_PROBE_OK`, `PHASE6C_PILLOW_PLACEMENT_DIAGNOSTIC_OK`, `PHASE6C_PILLOW_EDITOR_WIRING_PROBE_OK`, `PHASE6B_PILLOW_TUNING_PROBE_OK`, `PHASE6A_PILLOW_VISUAL_PROBE_OK`, `PHASE7B_WAKE_EDDY_VISUAL_PROBE_OK`, `PHASE7B_EDDY_LINE_CPU_DIAGNOSTIC_OK`, `DEBUG_VIEW_MENU_WIRING_PROBE_OK`, and `PHASE7A2_WAKE_EDDY_PREFLIGHT_OK`. The audit also reports `PILLOW_FORMULA_ANCHOR_AUDIT_OK`.
 - Last human-assisted pass: User confirms raw `Pillow / Impact Mask` and final visible water start about `0.3` to `0.5` ahead of the desired obstruction contact point after Phase 6E. User also reports `Pillow Visual Mask` is undifferentiated green over the whole river.

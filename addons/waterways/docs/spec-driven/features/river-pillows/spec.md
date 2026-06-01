@@ -16,6 +16,8 @@ Feature terms used by this spec:
 
 ## Current Truth
 
+This is the spec dashboard. Keep it limited to active state and link to goals, context, resolved questions, or the decision log for deeper rationale.
+
 - Status: In progress
 - Source of truth for open work: `tasks.md` "Open Work"
 - Last meaningful decision: After Phase 6F, do a formula/diagnostic review before another classifier edit.

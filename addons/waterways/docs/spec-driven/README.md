@@ -4,6 +4,18 @@ This folder is the working agreement for evolving Waterways as a Godot 4.6+ flow
 
 It turns ideas into durable specs, plans, tasks, validation scenes, and review notes so future sessions can continue without rediscovering the same context.
 
+## Dashboard-First Pattern
+
+These docs should save future sessions from rehashing the past while still preserving the receipts.
+
+Use each feature folder in this order:
+
+1. Read the dashboard sections first: `handoff-latest.md`, `tasks.md`, `review.md`, and `validation.md`.
+2. Drill into `plan.md`, `spec.md`, and `research.md` only when the current state needs explanation.
+3. Use linked source trails, decision logs, and historical archives when a session needs to answer "why is it structured like this?"
+
+Keep the top of every long-running feature file short and current. Put old validation runs, superseded assumptions, and detailed rationale lower in the same file under history, evidence, sources, or decision-log sections.
+
 ## Agent Start Protocol
 
 For any non-trivial Waterways change, read these files before editing code:
@@ -11,6 +23,17 @@ For any non-trivial Waterways change, read these files before editing code:
 1. `00-constitution.md`
 2. `01-workflow.md`
 3. The active feature folder under `features/<feature-slug>/`, if one exists
+
+Inside an active feature folder, start with:
+
+1. `handoff-latest.md`
+2. `tasks.md`
+3. `review.md`
+4. `validation.md`
+5. `plan.md`
+6. `spec.md`
+7. `research.md`
+8. `addons\waterways\docs\research\river-research-citations.md` when research provenance matters
 
 If no feature folder exists for the work, create one under `features/<feature-slug>/`.
 Do not skip directly from a vague idea to implementation unless the requested change is clearly small and local.
@@ -61,6 +84,7 @@ Each substantial feature should live in its own folder:
 spec-driven/
   features/
     <feature-slug>/
+      handoff-latest.md
       research.md
       spec.md
       plan.md
@@ -75,19 +99,21 @@ For example, a feature named `editor-authoring-tools` should create and use:
 addons\waterways\docs\spec-driven\features\editor-authoring-tools\
 ```
 
-The copied `research.md`, `spec.md`, `plan.md`, `tasks.md`, `validation.md`, and `review.md` files for that feature live in that subfolder.
+The copied `session-handoff.md` template should become `handoff-latest.md` in that subfolder. The copied `research.md`, `spec.md`, `plan.md`, `tasks.md`, `validation.md`, and `review.md` files live beside it.
 
 Use this order:
 
-1. Research the problem and Godot-specific constraints.
-2. Write the behavior/spec: what, why, success criteria.
-3. Plan the technical design: architecture, data flow, risks.
-4. Break the plan into small tasks.
-5. Adversarially review the plan before implementation.
-6. Before code changes, remind the user to create or switch to a dedicated Git branch for the feature.
-7. Implement one task at a time.
-8. Validate with automated checks and visual test scenes where relevant.
-9. Review against the spec before broadening or polishing.
+1. Keep `handoff-latest.md` and each `Current Truth` section as the dashboard.
+2. Research the problem and Godot-specific constraints.
+3. Write the behavior/spec: what, why, success criteria.
+4. Plan the technical design: architecture, data flow, risks.
+5. Break the plan into small tasks.
+6. Adversarially review the plan before implementation.
+7. Before code changes, remind the user to create or switch to a dedicated Git branch for the feature.
+8. Implement one task at a time.
+9. Validate with automated checks and visual test scenes where relevant.
+10. Review against the spec before broadening or polishing.
+11. When handing off, replace stale dashboard facts instead of appending more top-level history.
 
 ## Core Rule
 
@@ -103,11 +129,11 @@ Agents should challenge likely false premises early. If the code, scene, validat
 - `00-constitution.md`: standing principles for all Waterways AI-assisted development.
 - `01-workflow.md`: the repeatable spec-driven process.
 - `templates/feature-folder/`: copyable feature-document templates.
-- `templates/session-handoff.md`: copyable template for handing work from one session to the next.
+- `templates/feature-folder/session-handoff.md`: copyable template for handing work from one session to the next.
 
 ## Session Handoffs
 
-For long-running work, copy `spec-driven/templates/session-handoff.md` into the active feature folder under `spec-driven/features/<feature-slug>/`.
+For long-running work, copy `spec-driven/templates/feature-folder/session-handoff.md` into the active feature folder under `spec-driven/features/<feature-slug>/`.
 
 Use a name such as:
 

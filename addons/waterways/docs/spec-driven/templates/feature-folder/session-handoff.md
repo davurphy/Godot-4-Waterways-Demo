@@ -27,6 +27,13 @@ This is the handoff dashboard. Keep it short, concrete, and current.
 - Packaging/artifact hygiene status:
 - Historical detail starts at:
 
+## How To Use This Feature Folder
+
+- Treat this handoff and the `Current Truth` sections as the dashboard.
+- Use `tasks.md` for active work, `review.md` for unresolved risks, and `validation.md` for what is currently proven.
+- Open `plan.md`, `spec.md`, `research.md`, and the shared citations index only when the dashboard needs explanation or source provenance.
+- Move old session notes, superseded assumptions, and closed work into historical sections instead of growing the dashboard.
+
 ## Start Here Next Session
 
 Read these first:
@@ -39,7 +46,8 @@ Read these first:
 6. `addons\waterways\docs\spec-driven\features\<feature-slug>\validation.md`
 7. `addons\waterways\docs\spec-driven\features\<feature-slug>\plan.md`
 8. `addons\waterways\docs\spec-driven\features\<feature-slug>\spec.md`
-9. `addons\waterways\docs\research\river-research-citations.md`
+9. `addons\waterways\docs\spec-driven\features\<feature-slug>\research.md`
+10. `addons\waterways\docs\research\river-research-citations.md`
 
 Then do this next:
 
