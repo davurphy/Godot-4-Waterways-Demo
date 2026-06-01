@@ -14,10 +14,10 @@
 This is the validation dashboard. The matrix answers what is currently proven; recorded results and archives explain how those conclusions were reached.
 
 - Overall status: Partial
-- Last automated pass: Historical Godot 4.6.3 probes passed after Phase 6E, including `PHASE7A2_OBSTACLE_FEATURES_PROBE_OK`, `PHASE6C_PILLOW_PLACEMENT_DIAGNOSTIC_OK`, `PHASE6C_PILLOW_EDITOR_WIRING_PROBE_OK`, `PHASE6B_PILLOW_TUNING_PROBE_OK`, `PHASE6A_PILLOW_VISUAL_PROBE_OK`, `PHASE7B_WAKE_EDDY_VISUAL_PROBE_OK`, `PHASE7B_EDDY_LINE_CPU_DIAGNOSTIC_OK`, `DEBUG_VIEW_MENU_WIRING_PROBE_OK`, and `PHASE7A2_WAKE_EDDY_PREFLIGHT_OK`. The audit also reports `PILLOW_FORMULA_ANCHOR_AUDIT_OK`.
+- Last automated pass: Historical Godot 4.6.3 probes passed after Phase 6E, including `PHASE7A2_OBSTACLE_FEATURES_PROBE_OK`, `PHASE6C_PILLOW_PLACEMENT_DIAGNOSTIC_OK`, `PHASE6C_PILLOW_EDITOR_WIRING_PROBE_OK`, `PHASE6B_PILLOW_TUNING_PROBE_OK`, `PHASE6A_PILLOW_VISUAL_PROBE_OK`, `PHASE7B_WAKE_EDDY_VISUAL_PROBE_OK`, `PHASE7B_EDDY_LINE_CPU_DIAGNOSTIC_OK`, `DEBUG_VIEW_MENU_WIRING_PROBE_OK`, and `PHASE7A2_WAKE_EDDY_PREFLIGHT_OK`. The audit also reports `PILLOW_FORMULA_ANCHOR_AUDIT_OK`. On 2026-06-01, static checks verified new debug modes `48` through `53`, menu wiring, and normalized obstacle-test pillow review values.
 - Last human-assisted pass: User confirms raw `Pillow / Impact Mask` and final visible water start about `0.3` to `0.5` ahead of the desired obstruction contact point after Phase 6E. User also reports `Pillow Visual Mask` is undifferentiated green over the whole river.
-- Highest-risk unproven behavior: Which formula source term creates the remaining forward offset.
-- Known unreliable local check or environment caveat: Local scripted probes are useful, but not proof of visible editor/runtime placement. The current debug gradient maps zero to green, so `Pillow Visual Mask` may be visually ambiguous unless a clearer diagnostic is added.
+- Highest-risk unproven behavior: Whether signature-`20` direct-contact-first raw R places pillows correctly after the main and obstacle-test bakes are regenerated.
+- Known unreliable local check or environment caveat: Local scripted probes are useful, but not proof of visible editor/runtime placement. The original debug gradient maps zero to green, so use `Pillow Visual Mask (Black Zero)` for final-mask placement review.
 
 ## Validation Matrix
 
@@ -25,17 +25,18 @@ This is the validation dashboard. The matrix answers what is currently proven; r
 | --- | --- | --- | --- | --- | --- | --- |
 | Pillow forward reach disabled by default | Inspect visible/debug shader defaults and editor controls | Godot editor/human visible | `pillow_forward_reach_tiles = 0.0` unless intentionally changed | Historical pass | 2026-05-26 | Agent/User |
 | Raw pillow placement after Phase 6E | `.codex-research/phase6c_pillow_placement_diagnostic/` | Godot scripted export plus human review | Raw R above `0.05` near rocks, not broad far-ahead blobs | Partial; user still sees offset. Historical stats: raw R about `4.70%` main and `4.61%` obstacle-test; no-reach visual about `2.32%` main and `2.26%` obstacle-test | 2026-05-26 | Agent/User |
-| Formula source term for remaining offset | Existing views or new diagnostic split | Human visible plus optional probe | Offset source identified as raw support, direct contact, bank response, final gate, or material | Unrun | 2026-05-31 | User/Agent |
+| Formula source term for remaining offset | Existing views or new diagnostic split | Human visible plus optional probe | Offset source identified as raw support, direct contact, bank response, final gate, or material | User review identified bank-response/combined contact gate as too broad and direct terrain anchor as closest to intended placement | 2026-06-01 | User/Agent |
 | Bank-response anchor risk | `.codex-research/pillow_formula_anchor_audit.gd` | Godot scripted audit | `PILLOW_FORMULA_ANCHOR_AUDIT_OK`; bank-only contribution reduced after formula change | Audit pass; high risk found | 2026-05-30 | Agent |
-| Audit diagnostic split | New debug views or probe output | Human visible plus optional probe | Direct contact, bank-response anchor, support/facing, combined contact gate, and bank-only contribution are separable | Unrun | 2026-05-31 | Agent/User |
-| `Pillow Visual Mask` readability | Current mode or new threshold/black-zero diagnostic | Human visible plus optional shader/static check | Reviewer can distinguish zero/near-zero, weak, and meaningful final-mask values | Fail; user reports undifferentiated green over the river | 2026-05-31 | User/Agent |
-| Main and obstacle-test generalization | `Demo.tscn` and `Demo_obstacle_flow_test.tscn` review | Human visible | Same placement conclusion without ordinary-bank strips | Unrun | 2026-05-31 | User/Agent |
+| Audit diagnostic split | New debug views or probe output | Human visible plus optional probe | Direct contact, bank-response anchor, support/facing, combined contact gate, and bank-only contribution are separable | Partial; saved-term debug views added for direct anchor, bank anchor, combined gate, bank-only contribution, and retention. Support/facing still needs probe/bake diagnostic. | 2026-06-01 | Agent/User |
+| `Pillow Visual Mask` readability | Current mode or new threshold/black-zero diagnostic | Human visible plus optional shader/static check | Reviewer can distinguish zero/near-zero, weak, and meaningful final-mask values | Partial; `Pillow Visual Mask (Black Zero)` debug mode `48` added and statically wired. Human-visible Godot review still needed. | 2026-06-01 | User/Agent |
+| Main and obstacle-test generalization | `Demo.tscn` and `Demo_obstacle_flow_test.tscn` review | Human visible | Same placement conclusion without ordinary-bank strips | Preflight partial; obstacle-test pillow review material state reset to baseline, visible review unrun | 2026-06-01 | User/Agent |
 | Raw/final metric support when needed | Named-region or probe report | Scripted readback plus user-marked targets | Expected coverage, retention, false positives, and top suppressors reported | Unrun | 2026-05-31 | Agent/User |
 | Debug/material wiring | `.codex-research/phase6c_pillow_editor_wiring_probe.gd` | Godot 4.6.3 scripted probe | `PHASE6C_PILLOW_EDITOR_WIRING_PROBE_OK` | Pass historically | 2026-05-26 | Agent |
 | Pillow shader visual wiring | `.codex-research/phase6a_pillow_visual_probe.gd` | Godot 4.6.3 scripted probe | `PHASE6A_PILLOW_VISUAL_PROBE_OK` | Pass historically | 2026-05-26 | Agent |
 | Pillow tuning controls | `.codex-research/phase6b_pillow_tuning_probe.gd` | Godot 4.6.3 scripted probe | `PHASE6B_PILLOW_TUNING_PROBE_OK` | Pass historically | 2026-05-26 | Agent |
 | Accepted eddy-line behavior preserved | Phase 7B visual and CPU probes | Godot 4.6.3 scripted probe plus user review | `PHASE7B_WAKE_EDDY_VISUAL_PROBE_OK`, accepted visual pattern remains | Pass historically | 2026-05-26 | Agent/User |
 | WaterSystem unchanged for pillow-only work | Inspect scope and generated resources | Static/resource review | No saved WaterSystem bake regeneration unless final flow scoped | Pass historically after Phase 6E | 2026-05-26 | Agent |
+| Signature-20 pillow rebake | `Demo.tscn` and `Demo_obstacle_flow_test.tscn` | Godot editor | Main and obstacle-test river bakes regenerated with source signature `20`; WaterSystem bake untouched | Pending after classifier change; static signature/code checks passed | 2026-06-01 | User/Agent |
 
 ## Premise and Interpretation Checks
 
@@ -86,7 +87,12 @@ Use this by default for visible Godot editor checks, viewport interaction, scene
   - For the same rocks/protrusions that still look wrong, switch between:
     - `Pillow / Impact Mask`
     - `Pillow Visual Mask`
-    - Any new readable pillow final-mask diagnostic or threshold view, if available
+    - `Pillow Visual Mask (Black Zero)`
+    - `Pillow Direct Terrain Anchor Search`
+    - `Pillow Bank-Response Anchor Search`
+    - `Pillow Combined Contact Gate`
+    - `Pillow Bank-Only Anchor Contribution`
+    - `Pillow Raw-to-Final Retention`
     - `Pillow Height Influence`
     - `Terrain Pillow Height Influence`
     - `Obstruction Pillow Height Influence`
@@ -130,6 +136,42 @@ Use this by default for visible Godot editor checks, viewport interaction, scene
 
 Recorded result:
 
+- Date: 2026-06-01
+- Ran by: User live Godot review relayed in chat
+- Godot version/renderer/device: Not recorded
+- Command, scene, or workflow: Compared `Pillow / Impact Mask`, `Pillow Visual Mask (Black Zero)`, direct terrain anchor search, bank-response anchor search, combined contact gate, bank-only anchor contribution, raw-to-final retention, hard-boundary response, protrusion/intersection, and final flow strength.
+- Output or parser errors: Not recorded
+- Visible result, if applicable: Raw R lines up with the early pillow. Black Zero final mask is more conservative but still too far ahead. Direct terrain anchor search is much closer to intended placement; fronts read yellow while downstream backsides are weaker blue. Bank-response anchor search, combined contact gate, bank-only contribution, and raw-to-final retention are broad and too far ahead. Final flow strength is green around fronts/sides and appears acceptable as flow behavior.
+- Stable result marker: `USER_CONFIRMED_BANK_RESPONSE_CONTACT_GATE_TOO_BROAD`
+- Pass/partial/fail: Partial
+- Notes or follow-up: Raw classifier contact should become direct-contact-first; bank-response may be weak context but must not anchor pillows alone.
+
+Recorded result:
+
+- Date: 2026-06-01
+- Ran by: Agent scoped classifier edit
+- Godot version/renderer/device: Not run; Godot executable was not available on the command path.
+- Command, scene, or workflow: Changed `obstacle_feature_mask_filter.gdshader` so pillow contact gating uses direct `terrain_contact_features.b` search as the mandatory anchor and treats `bank_response_features.a` only as weak context. Bumped river bake source signature to `20` and recorded anchor metadata in `river_manager.gd`.
+- Output or parser errors: Static checks passed with `PILLOW_DIRECT_CONTACT_CLASSIFIER_STATIC_OK` and `PILLOW_DIAGNOSTIC_MENU_STATIC_OK`. No Godot bake or viewport validation was run.
+- Visible result, if applicable: Not applicable.
+- Stable result marker: `PILLOW_DIRECT_CONTACT_CLASSIFIER_STATIC_OK`
+- Pass/partial/fail: Partial
+- Notes or follow-up: Regenerate main and obstacle-test river bakes before judging raw `Pillow / Impact Mask`.
+
+Recorded result:
+
+- Date: 2026-06-01
+- Ran by: Agent static preflight
+- Godot version/renderer/device: Not run; Godot executable was not available on the command path.
+- Command, scene, or workflow: Added debug modes `48` through `53`, exposed them in the Debug View menu, scanned for duplicate static menu IDs, checked shader constants/branches, and normalized `Demo_obstacle_flow_test.tscn` pillow review material values.
+- Output or parser errors: Static checks passed; `git diff --check` reported only line-ending warnings. No Godot shader compile or viewport validation was run.
+- Visible result, if applicable: Not applicable.
+- Stable result marker: `PILLOW_DIAGNOSTIC_MENU_STATIC_OK`
+- Pass/partial/fail: Partial
+- Notes or follow-up: Run human-visible Godot review using the new Black Zero and source-split views. Support/facing source remains unavailable in saved bake textures and needs a target-bound probe before classifier changes.
+
+Recorded result:
+
 - Date: 2026-05-31
 - Ran by: User live Godot review relayed in chat
 - Godot version/renderer/device: Not recorded
@@ -138,7 +180,7 @@ Recorded result:
 - Visible result, if applicable: `Pillow / Impact Mask` and final visible water start about `0.3` to `0.5` ahead of the desired obstruction contact point. `Pillow Visual Mask` reads as undifferentiated green over the river. Final visible water is acceptable-ish stylistically but anatomically early compared with real pillow behavior.
 - Stable result marker: `USER_CONFIRMED_RAW_AND_VISIBLE_PILLOW_START_TOO_FAR_AHEAD`
 - Pass/partial/fail: Fail/Partial
-- Notes or follow-up: Treat raw placement as the primary issue, add source-term diagnostics before classifier edits, and add a clearer final-mask diagnostic because the current green-zero view is ambiguous.
+- Notes or follow-up: Treat raw placement as the primary issue, use the added Black Zero final-mask diagnostic, and finish source-term diagnostics before classifier edits.
 
 Recorded result:
 
@@ -222,7 +264,7 @@ Failure signs:
 
 - Broad ahead-of-rock blobs.
 - Raw `Pillow / Impact Mask` begins about `0.3` to `0.5` ahead of the intended obstruction contact point.
-- `Pillow Visual Mask` reads as undifferentiated green, preventing final-mask review.
+- Original `Pillow Visual Mask` reads as undifferentiated green; use `Pillow Visual Mask (Black Zero)` for final-mask review.
 - Continuous ordinary-bank lines.
 - Pillow starts governed by semantic bank-response halo rather than direct obstacle context.
 - Debug and visible material disagree on placement.
@@ -231,6 +273,12 @@ Suggested controls or debug views:
 
 - `Pillow / Impact Mask`
 - `Pillow Visual Mask`
+- `Pillow Visual Mask (Black Zero)`
+- `Pillow Direct Terrain Anchor Search`
+- `Pillow Bank-Response Anchor Search`
+- `Pillow Combined Contact Gate`
+- `Pillow Bank-Only Anchor Contribution`
+- `Pillow Raw-to-Final Retention`
 - `Obstacle Confidence`
 - `Hard-Boundary / Protrusion Response`
 - `Protrusion / Intersection`

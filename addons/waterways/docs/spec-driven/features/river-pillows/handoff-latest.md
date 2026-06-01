@@ -16,11 +16,11 @@ Create a feature-local spec-driven home for pillow placement work by converting 
 ## Current Truth
 
 - Overall status: In progress
-- Highest-priority open task: Add audit-recommended diagnostic split views/probe output plus a readable final-mask diagnostic before the next classifier edit.
-- Last passing validation: Historical Phase 6/7 Godot 4.6.3 probes listed in `validation.md`, plus audit-reported `PILLOW_FORMULA_ANCHOR_AUDIT_OK`.
-- Known failing or unproven check: User confirms raw `Pillow / Impact Mask` and final visible water start about `0.3` to `0.5` ahead of the desired obstruction contact point after Phase 6E; source term not isolated.
-- Current debug-view issue: `Pillow Visual Mask` reads as undifferentiated green over the river. Static shader review shows zero maps to green, so add a clearer threshold/black-zero diagnostic before relying on that view for acceptance.
-- Next recommended action: Add diagnostics for support/facing, direct terrain anchor, bank-response anchor, combined contact gate, and bank-only contribution, plus a readable final-mask view; then compare those views around the same rock targets in the editor.
+- Highest-priority open task: Regenerate main and obstacle-test river bakes to source signature `20`, then review direct-contact-first raw/final pillow placement in Godot.
+- Last passing validation: Historical Phase 6/7 Godot 4.6.3 probes listed in `validation.md`, audit-reported `PILLOW_FORMULA_ANCHOR_AUDIT_OK`, plus 2026-06-01 static checks for new debug-mode wiring and normalized obstacle-test pillow review state.
+- Known failing or unproven check: User confirmed bank-response/combined contact gating was too broad on signature-`19` bakes; signature-`20` direct-contact-first bakes are not yet generated or reviewed.
+- Current debug-view issue: The original `Pillow Visual Mask` still reads as undifferentiated green over the river; use new mode `48`, `Pillow Visual Mask (Black Zero)`, for final-mask placement review.
+- Next recommended action: Reopen the main and obstacle-test scenes in Godot, select each river, run `River > Generate Flow & Foam Map`, save the scenes/resources, then compare raw/final/source-term views around the same rocks.
 - Packaging/artifact hygiene status: No new generated artifacts from this docs conversion.
 - Historical detail starts at: `Historical Change Log`
 
@@ -48,7 +48,7 @@ Read these first:
 
 Then do this next:
 
-- Add or ask to add the audit-recommended diagnostic split before changing classifier constants.
+- Regenerate the river bakes before judging the direct-contact-first classifier.
 - Add or ask to add a readable final-mask diagnostic if `Pillow Visual Mask` still appears all-green.
 - Ask the user to run or join a dedicated pillow formula review after the split is available.
 - Use the exact human-assisted validation request in `validation.md`.
@@ -65,10 +65,17 @@ Then do this next:
 - `addons\waterways\docs\spec-driven\features\river-pillows\handoff-latest.md`: Created this feature-local handoff.
 - `addons\waterways\docs\roadmaps\river-feature-detection-roadmap.md` and `addons\waterways\docs\roadmaps\river-improvements-roadmap.md`: Read and folded relevant pillow sections into this feature folder.
 - `addons\waterways\docs\audit\pillow-system-audit.md`: Read and promoted its severity-ranked findings into the feature plan, tasks, validation, review, and roadmaps.
+- `addons\waterways\shaders\river_debug.gdshader`: Added readable Black Zero final-mask mode and saved-term pillow anchor/contact diagnostics.
+- `addons\waterways\gui\debug_view_menu.gd`: Exposed the new pillow diagnostics as Debug View menu items.
+- `Demo_obstacle_flow_test.tscn`: Reset saved pillow review material values to baseline placement-review defaults.
+- `addons\waterways\shaders\filters\obstacle_feature_mask_filter.gdshader`: Changed raw pillow contact gating to require direct `terrain_contact_features.b` search; `bank_response_features.a` is weak context only.
+- `addons\waterways\river_manager.gd`: Bumped river bake source signature to `20` and recorded direct-contact-first pillow anchor metadata.
 
 ## Current Changes Summary
 
 - New feature folder: Consolidates pillow-specific state from the general changelog, latest handoff, and relevant roadmap sections into spec-driven docs.
+- 2026-06-01 diagnostic slice: Added modes `48` through `53` for Black Zero final mask, direct terrain anchor search, bank-response anchor search, combined contact gate, bank-only anchor contribution, and raw-to-final retention. Support/facing source remains probe-only because it is not stored in `RiverBakeData`.
+- 2026-06-01 classifier slice: User review confirmed bank-response/combined contact was too broad, so raw pillow R now requires direct terrain-contact search. Signature-`19` bakes are stale; signature `20` rebake is pending.
 
 ## Historical Change Log
 
@@ -89,11 +96,11 @@ Then do this next:
 | Decision | Reason | Follow-up |
 | --- | --- | --- |
 | Create `features/river-pillows/`. | Pillow work needed a feature-local source of truth. | Use this folder before future pillow edits. |
-| Treat diagnostic split plus formula review as the next action. | Evidence points to combined source terms, not only one distance value, and the audit says current views do not isolate the needed sub-terms. | Add split views/probe output, then run the validation request in `validation.md`. |
-| Treat `Pillow Visual Mask` readability as a separate tooling issue. | User reports the view is undifferentiated green; shader review shows zero maps to green, so the palette can hide whether the final mask is actually broad or low. | Add a black-zero, threshold-band, or equivalent readable diagnostic before final-mask acceptance. |
+| Treat diagnostic split plus formula review as the next action. | Evidence points to combined source terms, not only one distance value, and the audit says current views do not isolate the needed sub-terms. | Saved-term diagnostics are added; run the validation request in `validation.md`, then add support/facing probe output if needed. |
+| Treat `Pillow Visual Mask` readability as a separate tooling issue. | User reports the view is undifferentiated green; shader review shows zero maps to green, so the palette can hide whether the final mask is actually broad or low. | Use `Pillow Visual Mask (Black Zero)` before final-mask acceptance. |
 | Keep code/bake changes out of this docs conversion. | The user asked to create the feature docs, and the next implementation depends on review. | Branch safety check before future code changes. |
 | Fold roadmap rules into this feature folder. | The roadmaps contained pillow-specific review loop, generalization, and Phase 6 design rules. | Keep future pillow edits anchored here, then update broader roadmaps only when the high-level plan changes. |
-| Promote audit diagnostics ahead of classifier edits. | The audit found about `35%` bank-response-only anchoring and says current views do not show the needed source split. | Add split views/probe output before changing raw R. |
+| Promote audit diagnostics ahead of classifier edits. | The audit found about `35%` bank-response-only anchoring and says current views do not show the needed source split. | Saved-term diagnostics are added; support/facing still needs probe output before changing raw R. |
 
 ## Current State
 
@@ -124,7 +131,7 @@ Validation status:
 - Visual:
 - User still reports forward offset after Phase 6E.
 - Latest user detail: the raw `Pillow / Impact Mask` and final visible water both start about `0.3` to `0.5` too far ahead; final visible water is acceptable-ish but anatomically early compared with real pillow behavior.
-- `Pillow Visual Mask` currently appears undifferentiated green over the river and should not be used alone for final-mask acceptance until readability is fixed.
+- `Pillow Visual Mask` currently appears undifferentiated green over the river and should not be used alone for final-mask acceptance. Use `Pillow Visual Mask (Black Zero)` instead; visible Godot review is still pending.
 - Runtime:
   - Not scoped.
 - Performance:
@@ -136,12 +143,14 @@ Validation status:
 
 - Keep `pillow_forward_reach_tiles = 0.0` during placement review.
 - Keep `pillow_contact_pull_tiles` and `pillow_contact_pull_strength` default-off until raw/no-reach placement is understood.
-- Current river bakes are signature `19`.
+- Current saved river bakes are signature `19` and stale after the classifier edit; signature `20` bakes are required next.
 - The Phase 6E literal distance constants are not the full effective anchor reach because the contact gate samples up to `1.5x`, `hard_boundary_at()` can include `bank_response.a`, and raw source support is still broad.
 - Historical coverage anchors: Phase 6A main raw R was about `8.08%` above `0.05`; Phase 6D raw R dropped to about `5.12%` main and `5.06%` obstacle-test; Phase 6E raw R dropped to about `4.70%` main and `4.61%` obstacle-test, with no-reach visual about `2.32%` main and `2.26%` obstacle-test.
 - The saved WaterSystem bake was last regenerated after Phase 5B/signature `16`; do not regenerate it unless final/physics flow changes are scoped.
 - Current likely formula risk: `hard_boundary_at()` uses `max(bank_response.a, terrain_contact.b)`, and `bank_response.a` includes forward-looking protrusion context.
 - Current support risk: `pillow_source_at()` uses generic dilated collision support generated from `baking_dilate = 0.6`.
+- Diagnostic limitation: support/facing source is not saved in `RiverBakeData`, so editor-visible diagnostics can split direct terrain, bank response, combined contact gate, bank-only contribution, raw R, and final retention, but not original support/facing without a probe or promoted bake diagnostic.
+- User formula review result: direct terrain anchor search was closest to desired pillow placement; bank-response anchor search, combined contact gate, bank-only anchor contribution, raw R, and raw-to-final retention were too broad or too early.
 - Audit evidence: about `35.17%` of main-river and `35.88%` of obstacle-test raw pillow pixels above `0.05` are strongly `bank_response.a` anchored while direct `terrain_contact.b` is weak or absent.
 - Leading formula direction if confirmed: direct `terrain_contact.b` or tight local direct-contact search should become mandatory or near-mandatory; `bank_response.a` should become weak context only.
 - Do not change accepted Phase 7B eddy-line behavior while fixing pillows.
@@ -208,9 +217,9 @@ Result summary:
 ## Next Tasks
 
 - [ ] Lock one detection question and target set before tuning.
-- [ ] Add audit-recommended diagnostic split views or probe output.
-- [ ] Add a readable `Pillow Visual Mask` threshold/black-zero diagnostic if the existing view remains all-green.
-- [ ] Run the human-assisted formula review in `validation.md`.
+- [ ] Rebake `Demo.tscn` and `Demo_obstacle_flow_test.tscn` river resources to signature `20`.
+- [ ] Review the signature-`20` Black Zero and saved-term diagnostic views in Godot.
+- [ ] Add support/facing target-bound probe output if signature-`20` raw R still starts too early.
 - [ ] Add raw readings or named-region stats only if target coverage is ambiguous.
 - [ ] Choose the smallest code path matching the diagnosed layer.
 - [ ] Preserve accepted Phase 7B eddy-line behavior.

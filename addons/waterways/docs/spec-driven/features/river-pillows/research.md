@@ -9,7 +9,7 @@ Consolidate the pillow-related findings from the shared changelog and latest han
 This is the research dashboard. Keep the recommended direction here and use the lower sections for evidence, options, cited sources, and rejected paths.
 
 - Status: Complete enough for formula review; roadmap details folded in
-- Recommendation: Add the audit-recommended diagnostic split and a readable final-mask diagnostic, then do live formula review before changing classifier constants again.
+- Recommendation: Rebake main and obstacle-test rivers to signature `20` and review the direct-contact-first classifier before making further support/facing changes.
 - Confidence: Medium-high that the remaining forward offset is a baked raw-mask/formula issue, not default visible shader reach.
 - Biggest unknown that remains: Which signal should be allowed to anchor the upstream start of a pillow: direct terrain/world protrusion, semantic bank response, dilated collision support, or some overlap of those.
 - Decision or plan section this research unlocked: `plan.md` "Next Implementation Slice" and `tasks.md` "Open Work".
@@ -18,10 +18,12 @@ This is the research dashboard. Keep the recommended direction here and use the 
 
 - What visual feature should count as the start of a pillow?
 - Is the reported forward offset present in raw `Pillow / Impact Mask`, no-reach `Pillow Visual Mask`, or only final visible material response?
-  - Current user answer: raw `Pillow / Impact Mask` and final visible water both start about `0.3` to `0.5` too far ahead. `Pillow Visual Mask` is currently unreadable because it appears undifferentiated green.
+  - Current user answer: raw `Pillow / Impact Mask` and final visible water both start about `0.3` to `0.5` too far ahead. The original `Pillow Visual Mask` is unreadable because it appears undifferentiated green; `Pillow Visual Mask (Black Zero)` is now available for review.
 - Is `bank_response_features.a` too broad or too forward-looking to anchor pillow starts?
+  - Current answer: Yes for pillow anchoring. User review found bank-response anchor, combined contact gate, and bank-only contribution too broad, while direct terrain anchor search was much closer to intended placement.
 - Is the generic dilated collision support field too broad for pillow-specific placement?
 - Should pillow anchoring use direct `terrain_contact_features.b` protrusion/contact first, with semantic bank response only as context?
+  - Current answer: Yes for the next implementation slice.
 - Which diagnostic split views/probe outputs are the smallest useful set for the next review?
 
 ## Flow-Map and Water Tool Patterns
@@ -60,6 +62,7 @@ Useful principles preserved from the earlier research and review:
 - The next pass should add diagnostic split views/probe output before the classifier is changed.
 - The current `Pillow Visual Mask` view is not reliable for review because the user sees undifferentiated green over the river, and static shader review shows the current grayscale gradient maps zero to green.
 - If confirmed in live review, raw R should move toward direct-contact-first anchoring, with `bank_response.a` used as context only.
+- 2026-06-01 live review confirmed this direction; the classifier now requires direct `terrain_contact_features.b` search for pillow contact and uses `bank_response.a` only as weak context.
 
 ## Channel Phase Alignment Lesson
 
@@ -139,9 +142,9 @@ Add or use diagnostics to compare these contributions at the same rocks/protrusi
 - raw `obstacle_features.r`
 - no-reach `Pillow Visual Mask`
 
-Only after the diagnostic split and live review should the formula move toward direct-contact anchoring, overlap-gated bank response, tighter support, or shader/material tuning.
+The diagnostic split and live review moved the formula to direct-contact anchoring. Do not tune shader/material response yet; first rebake and review signature-`20` raw/final placement.
 
-The live review should treat final-mask readability as a tooling problem before it treats green coverage as real coverage. If the current palette makes zero or near-zero look active, add a black-zero or threshold-band view and compare that against raw R and final visible water.
+The live review should treat final-mask readability as a tooling problem before it treats green coverage as real coverage. Use the Black Zero mode and compare it against raw R, direct terrain anchor search, bank-response anchor search, combined contact gate, bank-only anchor contribution, raw-to-final retention, and final visible water.
 
 For a numeric follow-up, prefer readings that report expected-region raw coverage, final-mask coverage, raw-to-final retention, ordinary-bank false-positive coverage, hard-protrusion support, grade/energy support, final-flow support, and the top gates suppressing expected pixels.
 

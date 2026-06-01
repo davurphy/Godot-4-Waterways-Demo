@@ -142,7 +142,7 @@ const MATERIAL_PARAMETER_REVERT_OVERRIDES = {
 const BAKE_CHANNEL_FLAT_EPSILON := 0.002
 const BAKE_CHANNEL_LOW_CONTRAST_EPSILON := 0.03
 const BAKE_CHANNEL_SATURATION_EPSILON := 0.02
-const RIVER_BAKE_SOURCE_SIGNATURE_VERSION := 19
+const RIVER_BAKE_SOURCE_SIGNATURE_VERSION := 20
 const RIVER_FLOW_GENERATION_BEHAVIOR_DOWNSTREAM_BASELINE := "downstream_baseline_collision_support"
 const RIVER_FLOW_GENERATION_BEHAVIOR_CURVE_ONLY := "curve_only"
 const RIVER_FLOW_GENERATION_BEHAVIOR_LEGACY_COLLISION_ONLY := "legacy_collision_only"
@@ -2693,7 +2693,7 @@ func _write_bake_data(texture_size: Vector2i, source_texture_size: Vector2i, con
 		"obstacle_avoidance_hard_boundary_steering_gate": RIVER_OBSTACLE_AVOIDANCE_HARD_BOUNDARY_STEERING_GATE,
 		"obstacle_avoidance_uses_bank_response_context": true,
 		"obstacle_features_baked": true,
-		"obstacle_features_algorithm": "contact_anchored_pillow_halved_contact_search_tight_support_bank_terrain_energy_context_flow_feature_classification_debug_only",
+		"obstacle_features_algorithm": "direct_terrain_contact_anchored_pillow_tight_support_bank_context_flow_feature_classification_debug_only",
 		"obstacle_features_neutral_value": Color(0.0, 0.0, 0.0, 0.0),
 		"obstacle_features_support_start": RIVER_OBSTACLE_FEATURE_SUPPORT_START,
 		"obstacle_features_support_full": RIVER_OBSTACLE_FEATURE_SUPPORT_FULL,
@@ -2704,6 +2704,8 @@ func _write_bake_data(texture_size: Vector2i, source_texture_size: Vector2i, con
 		"obstacle_features_pillow_contact_search_tiles": RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_SEARCH_TILES,
 		"obstacle_features_pillow_contact_gate_start": RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_GATE_START,
 		"obstacle_features_pillow_contact_gate_full": RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_GATE_FULL,
+		"obstacle_features_pillow_anchor_source": "terrain_contact_features.b_direct_search",
+		"obstacle_features_pillow_bank_response_role": "weak_context_only_not_anchor",
 		"obstacle_features_wake_length_tiles": RIVER_OBSTACLE_FEATURE_WAKE_LENGTH_TILES,
 		"obstacle_features_wake_width_tiles": RIVER_OBSTACLE_FEATURE_WAKE_WIDTH_TILES,
 		"obstacle_features_side_width_tiles": RIVER_OBSTACLE_FEATURE_SIDE_WIDTH_TILES,
@@ -2866,6 +2868,8 @@ func get_bake_source_signature() -> Dictionary:
 		"obstacle_feature_pillow_contact_search_tiles": _signature_float(RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_SEARCH_TILES),
 		"obstacle_feature_pillow_contact_gate_start": _signature_float(RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_GATE_START),
 		"obstacle_feature_pillow_contact_gate_full": _signature_float(RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_GATE_FULL),
+		"obstacle_feature_pillow_anchor_source": "terrain_contact_features.b_direct_search",
+		"obstacle_feature_pillow_bank_response_role": "weak_context_only_not_anchor",
 		"obstacle_feature_wake_length_tiles": _signature_float(RIVER_OBSTACLE_FEATURE_WAKE_LENGTH_TILES),
 		"obstacle_feature_wake_width_tiles": _signature_float(RIVER_OBSTACLE_FEATURE_WAKE_WIDTH_TILES),
 		"obstacle_feature_side_width_tiles": _signature_float(RIVER_OBSTACLE_FEATURE_SIDE_WIDTH_TILES),
@@ -3076,6 +3080,8 @@ func _get_bake_settings(source_texture_size: Vector2i, texture_size: Vector2i, c
 		"obstacle_feature_pillow_contact_search_tiles": RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_SEARCH_TILES,
 		"obstacle_feature_pillow_contact_gate_start": RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_GATE_START,
 		"obstacle_feature_pillow_contact_gate_full": RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_GATE_FULL,
+		"obstacle_feature_pillow_anchor_source": "terrain_contact_features.b_direct_search",
+		"obstacle_feature_pillow_bank_response_role": "weak_context_only_not_anchor",
 		"obstacle_feature_wake_length_tiles": RIVER_OBSTACLE_FEATURE_WAKE_LENGTH_TILES,
 		"obstacle_feature_wake_width_tiles": RIVER_OBSTACLE_FEATURE_WAKE_WIDTH_TILES,
 		"obstacle_feature_side_width_tiles": RIVER_OBSTACLE_FEATURE_SIDE_WIDTH_TILES,

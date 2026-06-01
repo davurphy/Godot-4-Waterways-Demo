@@ -29,11 +29,11 @@ The review architecture follows the shared feature-detection loop:
 
 This is the plan dashboard. Keep current implementation state here and leave the detailed architecture, risks, and historical reasoning in the sections below.
 
-- Implementation status: Existing implementation is in progress; next slice not started.
-- Open architectural decisions: Which source terms may anchor the upstream pillow start.
+- Implementation status: Direct-contact-first classifier edit implemented; signature-`20` bakes and visible review are pending.
+- Open architectural decisions: Whether direct-contact-first raw R is sufficient after rebake, or whether pillow-specific support/facing needs additional tightening.
 - Last validation that proves the plan still works: Phase 6E/6F documentation and earlier Godot 4.6.3 probes; visible user review now confirms raw and visible pillow starts are about `0.3` to `0.5` ahead of the intended contact point.
-- Next planned implementation slice: Add audit-recommended diagnostic split views/probe output plus a readable `Pillow Visual Mask`/threshold diagnostic, then run live formula review before changing classifier constants.
-- Branch safety before implementation: Not checked for code changes; this documentation consolidation is safe. Before classifier/shader/bake edits, use a dedicated feature branch or get explicit approval to continue on the current branch.
+- Next planned implementation slice: Regenerate main and obstacle-test river bakes to signature `20`, then run live placement review with raw/final/source-term diagnostics.
+- Branch safety before implementation: Work is on `codex/river-pillows-diagnostics`; classifier/shader/bake formula edits still require target review before proceeding.
 - Sections below that are historical or superseded: Phase 6A/6B visual tuning history is summarized in `review.md` and `handoff-latest.md`.
 
 ## Premise Check
@@ -43,7 +43,8 @@ Before implementing, record whether the problem is definitely a code/design issu
 - Evidence supporting the premise:
   - User still reports pillows starting too far ahead after Phase 6E.
   - User confirmed the offset appears in raw `Pillow / Impact Mask` and final visible water, with the start about `0.3` to `0.5` too far ahead of the desired obstruction contact point.
-  - User reports `Pillow Visual Mask` reads as undifferentiated green over the river; static shader review shows zero maps to green in the current debug gradient, so the view is not reliable for final-mask placement decisions without a clearer diagnostic.
+  - User reports the original `Pillow Visual Mask` reads as undifferentiated green over the river; `Pillow Visual Mask (Black Zero)` now exists for placement review, but visible Godot confirmation is still pending.
+  - 2026-06-01 diagnostic review found direct terrain anchor search closest to intended placement, while bank-response anchor, combined contact gate, bank-only contribution, raw R, and raw-to-final retention were too broad or too far ahead.
   - Phase 6F review found visible shader reach/contact-pull defaults are off.
   - Raw R is governed by dilated support plus hard-boundary context.
   - `bank_response.a` includes forward protrusion sampling and can create a semantic halo.
@@ -154,14 +155,13 @@ Rules for that direction:
 
 ## Severity-Ordered Implementation Path
 
-1. High severity: Add diagnostic split views/probe output for support/facing, direct `terrain_contact_features.b`, `bank_response_features.a`, combined contact gate, and bank-only anchor contribution.
-2. High severity: Add a readable final-mask diagnostic or threshold/black-zero view if `Pillow Visual Mask` remains undifferentiated green.
-3. High severity: Review those views live at user-selected should-detect and should-not-detect targets.
-4. High severity: If confirmed, revise raw pillow R so direct terrain/world protrusion contact is the primary anchor and `bank_response.a` becomes context only.
-5. High severity: If support/facing still starts too early, tighten pillow-specific support without touching shared `baking_dilate`.
-6. Medium-high severity: Record effective reach through the whole chain.
-7. Medium severity: After formula agreement, consider moving duplicated visible/debug pillow helper math into `.gdshaderinc` and add a parity probe.
-8. Low-medium severity: Keep multi-sample visible-shader searches, height displacement, final-flow changes, and WaterSystem changes out of the default pillow placement pass.
+1. High severity: Regenerate main and obstacle-test river bakes to source signature `20`.
+2. High severity: Review signature-`20` raw `Pillow / Impact Mask`, `Pillow Visual Mask (Black Zero)`, direct terrain anchor, bank-response anchor, combined contact gate, bank-only contribution, and raw-to-final retention.
+3. High severity: Add support/facing target-bound probe output if signature-`20` raw R still starts too early.
+4. High severity: If support/facing still starts too early, tighten pillow-specific support without touching shared `baking_dilate`.
+5. Medium-high severity: Record effective reach through the whole chain.
+6. Medium severity: After formula agreement, consider moving duplicated visible/debug pillow helper math into `.gdshaderinc` and add a parity probe.
+7. Low-medium severity: Keep multi-sample visible-shader searches, height displacement, final-flow changes, and WaterSystem changes out of the default pillow placement pass.
 
 ## Editor/Runtime Boundary
 
@@ -273,7 +273,7 @@ Potential future files, only after review confirms the diagnosed layer:
 | Another scalar tweak leaves the real formula cause untouched. | Repeated churn and confusing validation. | Diagnose direct contact, bank response, support/facing, and final gate separately first. |
 | Bake classifier change regresses accepted eddy-line behavior. | Breaks Phase 7B accepted work. | Keep wake/eddy channels untouched unless explicitly scoped; run Phase 7B probes after classifier edits. |
 | Raw and final masks are confused during review. | Wrong layer gets patched. | Compare `Pillow / Impact Mask` and `Pillow Visual Mask` at the same targets. |
-| `Pillow Visual Mask` palette reads as undifferentiated green. | Final-mask placement cannot be judged, and low/no signal may be mistaken for broad coverage. | Add a black-zero, threshold-band, or equivalent readable diagnostic before using the view for acceptance. |
+| `Pillow Visual Mask` palette reads as undifferentiated green. | Final-mask placement cannot be judged, and low/no signal may be mistaken for broad coverage. | Use `Pillow Visual Mask (Black Zero)` before using the view for acceptance. |
 | Saved debug/material override misleads review. | Controls appear broken or visuals look stale. | Confirm Debug View Normal restores visible material; use probe coverage if material wiring changes. |
 | Pillow height curve hints regress. | Height controls act like generic easing sliders or appear ineffective. | Preserve explicit shader range hints and editor revert defaults for height curves. |
 | Height seam guard is mistaken for placement logic. | Material/mesh seam artifacts get confused with raw detector problems. | Keep height default-off during placement review and treat `pillow_height_tile_seam_fade` as visual artifact control only. |
@@ -298,5 +298,5 @@ Complete this with the user after the diagnostic plan is drafted and before impl
 - Active code targets Godot 4.6+.
 - No Godot 3 compatibility work is currently planned.
 - River bake source signatures must change when saved bake output semantics change.
-- Existing signature-`19` bakes are the current pillow baseline.
+- Existing signature-`19` bakes are now stale after the direct-contact-first classifier edit; signature `20` is the target for the next pillow review.
 - `waterways_bakes/Demo/Water_River_legacy_test.river_bake.res` remains intentionally stale at signature `5`.

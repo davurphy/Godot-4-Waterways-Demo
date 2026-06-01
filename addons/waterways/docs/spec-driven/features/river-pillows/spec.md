@@ -20,9 +20,9 @@ This is the spec dashboard. Keep it limited to active state and link to goals, c
 
 - Status: In progress
 - Source of truth for open work: `tasks.md` "Open Work"
-- Last meaningful decision: After Phase 6F, do a formula/diagnostic review before another classifier edit.
-- Last audit update: Add diagnostic split views/probe output first; direct-contact-first raw R is the leading formula direction if live review confirms the audit.
-- Latest user-visible finding: `Pillow / Impact Mask` and final visible water both start about `0.3` to `0.5` too far ahead of the desired obstruction contact point; `Pillow Visual Mask` currently reads as undifferentiated green over the river and is not useful enough for placement review without a clearer low/zero-value diagnostic.
+- Last meaningful decision: 2026-06-01 diagnostic review confirmed bank-response/combined contact gating is too broad, so raw pillow R should be direct-contact-first.
+- Last audit update: Direct-contact-first raw R has been implemented in code and source signature bumped to `20`; main and obstacle-test bakes still need regeneration and review.
+- Latest user-visible finding: `Pillow / Impact Mask` and Black Zero final mask still start ahead on signature-`19` bakes; direct terrain anchor search is closest to desired placement, while bank-response/combined contact remains too broad.
 - Known deferred items: Material polish, stronger height response, final flow changes, reverse/circulating flow, WaterSystem/physics alignment.
 - Current non-goals that are easy to accidentally reopen: Do not change accepted Phase 5 flow, accepted Phase 7B eddy-line behavior, WaterSystem flow, terrain-contact thresholds, bank-response thresholds, or saved WaterSystem bakes unless explicitly scoped.
 
@@ -55,7 +55,7 @@ This is the spec dashboard. Keep it limited to active state and link to goals, c
   - Phase 5A/5B flow and SDF steering are accepted baseline.
   - Phase 6A/6B added visual-only pillow response and tuning controls.
   - Phase 6C set default `pillow_forward_reach_tiles` to `0.0` after diagnosing shader-side forward reach.
-  - Phase 6D/6E moved into raw classifier changes and current river bakes are signature `19`.
+  - Phase 6D/6E moved into raw classifier changes and current saved river bakes are signature `19`; after the direct-contact-first classifier edit, signature `20` bakes are required for review.
   - Phase 6E specifically halved `RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_SEARCH_TILES` from `0.14` to `0.07` and changed the direct fallback `pillow_contact_search_uv` from `0.02` to `0.01`.
   - Phase 7B eddy-line visual pass is accepted and should be preserved.
 - User-reported observations:
@@ -244,7 +244,13 @@ Default-off review controls:
 Pillow debug views:
 
 - `Pillow / Impact Mask`: raw `obstacle_features.r`
-- `Pillow Visual Mask`: debug mode `26`; current green-zero gradient can make low/no signal read as full-river green, so a clearer threshold or black-zero diagnostic is needed before relying on this view for placement acceptance.
+- `Pillow Visual Mask`: debug mode `26`; current green-zero gradient can make low/no signal read as full-river green, so use the Black Zero companion for placement acceptance.
+- `Pillow Visual Mask (Black Zero)`: debug mode `48`; no-reach final mask with zero/near-zero rendered black.
+- `Pillow Direct Terrain Anchor Search`: debug mode `49`
+- `Pillow Bank-Response Anchor Search`: debug mode `50`
+- `Pillow Combined Contact Gate`: debug mode `51`
+- `Pillow Bank-Only Anchor Contribution`: debug mode `52`
+- `Pillow Raw-to-Final Retention`: debug mode `53`
 - `Pillow Height Influence`: debug mode `27`
 - `Terrain Pillow Height Influence`: debug mode `28`
 - `Obstruction Pillow Height Influence`: debug mode `29`
@@ -321,3 +327,4 @@ Pillow debug views:
 | 2026-05-26 | Bump to source signature `19` after halving contact-search distance. | River bakes changed for pillow classifier tuning. |
 | 2026-05-31 | Create this feature-local spec folder. | Keep pillow work from being scattered across general changelog and handoff files. |
 | 2026-05-31 | Promote audit-guided diagnostic split before classifier edits. | `pillow-system-audit.md` found about `35%` bank-response-only anchoring and recommends direct-contact-first anchoring if confirmed. |
+| 2026-06-01 | Make raw pillow R direct-contact-first. | User diagnostic review found direct terrain anchor search closest to desired placement and bank-response/combined contact gates too broad. |

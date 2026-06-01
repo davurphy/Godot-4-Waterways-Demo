@@ -104,6 +104,14 @@ float hard_boundary_at(vec2 uv) {
 	return clamp(max(sample_bank_response(uv).a, sample_terrain_contact(uv).b), 0.0, 1.0);
 }
 
+float direct_pillow_contact_at(vec2 uv) {
+	return clamp(sample_terrain_contact(uv).b, 0.0, 1.0);
+}
+
+float pillow_bank_context_at(vec2 uv) {
+	return clamp(sample_bank_response(uv).a, 0.0, 1.0);
+}
+
 float obstacle_context_at(vec2 uv) {
 	vec4 bank_response = sample_bank_response(uv);
 	float bank_friction = clamp(bank_response.r, 0.0, 1.0);
@@ -133,13 +141,30 @@ float pillow_source_at(vec2 uv, vec2 flow_direction) {
 	return support * facing * facing * pillow_context_at(uv);
 }
 
-float pillow_contact_gate_at(vec2 uv, vec2 flow_direction) {
+float direct_pillow_contact_search_at(vec2 uv, vec2 flow_direction) {
 	float search_uv = max(pillow_contact_search_uv, 0.0);
-	float contact = hard_boundary_at(uv);
-	contact = max(contact, hard_boundary_at(uv + flow_direction * search_uv * 0.50));
-	contact = max(contact, hard_boundary_at(uv + flow_direction * search_uv));
-	contact = max(contact, hard_boundary_at(uv + flow_direction * search_uv * 1.50) * 0.65);
-	return smooth_gate(pillow_contact_gate_start, pillow_contact_gate_full, contact);
+	float contact = direct_pillow_contact_at(uv);
+	contact = max(contact, direct_pillow_contact_at(uv + flow_direction * search_uv * 0.50));
+	contact = max(contact, direct_pillow_contact_at(uv + flow_direction * search_uv));
+	contact = max(contact, direct_pillow_contact_at(uv + flow_direction * search_uv * 1.50) * 0.65);
+	return clamp(contact, 0.0, 1.0);
+}
+
+float pillow_bank_context_search_at(vec2 uv, vec2 flow_direction) {
+	float search_uv = max(pillow_contact_search_uv, 0.0);
+	float bank_context = pillow_bank_context_at(uv);
+	bank_context = max(bank_context, pillow_bank_context_at(uv + flow_direction * search_uv * 0.50));
+	bank_context = max(bank_context, pillow_bank_context_at(uv + flow_direction * search_uv));
+	bank_context = max(bank_context, pillow_bank_context_at(uv + flow_direction * search_uv * 1.50) * 0.65);
+	return clamp(bank_context, 0.0, 1.0);
+}
+
+float pillow_contact_gate_at(vec2 uv, vec2 flow_direction) {
+	float direct_contact = direct_pillow_contact_search_at(uv, flow_direction);
+	float direct_gate = smooth_gate(pillow_contact_gate_start, pillow_contact_gate_full, direct_contact);
+	float bank_context = pillow_bank_context_search_at(uv, flow_direction);
+	float bank_context_boost = mix(0.85, 1.0, smooth_gate(pillow_contact_gate_start, pillow_contact_gate_full, bank_context));
+	return clamp(direct_gate * bank_context_boost, 0.0, 1.0);
 }
 
 float wake_seed_at(vec2 uv, vec2 flow_direction) {
@@ -219,7 +244,7 @@ void fragment() {
 	float side = side_weight(obstacle_normal, flow_direction);
 	float pillow_source = pillow_source_at(UV, flow_direction);
 	float pillow_contact_gate = pillow_contact_gate_at(UV, flow_direction);
-	float current_contact_anchor = smooth_gate(pillow_contact_gate_start, pillow_contact_gate_full, hard_boundary);
+	float current_contact_anchor = smooth_gate(pillow_contact_gate_start, pillow_contact_gate_full, direct_pillow_contact_at(UV));
 	float pulled_contact_source = pillow_source_at(UV - flow_direction * max(pillow_contact_search_uv, 0.0) * 0.55, flow_direction) * current_contact_anchor * 0.80;
 	float pillow = max(pillow_source * pillow_contact_gate, pulled_contact_source);
 	float side_deflection = support * side * side * (1.0 - pillow * 0.5) * local_side_context;

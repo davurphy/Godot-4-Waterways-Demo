@@ -2,6 +2,21 @@
 
 ## Unreleased - 2026-05-26
 
+### River Pillows Direct-Contact Diagnostic Pass
+
+- Added editor Debug View modes for pillow placement review:
+  - `Pillow Visual Mask (Black Zero)`
+  - `Pillow Direct Terrain Anchor Search`
+  - `Pillow Bank-Response Anchor Search`
+  - `Pillow Combined Contact Gate`
+  - `Pillow Bank-Only Anchor Contribution`
+  - `Pillow Raw-to-Final Retention`
+- Reset `Demo_obstacle_flow_test.tscn` saved pillow review material values to baseline placement-review defaults, including zero forward reach, zero contact pull, zero terrain/obstruction height, and non-inverted gate pairs.
+- Recorded the user's diagnostic review: raw R and final Black Zero still began early, direct terrain anchor search was closest to the intended pillow face, and bank-response/combined contact gating was too broad.
+- Changed the raw pillow classifier so direct `terrain_contact_features.b` search is mandatory for the pillow contact gate; `bank_response_features.a` now acts only as weak context and cannot anchor a pillow alone.
+- Bumped the river bake source signature to version `20` and recorded direct-contact-first pillow anchor metadata. Existing signature-`19` river bakes are stale until the main and obstacle-test rivers are regenerated.
+- Did not change WaterSystem/physics bakes, final flow, or visible material tuning.
+
 ### River Pillows Spec-Driven Feature Folder
 
 - Added `docs/spec-driven/features/river-pillows/` as the feature-local source of truth for pillow placement work.

@@ -53,7 +53,16 @@ const int EDDY_LINE_HARD_CONTEXT_SEARCH_MASK = 44;
 const int EDDY_LINE_WAKE_CONTEXT_SEARCH_MASK = 45;
 const int RAW_WAKE_EDGE_CANDIDATE_MASK = 46;
 const int EXPERIMENTAL_WAKE_EDGE_EDDY_SOURCE_MASK = 47;
+const int PILLOW_VISUAL_MASK_READABLE = 48;
+const int PILLOW_DIRECT_TERRAIN_ANCHOR_SEARCH = 49;
+const int PILLOW_BANK_RESPONSE_ANCHOR_SEARCH = 50;
+const int PILLOW_COMBINED_CONTACT_GATE = 51;
+const int PILLOW_BANK_ONLY_ANCHOR_CONTRIBUTION = 52;
+const int PILLOW_RAW_TO_FINAL_RETENTION = 53;
 
+const float PILLOW_BAKE_CONTACT_SEARCH_TILES = 0.07;
+const float PILLOW_BAKE_CONTACT_GATE_START = 0.08;
+const float PILLOW_BAKE_CONTACT_GATE_FULL = 0.38;
 
 uniform int mode = 1;
 
@@ -186,6 +195,20 @@ vec3 grayscale_to_gradient(float gradient) {
 	return vec3(red, green, 0.0);
 }
 
+vec3 black_zero_to_heat(float value) {
+	float v = clamp(value, 0.0, 1.0);
+	if (v <= 0.0025) {
+		return vec3(0.0);
+	}
+	vec3 weak = vec3(0.03, 0.18, 0.55);
+	vec3 mid = vec3(0.04, 0.78, 0.92);
+	vec3 strong = vec3(1.0, 0.88, 0.18);
+	if (v < 0.5) {
+		return mix(weak, mid, smoothstep(0.0, 0.5, v));
+	}
+	return mix(mid, strong, smoothstep(0.5, 1.0, v));
+}
+
 vec3 signed_channel_to_gradient(float packed_value) {
 	float signed_value = packed_value * 2.0 - 1.0;
 	vec3 negative = vec3(0.0, 0.32, 1.0);
@@ -267,6 +290,52 @@ float pillow_visual_mask(vec4 obstacle_features, vec4 terrain_contact_features, 
 	float energy_gate = smooth_gate(pillow_energy_gate_start, pillow_energy_gate, grade_energy_map);
 	float flow_gate = smooth_gate(pillow_flow_gate_start, pillow_flow_gate, normalized_flow_force);
 	return clamp(raw_pillow * confidence_gate * hard_gate * bank_gate * energy_gate * flow_gate * pillow_strength, 0.0, 1.0);
+}
+
+float pillow_direct_terrain_anchor_sample(vec2 uv) {
+	return textureLod(i_terrain_contact_features, clamp(uv, vec2(0.0), vec2(1.0)), 0.0).b;
+}
+
+float pillow_bank_response_anchor_sample(vec2 uv) {
+	return textureLod(i_bank_response_features, clamp(uv, vec2(0.0), vec2(1.0)), 0.0).a;
+}
+
+float pillow_combined_anchor_sample(vec2 uv) {
+	return max(pillow_direct_terrain_anchor_sample(uv), pillow_bank_response_anchor_sample(uv));
+}
+
+float pillow_contact_search_direct_terrain(vec2 uv, vec2 source_tile_uv_size, vec2 flow_direction) {
+	vec2 downstream_direction = safe_direction(flow_direction, vec2(0.0, 1.0));
+	vec2 search_offset = downstream_direction * source_tile_uv_size * PILLOW_BAKE_CONTACT_SEARCH_TILES;
+	float contact = pillow_direct_terrain_anchor_sample(uv);
+	contact = max(contact, pillow_direct_terrain_anchor_sample(uv + search_offset * 0.50));
+	contact = max(contact, pillow_direct_terrain_anchor_sample(uv + search_offset));
+	contact = max(contact, pillow_direct_terrain_anchor_sample(uv + search_offset * 1.50) * 0.65);
+	return clamp(contact, 0.0, 1.0);
+}
+
+float pillow_contact_search_bank_response(vec2 uv, vec2 source_tile_uv_size, vec2 flow_direction) {
+	vec2 downstream_direction = safe_direction(flow_direction, vec2(0.0, 1.0));
+	vec2 search_offset = downstream_direction * source_tile_uv_size * PILLOW_BAKE_CONTACT_SEARCH_TILES;
+	float contact = pillow_bank_response_anchor_sample(uv);
+	contact = max(contact, pillow_bank_response_anchor_sample(uv + search_offset * 0.50));
+	contact = max(contact, pillow_bank_response_anchor_sample(uv + search_offset));
+	contact = max(contact, pillow_bank_response_anchor_sample(uv + search_offset * 1.50) * 0.65);
+	return clamp(contact, 0.0, 1.0);
+}
+
+float pillow_contact_search_combined(vec2 uv, vec2 source_tile_uv_size, vec2 flow_direction) {
+	vec2 downstream_direction = safe_direction(flow_direction, vec2(0.0, 1.0));
+	vec2 search_offset = downstream_direction * source_tile_uv_size * PILLOW_BAKE_CONTACT_SEARCH_TILES;
+	float contact = pillow_combined_anchor_sample(uv);
+	contact = max(contact, pillow_combined_anchor_sample(uv + search_offset * 0.50));
+	contact = max(contact, pillow_combined_anchor_sample(uv + search_offset));
+	contact = max(contact, pillow_combined_anchor_sample(uv + search_offset * 1.50) * 0.65);
+	return clamp(contact, 0.0, 1.0);
+}
+
+float pillow_bake_contact_gate(float anchor_value) {
+	return smooth_gate(PILLOW_BAKE_CONTACT_GATE_START, PILLOW_BAKE_CONTACT_GATE_FULL, anchor_value);
 }
 
 float pillow_obstruction_height_mask(vec4 obstacle_features, vec4 terrain_contact_features, vec4 bank_response_features, float grade_energy_map, float normalized_flow_force) {
@@ -733,9 +802,17 @@ if (i_valid_flowmap) {
 	float normalized_flow_force = clamp(flow_force / max(flow_max, EPSILON), 0.0, 1.0);
 	vec2 pillow_reach_direction = safe_direction(flow, vec2(0.0, 1.0));
 	vec2 source_tile_uv_size = (source_size / safe_uv2_sides) / atlas_size;
+	float pillow_visual_no_reach = pillow_visual_mask(obstacle_features, terrain_contact_features, bank_response_features, grade_energy_channel, normalized_flow_force);
 	float pillow_visual = pillow_visual_mask_with_reach(custom_UV, source_tile_uv_size, pillow_reach_direction, obstacle_features, terrain_contact_features, bank_response_features, grade_energy_channel, normalized_flow_force);
 	float pillow_obstruction_height_visual = pillow_obstruction_height_mask_with_reach(custom_UV, source_tile_uv_size, pillow_reach_direction, obstacle_features, terrain_contact_features, bank_response_features, grade_energy_channel, normalized_flow_force);
 	float pillow_height_seam_fade = pillow_height_tile_seam_fade_mask(UV2, UV, safe_uv2_sides);
+	float pillow_direct_terrain_anchor_search = pillow_contact_search_direct_terrain(custom_UV, source_tile_uv_size, pillow_reach_direction);
+	float pillow_bank_response_anchor_search = pillow_contact_search_bank_response(custom_UV, source_tile_uv_size, pillow_reach_direction);
+	float pillow_direct_contact_gate = pillow_bake_contact_gate(pillow_direct_terrain_anchor_search);
+	float pillow_bank_context_gate = pillow_bake_contact_gate(pillow_bank_response_anchor_search);
+	float pillow_combined_contact_gate = clamp(pillow_direct_contact_gate * mix(0.85, 1.0, pillow_bank_context_gate), 0.0, 1.0);
+	float pillow_bank_only_anchor_contribution = clamp(pillow_bank_context_gate - pillow_direct_contact_gate, 0.0, 1.0);
+	float pillow_raw_to_final_retention = pillow_mask > EPSILON ? clamp(pillow_visual_no_reach / pillow_mask, 0.0, 1.0) : 0.0;
 	float wake_shared_gate_visual = wake_shared_gate(obstacle_features, terrain_contact_features, bank_response_features, grade_energy_channel, normalized_flow_force);
 	float wake_confidence_gate_visual = wake_confidence_gate_component(obstacle_features);
 	float wake_hard_gate_visual = wake_hard_gate_component(terrain_contact_features, bank_response_features);
@@ -830,6 +907,24 @@ if (i_valid_flowmap) {
 
 	} else if(mode == PILLOW_VISUAL_MASK) {
 		ALBEDO = grayscale_to_gradient(pillow_visual);
+
+	} else if(mode == PILLOW_VISUAL_MASK_READABLE) {
+		ALBEDO = black_zero_to_heat(pillow_visual_no_reach);
+
+	} else if(mode == PILLOW_DIRECT_TERRAIN_ANCHOR_SEARCH) {
+		ALBEDO = black_zero_to_heat(pillow_direct_terrain_anchor_search);
+
+	} else if(mode == PILLOW_BANK_RESPONSE_ANCHOR_SEARCH) {
+		ALBEDO = black_zero_to_heat(pillow_bank_response_anchor_search);
+
+	} else if(mode == PILLOW_COMBINED_CONTACT_GATE) {
+		ALBEDO = black_zero_to_heat(pillow_combined_contact_gate);
+
+	} else if(mode == PILLOW_BANK_ONLY_ANCHOR_CONTRIBUTION) {
+		ALBEDO = black_zero_to_heat(pillow_bank_only_anchor_contribution);
+
+	} else if(mode == PILLOW_RAW_TO_FINAL_RETENTION) {
+		ALBEDO = black_zero_to_heat(pillow_raw_to_final_retention);
 
 	} else if(mode == PILLOW_HEIGHT_MASK) {
 		float terrain_height_mask = pillow_terrain_height > EPSILON ? pillow_height_influence(pillow_visual, pillow_terrain_height_curve) * pillow_height_seam_fade : 0.0;

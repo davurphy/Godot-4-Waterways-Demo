@@ -20,18 +20,20 @@
 This is the review dashboard. Lead with unresolved risks and next action; keep detailed findings, compliance checks, and history lower in the file.
 
 - Overall review status: Partial
-- Blocking issues remaining: A human-assisted pillow formula review is still needed before code changes.
-- Important issues remaining: The remaining forward pillow offset is now confirmed in raw `Pillow / Impact Mask` and final visible water, but not yet attributed to one source term.
-- Last validation relied on: Historical Phase 6 and Phase 7 Godot 4.6.3 probes plus the 2026-05-31 user live Godot review.
-- Next action: Add audit-recommended diagnostic split views/probe output and a readable final-mask diagnostic, then review raw/final/source-term views around the same rock targets.
+- Blocking issues remaining: A human-assisted pillow formula review is still needed before classifier or visible-material changes.
+- Important issues remaining: The remaining forward pillow offset was attributed to the broad bank-response/combined contact gate; signature-`20` bakes are needed to validate the direct-contact-first classifier.
+- Last validation relied on: Historical Phase 6 and Phase 7 Godot 4.6.3 probes, the 2026-05-31 user live Godot review, and 2026-06-01 static checks for new debug-mode wiring and normalized obstacle-test review state.
+- Next action: Regenerate main and obstacle-test river bakes, then review raw/final/source-term views around the same rock targets in Godot.
 - Historical detail starts at: `Historical Review Notes`
 
 ## Findings
 
 ### Blocking
 
-- The next implementation should not proceed as another distance tweak. The audit says current views are missing the exact source split needed now, and the next pass should add diagnostic split views/probe output before changing the classifier.
-- `Pillow Visual Mask` currently reads as undifferentiated green in the user's viewport. Because the debug gradient maps zero to green, this view needs a clearer threshold/black-zero companion before it can support final-mask acceptance.
+- The next implementation should not proceed as another distance tweak. The audit says source-term evidence is needed before changing the classifier.
+- `Pillow Visual Mask` currently reads as undifferentiated green in the user's viewport. Debug mode `48`, `Pillow Visual Mask (Black Zero)`, now exists for final-mask placement review, but it still needs visible Godot confirmation.
+- Pillow support/facing source is bake-only and is not saved in `RiverBakeData`; if signature-`20` raw R still starts too early, target-bound probe output is required before further classifier edits.
+- The 2026-06-01 user review resolved the first source question: bank-response/combined contact is too broad, direct terrain contact is closest to desired placement, and the raw classifier should be direct-contact-first. The new code needs a signature-`20` rebake before acceptance.
 
 ### Important
 
@@ -65,14 +67,14 @@ This is the review dashboard. Lead with unresolved risks and next action; keep d
 
 | Acceptance Criterion | Status | Notes |
 | --- | --- | --- |
-| Raw and final pillow masks separately inspectable | Partial | Existing views are available, but `Pillow Visual Mask` readability is poor and diagnostic split is still needed. |
+| Raw and final pillow masks separately inspectable | Partial | Existing views are available, and `Pillow Visual Mask (Black Zero)` is now wired. Visible Godot review still needs to confirm readability. |
 | Pillow starts at upstream impact/compression faces | Fail/Partial | User confirms raw and visible starts are about `0.3` to `0.5` too far ahead. |
-| `Pillow Visual Mask` is readable for final-mask placement | Fail | User sees undifferentiated green over the river; current zero-green palette is ambiguous. |
+| `Pillow Visual Mask` is readable for final-mask placement | Partial | Original mode remains ambiguous; new Black Zero mode added for review. |
 | Open water far ahead of rocks stays quiet | Partial | Needs target review. |
 | Ordinary banks do not become pillow lines | Partial | Needs current review after any future changes. |
 | Main and obstacle-test layouts agree | Partial | Roadmap requires more than one layout before acceptance. |
 | Raw/final/visible review order followed | Pass in docs | Next live review still needed. |
-| Audit diagnostic split exists before classifier edit | Fail | This is now the first implementation task. |
+| Audit diagnostic split exists before classifier edit | Partial | Saved-term editor diagnostics exist; support/facing still needs target-bound probe output or a promoted bake diagnostic. |
 | Bank response cannot anchor raw pillows alone | Fail/Partial | Audit found this is currently too common. |
 | Material tuning deferred until placement accepted | Pass | Current docs preserve this rule. |
 | Accepted Phase 7B eddy-line behavior preserved | Pass historically | Must re-check after shared classifier edits. |
@@ -107,7 +109,9 @@ This is the review dashboard. Lead with unresolved risks and next action; keep d
 - Human-assisted:
   - User reports pillows still start too far ahead after Phase 6E.
   - On 2026-05-31, user confirmed raw `Pillow / Impact Mask` and final visible water start about `0.3` to `0.5` ahead of the desired obstruction contact point.
-  - User reports `Pillow Visual Mask` is undifferentiated green over the river, so a clearer final-mask diagnostic is needed.
+  - User reports the original `Pillow Visual Mask` is undifferentiated green over the river, so use `Pillow Visual Mask (Black Zero)` for the next review.
+  - On 2026-06-01, the obstacle-test scene's saved pillow review material state was normalized.
+  - Later on 2026-06-01, user reviewed the new modes and identified broad bank-response/combined contact gating as the failing source.
   - Exact next request is recorded in `validation.md`.
 - Shader:
   - Existing visible/debug pillow shader paths passed historical probes.
