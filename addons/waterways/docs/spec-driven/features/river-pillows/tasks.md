@@ -7,21 +7,32 @@ Complete tasks in order unless the plan is revised. Each task should be independ
 This is the task dashboard. Keep active work and next action here; move completed or superseded detail to `Historical or Closed Tasks`.
 
 - Current status: In progress
-- Current implementation slice: direct-contact-first raw pillow classifier is implemented in code; main and obstacle-test bakes need regeneration to signature `20`, then live review.
+- Current implementation slice: direct-contact-first raw pillow classifier is implemented in code; main and obstacle-test bakes need regeneration to signature `20`, then live review. Before returning to that review, the user requested a research-first pass on inspector tooltip/field descriptions.
 - Remaining open task count: tracked by the checkboxes below; do not maintain a manual count while this document is still changing.
 - Last passing validation: Historical Godot 4.6.3 probes listed in `validation.md`, audit-reported `PILLOW_FORMULA_ANCHOR_AUDIT_OK`, plus 2026-06-01 static checks for new debug modes, normalized obstacle-test pillow review state, and source-signature bump to `20`.
 - Current review blockers:
   - The post-tooltip editor regression has been fixed and user-confirmed. hterrain legacy `.packed_tex` / `.packed_texarr` importers now parse as unavailable Godot 4.6 stubs; do not treat those importer formats as restored functionality.
-  - Tooltip/field-description work is not complete; do not treat tooltips as implemented or validated.
+  - Tooltip/field-description work is not complete; do not treat tooltips as implemented or validated. The next session should research official Godot 4.6 APIs/docs and current examples before any implementation.
   - The original `Pillow Visual Mask` still uses the green-zero gradient; use `Pillow Visual Mask (Black Zero)` for placement review.
   - Existing signature-`19` river bakes are stale after the classifier edit; regenerate main and obstacle-test river bakes before judging raw placement.
   - Support/facing source is not available in saved `RiverBakeData`; add a target-bound probe if direct-contact-first output still starts too early.
-- Next recommended action: Rebake `Demo.tscn` and `Demo_obstacle_flow_test.tscn`, then review raw/final diagnostics live in Godot.
+- Next recommended action: Research inspector tooltip/description support, summarize options, and ask the user before code changes. Then rebake `Demo.tscn` and `Demo_obstacle_flow_test.tscn`, then review raw/final diagnostics live in Godot.
 - Known deferred work: Material polish, stronger height response, final flow, WaterSystem/physics alignment.
 
 ## Open Work
 
 Use this section as the canonical checklist for unfinished pillow work. Items are ordered by dependency and risk. When items close, update stale "open" language in `spec.md`, `plan.md`, `validation.md`, `review.md`, and the latest handoff.
+
+### 0. Tooltip/Field-Description Research
+
+- [ ] Research documented Godot 4.6 inspector tooltip/description APIs before implementation.
+  - Validate: Notes cite official Godot docs/API pages for `EditorInspectorPlugin`, `EditorProperty`, `EditorProperty.add_focusable()`, `EditorInspector`, `Object._get_property_list()`, `PROPERTY_USAGE_*`, and `Control.tooltip_text`, or explain why a cited API is not applicable.
+  - Validate: If official docs do not answer generated inspector-property descriptions clearly, run an online search for current Godot examples and cite the useful results.
+  - Validate: The session reports options and risks before editing any Waterways plugin code.
+
+- [ ] Decide on a safe prototype approach with the user before code changes.
+  - Validate: The plan explicitly avoids the failed shortcut that tried to wrap default inspector editors from `_parse_property()` and assign tooltip text to generated controls.
+  - Validate: The proposed prototype is isolated, reversible, and tested on a small property set before broader `mat_pillow_*` rollout.
 
 ### 1. Review-State Preflight
 
