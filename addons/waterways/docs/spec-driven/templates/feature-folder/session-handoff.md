@@ -165,15 +165,47 @@ Result summary:
 
 Plain-language guidance for the next session. Include anything that would prevent rediscovering context, repeating a mistake, or editing the wrong project area.
 
+## Godot Launch Instructions
+
+Use these exact Windows paths for this project unless the user gives newer ones.
+
+- Project root:
+  - `C:\Users\pc\Documents\GitHub\Godot 4 Waterways Demo`
+- Godot 4.6.3 console executable:
+  - `C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64_console.exe`
+- Godot 4.6.3 windowed editor executable:
+  - `C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64.exe`
+
+Use the console executable for scripted probes and diagnostics because it prints stable output markers such as `*_OK`. Always redirect `APPDATA` and `LOCALAPPDATA` to a repo-local `.codex-research` folder for probe runs so Codex does not alter the user's normal Godot editor profile.
+
+Console probe pattern:
+
+```powershell
+$root = "C:\Users\pc\Documents\GitHub\Godot 4 Waterways Demo"
+$godotConsole = "C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64_console.exe"
+$godotUser = Join-Path $root ".codex-research\godot-user"
+New-Item -ItemType Directory -Force -Path (Join-Path $godotUser "roaming"), (Join-Path $godotUser "local") | Out-Null
+$env:APPDATA = Join-Path $godotUser "roaming"
+$env:LOCALAPPDATA = Join-Path $godotUser "local"
+& $godotConsole --path $root --script "res://path/to/probe.gd"
+```
+
+Use the windowed executable only when a human-visible editor/runtime review is needed:
+
+```powershell
+$root = "C:\Users\pc\Documents\GitHub\Godot 4 Waterways Demo"
+$godotEditor = "C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64.exe"
+& $godotEditor --path $root
+```
 
 ## Validation Commands
 
 Run the CPU/readback diagnostic:
 
 ```powershell
-$root = Get-Location
+$root = "C:\Users\pc\Documents\GitHub\Godot 4 Waterways Demo"
 $godotConsole = $env:GODOT_CONSOLE
-if (-not $godotConsole) { $godotConsole = 'C:\Path\To\Godot_v4.6.3-stable_win64_console.exe' }
+if (-not $godotConsole) { $godotConsole = 'C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64_console.exe' }
 $godotUser = Join-Path $root '.codex-research\godot-user-phase7b-eddy-cpu-diagnostic'
 New-Item -ItemType Directory -Force -Path (Join-Path $godotUser 'roaming'), (Join-Path $godotUser 'local') | Out-Null
 $env:APPDATA = Join-Path $godotUser 'roaming'
@@ -184,9 +216,9 @@ $env:LOCALAPPDATA = Join-Path $godotUser 'local'
 Use this Godot launch pattern for visual probes:
 
 ```powershell
-$root = Get-Location
+$root = "C:\Users\pc\Documents\GitHub\Godot 4 Waterways Demo"
 $godotConsole = $env:GODOT_CONSOLE
-if (-not $godotConsole) { $godotConsole = 'C:\Path\To\Godot_v4.6.3-stable_win64_console.exe' }
+if (-not $godotConsole) { $godotConsole = 'C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64_console.exe' }
 $godotUser = Join-Path $root '.codex-research\godot-user'
 New-Item -ItemType Directory -Force -Path (Join-Path $godotUser 'roaming'), (Join-Path $godotUser 'local') | Out-Null
 $env:APPDATA = Join-Path $godotUser 'roaming'

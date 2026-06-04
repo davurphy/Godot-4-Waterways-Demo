@@ -28,6 +28,7 @@ Use this section as the canonical checklist for unfinished work. When items clos
 - [ ] Check `docs/research/river-research-citations.md` before research-driven changes; it is the shared works-cited list for river-reading, flow-map, shader-water, and production-reference sources, and should be updated when new cited sources affect this feature.
 - [ ] Check `audit/code-audit.md` for relevant known risks.
 - [ ] Confirm whether the task affects active code in `addons/waterways`, generated resources, demo scenes, docs, or validation tooling.
+- [ ] If running Godot, use the exact console/windowed launch instructions from `validation.md` or `session-handoff.md`; console probes should use repo-local `.codex-research` user-data folders.
 - [ ] Run the context challenge check: if the user or agent may be misreading expected behavior, stale generated data, validation geometry, or engine limitations as a defect, raise that with evidence before patching.
 
 ## Implementation
