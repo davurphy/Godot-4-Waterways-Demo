@@ -2,6 +2,46 @@
 
 ## Unreleased - 2026-05-26
 
+### River Pillows Diagnostics Branch Summary
+
+- Moved river pillow work from broad visual tuning into a source-term-first diagnostic workflow. Placement can now be reviewed through baked raw impact, final shader mask, source/contact diagnostics, visible material response, and optional height response.
+- Added and exposed pillow debug views for the black-zero visual/no-reach masks, direct terrain anchor search, bank-response anchor search, combined contact gate, bank-only contribution, raw-to-final retention, material response mask, material seam guard, height seam guard, and height seam stitch.
+- Organized and expanded `Material / Pillow` inspector controls into shape, mask-gate, surface, bands/foam, height, and seam-fade groups. Placement-review controls remain conservative/default-off for forward reach, contact pull, and terrain/obstruction height until placement is accepted.
+- Reworked raw pillow anchoring so direct `terrain_contact_features.b` contact is mandatory, while `bank_response_features.a` only contributes weak context. The river bake source signature is now `20`, and both main and obstacle-test river bakes have been regenerated and verified at signature `20`.
+- Expanded visible pillow rendering with pressure color/highlight, specular, roughness, normal response, compression bands, foam bias, optional terrain/obstruction height, and material/height seam smoothing.
+- Reset and normalized `Demo.tscn` and `Demo_obstacle_flow_test.tscn` pillow review material values so cross-scene review starts from matching placement baselines.
+- Fixed a post-tooltip-session editor regression in the unused legacy hterrain packed-texture scripts by replacing the Godot 3 importer implementation with Godot 4.6-compatible unavailable stubs. This restores editor stability but does not restore `.packed_tex` or `.packed_texarr` importing.
+- Added the feature-local river-pillows documentation set, engineering audit, material-control reference, validation dashboard, review notes, handoffs, and reusable probe suite. Current passing markers include `PILLOW_DIAGNOSTIC_PARITY_CHECK_OK`, `PILLOW_ANCHOR_SOURCE_PROBE_OK`, `PILLOW_PLACEMENT_DIAGNOSTIC_OK`, `PILLOW_INSPECTOR_WIRING_PROBE_OK`, quick `PILLOW_VISUAL_REVIEW_EXPORT_OK`, `DEBUG_VIEW_MENU_WIRING_PROBE_OK`, `PHASE7B_EDDY_LINE_CPU_DIAGNOSTIC_OK`, and `PILLOW_REVIEW_BAKES_SIGNATURE_20_CONFIRMED`.
+- Remaining follow-up is live placement review on both signature-`20` scenes before further classifier edits or brightness, foam, height, and material tuning. The changed `WaterSystem.water_system_bake.res` from the main-demo rebake still needs an explicit keep/review/revert decision.
+
+### Editor Stability
+
+- Fixed a post-tooltip-session editor regression in the bundled hterrain packed-texture scripts. Godot first reported `addons/zylann.hterrain/tools/packed_textures/packed_texture_importer.gd:93` from malformed converted method chains, then exposed broader Godot 3 importer API errors in the same legacy script set.
+- Replaced the unused legacy `.packed_tex` and `.packed_texarr` custom importer implementation with Godot 4.6-compatible unavailable stubs. This keeps the editor stable for the current project, which has no `.packed_tex` / `.packed_texarr` assets and no active importer registration, but does not restore those legacy importer formats.
+- The user confirmed the reported hterrain packed-texture errors are gone. No Waterways pillow classifier, shader, river bake, WaterSystem bake, or tooltip functionality changed in this stability slice.
+
+### River Pillow Inspector Usability
+
+- Organized `Material / Pillow` controls into Inspector subgroups: Pillow Shape, Pillow Mask Gates, Pillow Surface, Pillow Bands & Foam, Pillow Height, and Pillow Seam Fades.
+- Researched Godot 4.6 inspector tooltip/description support for generated `mat_pillow_*` fields. Non-replacing helper-row and full-width helper-block prototypes were rejected as visually confusing, so in-inspector descriptions were removed.
+- Added `docs/spec-driven/features/river-pillows/material-controls.md` as the Pillow material-control reference instead.
+- Added `docs/spec-driven/features/river-pillows/engineering-audit.md` and updated handoffs so the next session starts with a software-engineering audit of the pillow system before rebakes or feature tuning.
+
+### River Pillows Direct-Contact Diagnostic Pass
+
+- Added editor Debug View modes for pillow placement review:
+  - `Pillow Visual Mask (Black Zero)`
+  - `Pillow Direct Terrain Anchor Search`
+  - `Pillow Bank-Response Anchor Search`
+  - `Pillow Combined Contact Gate`
+  - `Pillow Bank-Only Anchor Contribution`
+  - `Pillow Raw-to-Final Retention`
+- Reset `Demo_obstacle_flow_test.tscn` saved pillow review material values to baseline placement-review defaults, including zero forward reach, zero contact pull, zero terrain/obstruction height, and non-inverted gate pairs.
+- Recorded the user's diagnostic review: raw R and final Black Zero still began early, direct terrain anchor search was closest to the intended pillow face, and bank-response/combined contact gating was too broad.
+- Changed the raw pillow classifier so direct `terrain_contact_features.b` search is mandatory for the pillow contact gate; `bank_response_features.a` now acts only as weak context and cannot anchor a pillow alone.
+- Bumped the river bake source signature to version `20` and recorded direct-contact-first pillow anchor metadata. Existing signature-`19` river bakes are stale until the main and obstacle-test rivers are regenerated.
+- Did not change WaterSystem/physics bakes, final flow, or visible material tuning.
+
 ### River Pillows Spec-Driven Feature Folder
 
 - Added `docs/spec-driven/features/river-pillows/` as the feature-local source of truth for pillow placement work.

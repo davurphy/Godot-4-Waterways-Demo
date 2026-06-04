@@ -84,7 +84,10 @@ uniform float pillow_terrain_height : hint_range(0.0, 0.5) = 0.0;
 uniform float pillow_terrain_height_curve : hint_range(0.25, 4.0) = 1.35;
 uniform float pillow_obstruction_height : hint_range(0.0, 0.5) = 0.0;
 uniform float pillow_obstruction_height_curve : hint_range(0.25, 4.0) = 1.35;
-uniform float pillow_height_tile_seam_fade : hint_range(0.0, 0.25) = 0.035;
+uniform float pillow_height_smoothing_tiles : hint_range(0.0, 0.35) = 0.10;
+uniform float pillow_height_seam_stitch_tiles : hint_range(0.0, 0.05) = 0.015;
+uniform float pillow_height_tile_seam_fade : hint_range(0.0, 0.25) = 0.0;
+uniform float pillow_material_tile_seam_fade : hint_range(0.0, 0.25) = 0.0;
 
 // Wake / Eddy
 uniform float wake_strength : hint_range(0.0, 2.0) = 0.70;
@@ -341,6 +344,111 @@ float pillow_obstruction_height_mask_with_reach(vec2 uv, vec2 source_tile_uv_siz
 	return clamp(mask, 0.0, 1.0);
 }
 
+float pillow_visual_mask_with_reach_at(vec2 uv, vec2 source_tile_uv_size, vec2 flow_direction, float local_grade_energy, float normalized_flow_force) {
+	vec2 safe_uv = clamp(uv, vec2(0.0), vec2(1.0));
+	vec4 obstacle_features = textureLod(i_obstacle_features, safe_uv, 0.0);
+	vec4 terrain_contact_features = textureLod(i_terrain_contact_features, safe_uv, 0.0);
+	vec4 bank_response_features = textureLod(i_bank_response_features, safe_uv, 0.0);
+	float grade_energy_map = max(local_grade_energy, textureLod(i_distmap, safe_uv, 0.0).b);
+	return pillow_visual_mask_with_reach(safe_uv, source_tile_uv_size, flow_direction, obstacle_features, terrain_contact_features, bank_response_features, grade_energy_map, normalized_flow_force);
+}
+
+float pillow_obstruction_height_mask_with_reach_at(vec2 uv, vec2 source_tile_uv_size, vec2 flow_direction, float local_grade_energy, float normalized_flow_force) {
+	vec2 safe_uv = clamp(uv, vec2(0.0), vec2(1.0));
+	vec4 obstacle_features = textureLod(i_obstacle_features, safe_uv, 0.0);
+	vec4 terrain_contact_features = textureLod(i_terrain_contact_features, safe_uv, 0.0);
+	vec4 bank_response_features = textureLod(i_bank_response_features, safe_uv, 0.0);
+	float grade_energy_map = max(local_grade_energy, textureLod(i_distmap, safe_uv, 0.0).b);
+	return pillow_obstruction_height_mask_with_reach(safe_uv, source_tile_uv_size, flow_direction, obstacle_features, terrain_contact_features, bank_response_features, grade_energy_map, normalized_flow_force);
+}
+
+float pillow_smoothed_visual_height_mask(float center_mask, vec2 uv, vec2 source_tile_uv_size, vec2 flow_direction, float grade_energy_map, float normalized_flow_force) {
+	float smoothing_tiles = max(pillow_height_smoothing_tiles, 0.0);
+	if (smoothing_tiles <= EPSILON) {
+		return clamp(center_mask, 0.0, 1.0);
+	}
+	vec2 downstream_direction = safe_direction(flow_direction, vec2(0.0, 1.0));
+	vec2 lateral_direction = vec2(-downstream_direction.y, downstream_direction.x);
+	vec2 downstream_offset = downstream_direction * source_tile_uv_size * smoothing_tiles;
+	vec2 lateral_offset = lateral_direction * source_tile_uv_size * smoothing_tiles;
+	float axial_mask = (
+		pillow_visual_mask_with_reach_at(uv + downstream_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force) +
+		pillow_visual_mask_with_reach_at(uv - downstream_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force) +
+		pillow_visual_mask_with_reach_at(uv + lateral_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force) +
+		pillow_visual_mask_with_reach_at(uv - lateral_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force)
+	) * 0.25;
+	float diagonal_mask = (
+		pillow_visual_mask_with_reach_at(uv + downstream_offset + lateral_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force) +
+		pillow_visual_mask_with_reach_at(uv + downstream_offset - lateral_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force) +
+		pillow_visual_mask_with_reach_at(uv - downstream_offset + lateral_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force) +
+		pillow_visual_mask_with_reach_at(uv - downstream_offset - lateral_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force)
+	) * 0.25;
+	float smoothed_mask = center_mask * 0.50 + axial_mask * 0.35 + diagonal_mask * 0.15;
+	return clamp(max(center_mask * 0.85, smoothed_mask), 0.0, 1.0);
+}
+
+float pillow_smoothed_obstruction_height_mask(float center_mask, vec2 uv, vec2 source_tile_uv_size, vec2 flow_direction, float grade_energy_map, float normalized_flow_force) {
+	float smoothing_tiles = max(pillow_height_smoothing_tiles, 0.0);
+	if (smoothing_tiles <= EPSILON) {
+		return clamp(center_mask, 0.0, 1.0);
+	}
+	vec2 downstream_direction = safe_direction(flow_direction, vec2(0.0, 1.0));
+	vec2 lateral_direction = vec2(-downstream_direction.y, downstream_direction.x);
+	vec2 downstream_offset = downstream_direction * source_tile_uv_size * smoothing_tiles;
+	vec2 lateral_offset = lateral_direction * source_tile_uv_size * smoothing_tiles;
+	float axial_mask = (
+		pillow_obstruction_height_mask_with_reach_at(uv + downstream_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force) +
+		pillow_obstruction_height_mask_with_reach_at(uv - downstream_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force) +
+		pillow_obstruction_height_mask_with_reach_at(uv + lateral_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force) +
+		pillow_obstruction_height_mask_with_reach_at(uv - lateral_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force)
+	) * 0.25;
+	float diagonal_mask = (
+		pillow_obstruction_height_mask_with_reach_at(uv + downstream_offset + lateral_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force) +
+		pillow_obstruction_height_mask_with_reach_at(uv + downstream_offset - lateral_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force) +
+		pillow_obstruction_height_mask_with_reach_at(uv - downstream_offset + lateral_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force) +
+		pillow_obstruction_height_mask_with_reach_at(uv - downstream_offset - lateral_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force)
+	) * 0.25;
+	float smoothed_mask = center_mask * 0.50 + axial_mask * 0.35 + diagonal_mask * 0.15;
+	return clamp(max(center_mask * 0.85, smoothed_mask), 0.0, 1.0);
+}
+
+float pillow_height_seam_stitch_weight(vec2 source_uv, vec2 mesh_uv, float safe_uv2_sides) {
+	float stitch_width = max(pillow_height_seam_stitch_tiles, 0.0);
+	if (stitch_width <= EPSILON) {
+		return 0.0;
+	}
+	float atlas_local_y = fract(clamp(source_uv.y, 0.0, 1.0) * safe_uv2_sides);
+	float atlas_distance_to_tile_edge = min(atlas_local_y, 1.0 - atlas_local_y);
+	float step_local_y = fract(max(mesh_uv.y, 0.0));
+	float step_distance_to_tile_edge = min(step_local_y, 1.0 - step_local_y);
+	float seam_distance = min(atlas_distance_to_tile_edge, step_distance_to_tile_edge);
+	return 1.0 - smoothstep(0.0, stitch_width, seam_distance);
+}
+
+float pillow_seam_stitched_visual_height_mask(float center_mask, vec2 uv, vec2 atlas_texel_size, vec2 source_tile_uv_size, vec2 flow_direction, float grade_energy_map, float normalized_flow_force, float stitch_weight) {
+	if (stitch_weight <= EPSILON) {
+		return clamp(center_mask, 0.0, 1.0);
+	}
+	vec2 seam_offset = vec2(0.0, atlas_texel_size.y);
+	float stitched_mask = max(center_mask, max(
+		pillow_visual_mask_with_reach_at(uv + seam_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force),
+		pillow_visual_mask_with_reach_at(uv - seam_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force)
+	));
+	return clamp(mix(center_mask, stitched_mask, stitch_weight), 0.0, 1.0);
+}
+
+float pillow_seam_stitched_obstruction_height_mask(float center_mask, vec2 uv, vec2 atlas_texel_size, vec2 source_tile_uv_size, vec2 flow_direction, float grade_energy_map, float normalized_flow_force, float stitch_weight) {
+	if (stitch_weight <= EPSILON) {
+		return clamp(center_mask, 0.0, 1.0);
+	}
+	vec2 seam_offset = vec2(0.0, atlas_texel_size.y);
+	float stitched_mask = max(center_mask, max(
+		pillow_obstruction_height_mask_with_reach_at(uv + seam_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force),
+		pillow_obstruction_height_mask_with_reach_at(uv - seam_offset, source_tile_uv_size, flow_direction, grade_energy_map, normalized_flow_force)
+	));
+	return clamp(mix(center_mask, stitched_mask, stitch_weight), 0.0, 1.0);
+}
+
 float wake_confidence_gate_component(vec4 obstacle_features) {
 	return smooth_gate(wake_confidence_gate_start, wake_confidence_gate_full, obstacle_features.a);
 }
@@ -558,8 +666,8 @@ float pillow_height_influence(float pillow_mask, float height_curve) {
 	return pow(clamp(pillow_mask, 0.0, 1.0), max(height_curve, EPSILON));
 }
 
-float pillow_height_tile_seam_fade_mask(vec2 source_uv, vec2 mesh_uv, float safe_uv2_sides) {
-	float seam_fade = max(pillow_height_tile_seam_fade, 0.0);
+float pillow_tile_seam_fade_mask(float seam_fade_width, vec2 source_uv, vec2 mesh_uv, float safe_uv2_sides) {
+	float seam_fade = max(seam_fade_width, 0.0);
 	if (seam_fade <= EPSILON) {
 		return 1.0;
 	}
@@ -570,6 +678,14 @@ float pillow_height_tile_seam_fade_mask(vec2 source_uv, vec2 mesh_uv, float safe
 	float step_distance_to_tile_edge = min(step_local_y, 1.0 - step_local_y);
 	float step_fade = smoothstep(0.0, seam_fade, step_distance_to_tile_edge);
 	return min(atlas_fade, step_fade);
+}
+
+float pillow_height_tile_seam_fade_mask(vec2 source_uv, vec2 mesh_uv, float safe_uv2_sides) {
+	return pillow_tile_seam_fade_mask(pillow_height_tile_seam_fade, source_uv, mesh_uv, safe_uv2_sides);
+}
+
+float pillow_material_tile_seam_fade_mask(vec2 source_uv, vec2 mesh_uv, float safe_uv2_sides) {
+	return pillow_tile_seam_fade_mask(pillow_material_tile_seam_fade, source_uv, mesh_uv, safe_uv2_sides);
 }
 
 void vertex() {
@@ -596,6 +712,11 @@ void vertex() {
 		vec2 pillow_reach_direction = safe_direction(flow, vec2(0.0, 1.0));
 		float terrain_pillow_mask = pillow_visual_mask_with_reach(custom_UV, source_tile_uv_size, pillow_reach_direction, obstacle_features, terrain_contact_features, bank_response_features, dist_pressure_features.b, normalized_flow_force);
 		float obstruction_pillow_mask = pillow_obstruction_height_mask_with_reach(custom_UV, source_tile_uv_size, pillow_reach_direction, obstacle_features, terrain_contact_features, bank_response_features, dist_pressure_features.b, normalized_flow_force);
+		terrain_pillow_mask = pillow_smoothed_visual_height_mask(terrain_pillow_mask, custom_UV, source_tile_uv_size, pillow_reach_direction, dist_pressure_features.b, normalized_flow_force);
+		obstruction_pillow_mask = pillow_smoothed_obstruction_height_mask(obstruction_pillow_mask, custom_UV, source_tile_uv_size, pillow_reach_direction, dist_pressure_features.b, normalized_flow_force);
+		float pillow_height_stitch = pillow_height_seam_stitch_weight(UV2, UV, safe_uv2_sides);
+		terrain_pillow_mask = pillow_seam_stitched_visual_height_mask(terrain_pillow_mask, custom_UV, 1.0 / atlas_size, source_tile_uv_size, pillow_reach_direction, dist_pressure_features.b, normalized_flow_force, pillow_height_stitch);
+		obstruction_pillow_mask = pillow_seam_stitched_obstruction_height_mask(obstruction_pillow_mask, custom_UV, 1.0 / atlas_size, source_tile_uv_size, pillow_reach_direction, dist_pressure_features.b, normalized_flow_force, pillow_height_stitch);
 		vec3 view_vertex = (MODELVIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
 		float pillow_height_fade = 1.0 - smoothstep(i_lod0_distance * 0.75, i_lod0_distance * 1.50, -view_vertex.z);
 		pillow_height_fade *= pillow_height_tile_seam_fade_mask(UV2, UV, safe_uv2_sides);
@@ -684,6 +805,7 @@ void fragment() {
 	vec2 pillow_reach_direction = safe_direction(flow, vec2(0.0, 1.0));
 	vec2 source_tile_uv_size = (source_size / safe_uv2_sides) / atlas_size;
 	float pillow_mask = pillow_visual_mask_with_reach(custom_UV, source_tile_uv_size, pillow_reach_direction, obstacle_features, terrain_contact_features, bank_response_features, grade_energy_map, normalized_flow_force);
+	float pillow_material_mask = pillow_mask * pillow_material_tile_seam_fade_mask(UV2, UV, safe_uv2_sides);
 	float wake_seed_mask = wake_gated_seed(obstacle_features, terrain_contact_features, bank_response_features, grade_energy_map, normalized_flow_force);
 	float wake_mask = clamp(wake_seed_mask * wake_strength, 0.0, 1.0);
 	float eddy_line_mask = eddy_line_visual_mask(custom_UV, source_tile_uv_size, pillow_reach_direction, terrain_contact_features, bank_response_features, grade_energy_map, normalized_flow_force);
@@ -697,7 +819,7 @@ void fragment() {
 	vec2 pillow_flow_direction = safe_direction(flow, pillow_reach_direction);
 	float pillow_band_coord = dot(UV * uv_scale.xy * pillow_band_scale, pillow_flow_direction) + time * 0.35 + flow_foam_noise.a * 6.2831853;
 	float pillow_band = smoothstep(0.72, 1.0, sin(pillow_band_coord * 6.2831853) * 0.5 + 0.5);
-	float pillow_band_mask = pillow_mask * pillow_band * clamp(pillow_band_strength, 0.0, 2.0) * pillow_detail_fade;
+	float pillow_band_mask = pillow_material_mask * pillow_band * clamp(pillow_band_strength, 0.0, 2.0) * pillow_detail_fade;
 	vec3 flow_uvA = FlowUVW(UV, flow, jump1, uv_scale, time, false);
 	vec3 flow_uvB = FlowUVW(UV, flow, jump1, uv_scale, time, true);
 	vec3 flowx2_uvA = FlowUVW(UV, flow, jump2, uv_scale * 2.0, time, false);
@@ -730,7 +852,7 @@ void fragment() {
 	float eddy_fleck_noise = smoothstep(0.58, 0.96, eddy_noise);
 	
 	foam_mask += (steepness_map * foam_steepness + grade_energy_map * foam_energy_bias) * foam_randomness;
-	foam_mask += pillow_mask * pillow_foam_bias * grade_energy_map * normalized_flow_force * foam_randomness * smoothstep(0.35, 0.8, water_foamFBM);
+	foam_mask += pillow_material_mask * pillow_foam_bias * grade_energy_map * normalized_flow_force * foam_randomness * smoothstep(0.35, 0.8, water_foamFBM);
 	foam_mask += wake_mask * wake_foam_fleck_bias * grade_energy_map * normalized_flow_force * wake_fleck_noise * smoothstep(0.45, 0.85, water_foamFBM);
 	foam_mask += eddy_line_mask * wake_eddy_line_foam_bias * max(grade_energy_map, normalized_flow_force) * (0.25 + eddy_fleck_noise * 0.75) * smoothstep(0.25, 0.78, water_foamFBM);
 	foam_mask = clamp(foam_mask, 0.0, 1.0);
@@ -749,18 +871,18 @@ void fragment() {
 	alb_t = ease(alb_t, albedo_depth_curve);
 	SPECULAR = 0.25; // Supposedly clear water has approximately a 0.25 specular value
 	ROUGHNESS = roughness;
-	float pillow_lighting_mask = clamp((pillow_mask + pillow_band_mask * 0.50) * pillow_detail_fade, 0.0, 1.0);
+	float pillow_lighting_mask = clamp((pillow_material_mask + pillow_band_mask * 0.50) * pillow_detail_fade, 0.0, 1.0);
 	float wake_detail_fade = pillow_detail_fade;
 	float wake_lighting_mask = clamp((wake_mask * (0.55 + wake_fleck_noise * 0.45) + eddy_line_mask * (0.65 + eddy_fleck_noise * 0.35)) * wake_detail_fade, 0.0, 1.0);
 	SPECULAR = min(SPECULAR + pillow_lighting_mask * pillow_specular_boost, 1.0);
 	SPECULAR = max(SPECULAR - wake_lighting_mask * wake_specular_reduction, 0.0);
 	ROUGHNESS = clamp(ROUGHNESS * (1.0 - pillow_lighting_mask * pillow_roughness_reduction), 0.0, 1.0);
 	ROUGHNESS = clamp(ROUGHNESS + wake_lighting_mask * wake_roughness_boost, 0.0, 1.0);
-	float pillow_normal_boost = clamp((pillow_mask * pillow_normal_strength + pillow_band_mask * 0.50) * pillow_detail_fade, 0.0, 1.0);
+	float pillow_normal_boost = clamp((pillow_material_mask * pillow_normal_strength + pillow_band_mask * 0.50) * pillow_detail_fade, 0.0, 1.0);
 	float wake_normal_boost = clamp((wake_mask * wake_normal_strength * (0.45 + wake_fleck_noise * 0.55) + eddy_line_mask * wake_eddy_line_normal_strength * (0.55 + eddy_fleck_noise * 0.45)) * wake_detail_fade, 0.0, 1.0);
 	water_norFBM = clamp((water_norFBM - 0.5) * (1.0 + pillow_normal_boost + wake_normal_boost) + 0.5, vec2(0.0), vec2(1.0));
 	NORMAL_MAP = vec3(water_norFBM, 0);
-	NORMAL_MAP_DEPTH = normal_scale * (1.0 + clamp(pillow_mask * pillow_normal_strength * pillow_detail_fade + wake_normal_boost, 0.0, 0.85));
+	NORMAL_MAP_DEPTH = normal_scale * (1.0 + clamp(pillow_material_mask * pillow_normal_strength * pillow_detail_fade + wake_normal_boost, 0.0, 0.85));
 
 	
 	// Refraction - has to be done after normal is set
@@ -792,8 +914,8 @@ void fragment() {
 	vec3 albedo_color_near = vec3(albedo_color_linear[0].x, albedo_color_linear[0].y, albedo_color_linear[0].z);
 	vec3 albedo_color_far = vec3(albedo_color_linear[1].x, albedo_color_linear[1].y, albedo_color_linear[1].z);
 	vec3 alb_mix = mix(albedo_color_near.rgb, albedo_color_far.rgb, alb_t);
-	float pillow_pressure = clamp(pillow_mask * pillow_pressure_strength, 0.0, 0.65);
-	float pillow_highlight = clamp((pillow_mask + pillow_band_mask) * pillow_highlight_strength, 0.0, 0.65);
+	float pillow_pressure = clamp(pillow_material_mask * pillow_pressure_strength, 0.0, 0.65);
+	float pillow_highlight = clamp((pillow_material_mask + pillow_band_mask) * pillow_highlight_strength, 0.0, 0.65);
 	float wake_albedo_breakup = clamp((wake_mask * wake_fleck_noise + eddy_line_mask * (0.30 + eddy_fleck_noise * 0.70)) * wake_albedo_breakup_strength * wake_detail_fade, 0.0, 0.35);
 	alb_mix = min(alb_mix * (1.0 + pillow_pressure * 0.25), vec3(1.0));
 	alb_mix = mix(alb_mix, pillow_pressure_color.rgb, pillow_pressure * 0.18);

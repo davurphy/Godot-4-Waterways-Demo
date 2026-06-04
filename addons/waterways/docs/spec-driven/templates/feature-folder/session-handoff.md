@@ -164,3 +164,31 @@ Result summary:
 ## Notes for the Next Agent
 
 Plain-language guidance for the next session. Include anything that would prevent rediscovering context, repeating a mistake, or editing the wrong project area.
+
+
+## Validation Commands
+
+Run the CPU/readback diagnostic:
+
+```powershell
+$root = Get-Location
+$godotConsole = $env:GODOT_CONSOLE
+if (-not $godotConsole) { $godotConsole = 'C:\Path\To\Godot_v4.6.3-stable_win64_console.exe' }
+$godotUser = Join-Path $root '.codex-research\godot-user-phase7b-eddy-cpu-diagnostic'
+New-Item -ItemType Directory -Force -Path (Join-Path $godotUser 'roaming'), (Join-Path $godotUser 'local') | Out-Null
+$env:APPDATA = Join-Path $godotUser 'roaming'
+$env:LOCALAPPDATA = Join-Path $godotUser 'local'
+& $godotConsole --path $root --script 'res://.codex-research/phase7b_eddy_line_cpu_diagnostic.gd'
+```
+
+Use this Godot launch pattern for visual probes:
+
+```powershell
+$root = Get-Location
+$godotConsole = $env:GODOT_CONSOLE
+if (-not $godotConsole) { $godotConsole = 'C:\Path\To\Godot_v4.6.3-stable_win64_console.exe' }
+$godotUser = Join-Path $root '.codex-research\godot-user'
+New-Item -ItemType Directory -Force -Path (Join-Path $godotUser 'roaming'), (Join-Path $godotUser 'local') | Out-Null
+$env:APPDATA = Join-Path $godotUser 'roaming'
+$env:LOCALAPPDATA = Join-Path $godotUser 'local'
+& $godotConsole --path $root --script 'res://.codex-research/phase7b_wake_eddy_visual_probe.gd'

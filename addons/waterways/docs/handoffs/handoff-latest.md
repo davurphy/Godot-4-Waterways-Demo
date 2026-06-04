@@ -2,25 +2,31 @@
 
 ## Message To Next Session
 
-We are working on river feature detection for the Waterways add-on: pillows, wakes, eddy-line placement, and the raw/debug tools needed to judge those features accurately. A targeted pillow placement diagnosis first found the obvious forward pillow offset was shader-side reach, so the default `pillow_forward_reach_tiles` is now `0.0`. The user then tested raw `Pillow / Impact Mask` / `obstacle_features.r` and found it still too far ahead of rocks. Phase 6D responded with a scoped bake/classifier pass: raw pillow R now uses tighter pillow-specific support and a nearby hard-contact/protrusion anchor. Phase 6E then halved the raw pillow contact-search distance from `0.14` to `0.07` source tiles for in-game review. The user still reports the pillow starts too far ahead on the actual object. A follow-up inspection found the start is now governed by the baked pillow formula, especially the dilated collision support and hard-boundary context, not by visible shader reach. The latest review clarified that the explicit `0.07` contact search is not the full effective anchor reach because it samples `hard_boundary_at()`, which includes forward-looking `bank_response.a`. The main and obstacle-test river bakes are signature `19`, and the WaterSystem/physics bake was not regenerated.
+We are working on river feature detection for the Waterways add-on: pillows, wakes, eddy-line placement, and the raw/debug tools needed to judge those features accurately. A targeted pillow placement diagnosis first found the obvious forward pillow offset was shader-side reach, so the default `pillow_forward_reach_tiles` is now `0.0`. The user then tested raw `Pillow / Impact Mask` / `obstacle_features.r` and found it still too far ahead of rocks. Phase 6D responded with a scoped bake/classifier pass: raw pillow R now uses tighter pillow-specific support and a nearby hard-contact/protrusion anchor. Phase 6E then halved the raw pillow contact-search distance from `0.14` to `0.07` source tiles for in-game review. The user still reported the pillow starts too far ahead on the actual object. A follow-up diagnostic split found direct terrain anchor search was closest to the intended pillow face, while bank-response/combined contact gating was too broad. The raw pillow classifier now requires direct `terrain_contact_features.b` search for pillow contact and uses `bank_response_features.a` only as weak context. The source signature is now `20`; after the 2026-06-04 rebakes, Godot metadata verifies both `Water_River.river_bake.res` and `Water_River_obstacle_test.river_bake.res` are signature `20`. `WaterSystem.water_system_bake.res` was modified during the user's main-demo rebake and needs an explicit keep/review/revert decision before finalizing this work.
 
-Feature-local spec-driven docs now exist at `addons/waterways/docs/spec-driven/features/river-pillows/`. For pillow work, treat that folder as the current source of truth before returning to this shared handoff; the pillow-relevant roadmap and audit guidance has been folded into that feature folder. The audit now makes diagnostic split views/probe output the next implementation step before another classifier edit.
+Feature-local spec-driven docs now exist at `addons/waterways/docs/spec-driven/features/river-pillows/`. For pillow work, treat that folder as the current source of truth before returning to this shared handoff; the pillow-relevant roadmap and audit guidance has been folded into that feature folder. The editor regression errors reported after the failed tooltip session have been fixed. Tooltip/field-description support was researched and parked in favor of `material-controls.md`. The requested expert software-engineering audit has now been completed as a review-only pass; the next session should address the audit findings before rebakes or feature tuning.
+
+Resolved editor-regression note: the hterrain packed-texture scripts under `addons/zylann.hterrain/tools/packed_textures/` first failed on a malformed `super.format`/`super.with_value` conversion, then on broader Godot 3 importer APIs. The active project has no `.packed_tex` or `.packed_texarr` assets and no registration for these custom importers, so the legacy importers were replaced with small Godot 4.6-compatible unavailable stubs. The user reopened Godot and confirmed the errors are gone. Do not treat this as restored `.packed_tex` importer functionality; if those asset types are needed later, implement a proper Godot 4 importer as a separate scoped task.
+
+Engineering audit follow-up result for the next session: the review-only audit found that the direct-contact-first classifier shape is sensible, and the first follow-up slice resolved several review/diagnostic blockers. `Demo.tscn` now saves baseline pillow placement values, mode `58` is the true `Pillow Visual Mask (Black Zero)`, mode `48` is explicitly `Pillow No-Reach Mask (Black Zero)`, the bake diagnostic constants now have a parity probe, and both review river bakes are verified signature `20`; support/facing source still needs a target-bound probe if raw R remains early after matching bakes are reviewed.
+
+Probe consolidation result: reusable pillow probes now live in `addons/waterways/docs/spec-driven/features/river-pillows/probes/` with a README. The current Godot 4.6.3 markers are `PILLOW_DIAGNOSTIC_PARITY_CHECK_OK`, `PILLOW_ANCHOR_SOURCE_PROBE_OK`, `PILLOW_PLACEMENT_DIAGNOSTIC_OK`, `PILLOW_INSPECTOR_WIRING_PROBE_OK`, and quick `PILLOW_VISUAL_REVIEW_EXPORT_OK`; older `.codex-research` pillow probes are historical scratch helpers.
+
+Failed tooltip approach to avoid: do not repeat the shortcut inspector-plugin fallback that tried to create or wrap default inspector editors for generated `mat_pillow_*` fields from `_parse_property()` and then assign tooltip text to those controls. That path destabilized the editor. For any future attempt, first look up current Godot 4.6 documentation and examples for adding descriptions/tooltips to generated inspector properties, then use a documented approach such as a carefully scoped custom `EditorProperty` or non-replacing help control tested in isolation.
 
 Feature-local spec-driven docs now also exist at `addons/waterways/docs/spec-driven/features/river-eddies/`. For wake, eddy-line, or future Phase 7C/7D flow work, treat that folder as the current source of truth before returning to this shared handoff. The current eddy baseline is Phase 7B visual-only: `Eddy-Line Visual Mask` uses the raw-G wake-edge candidate plus nearby wake/obstruction context at `wake_edge_sample_tiles = 0.024`; old raw-B paths remain diagnostic; real reverse/circulating flow and WaterSystem/physics alignment remain deferred.
 
 Start from the feature-local folders first, then `../roadmaps/river-feature-detection-roadmap.md`, `../roadmaps/river-improvements-roadmap.md`, `.codex-research/phase7b_eddy_line_cpu_diagnostic.gd`, `.codex-research/phase7b_wake_edge_sample_sweep/`, and the pillow review outputs under `.codex-research/phase6b_pillows_demo_debug/`. The old eddy hypothesis that the main fix might be a larger `wake_edge_sample_tiles` value alone was rejected. The accepted eddy direction was a raw wake-edge-from-G prototype at the reviewed `0.024` edge scale, now promoted into `Eddy-Line Visual Mask`.
 
-Recommended next move: schedule a dedicated discussion/review session for the pillow placement formula before changing code again. The question is no longer just "how much distance should be halved?" but "which signals should be allowed to define the upstream impact start?" Keep `pillow_forward_reach_tiles = 0.0` while reviewing. If the agreed formula needs a code change, make it a scoped bake/classifier pass after the discussion, with source-signature bump, rebakes, probes, and fresh review captures.
+Recommended next move: review the same pillow targets with the raw/final/source-term debug views on both signature-`20` river bakes. Keep `pillow_forward_reach_tiles = 0.0` while reviewing, and decide what to do with the user-modified WaterSystem bake before commit.
 
 Preferred next review path:
 
-1. Start by reviewing the current formula and deciding the visual definition of "correct pillow start" together.
-2. Keep `pillow_forward_reach_tiles = 0.0` so the old ahead-of-rock reach does not confuse the review.
-3. Compare `Pillow / Impact Mask`, `Pillow Visual Mask`, `Obstacle Confidence`, `Hard-Boundary / Protrusion Response`, `Protrusion / Intersection`, and `Final Flow Strength` at the same rock/protrusion targets.
+1. Confirm both review scenes load the direct-contact-first/signature `20` river bakes before cross-scene review.
+2. Keep `pillow_forward_reach_tiles = 0.0`, `pillow_contact_pull_tiles = 0.0`, `pillow_contact_pull_strength = 0.0`, and height response off for placement review.
+3. Compare `Pillow / Impact Mask`, `Pillow Visual Mask (Black Zero)`, `Pillow No-Reach Mask (Black Zero)`, direct terrain anchor search, bank-response anchor search, combined contact gate, bank-only contribution, raw-to-final retention, `Obstacle Confidence`, `Hard-Boundary / Protrusion Response`, `Protrusion / Intersection`, and `Final Flow Strength` at the same rock/protrusion targets.
 4. Treat accepted raw placement as the gate for any next material work. Only then tune pillow pressure/highlight/normal/bands/foam or shader gates.
-5. If the existing views cannot explain the offset, add a temporary diagnostic split for support/facing, direct `terrain_contact.b`, `bank_response.a`, and final pillow contact-gate contribution.
-6. Use `pillow_contact_pull_tiles` / `pillow_contact_pull_strength` only if raw R is placed correctly but the final shader-gated read still looks visually detached.
-7. If raw/no-reach placement is still wrong, plan another bake/classifier pass instead of tuning brightness, foam, height, or wake/eddy settings.
+5. If signature-`20` raw R is still too early, add support/facing target-bound probe output before another classifier pass.
 
 ## Read First
 
@@ -29,6 +35,8 @@ Preferred next review path:
 - `addons/waterways/docs/spec-driven/features/river-pillows/validation.md`
 - `addons/waterways/docs/spec-driven/features/river-pillows/plan.md`
 - `addons/waterways/docs/spec-driven/features/river-pillows/spec.md`
+- `addons/waterways/docs/spec-driven/features/river-pillows/engineering-audit.md`
+- `addons/waterways/docs/spec-driven/features/river-pillows/material-controls.md`
 - `addons/waterways/docs/audit/pillow-system-audit.md`
 - `addons/waterways/docs/spec-driven/features/river-eddies/handoff-latest.md`
 - `addons/waterways/docs/spec-driven/features/river-eddies/tasks.md`
@@ -53,17 +61,18 @@ Preferred next review path:
 ## Current Baseline
 
 - Phase 5A/5B flow and SDF steering cleanup are accepted by the user after in-game review.
-- Phase 6B pillow visuals are closed as the accepted current visual baseline. Pillow height remains default-off, restrained, and visual-only. Follow-up diagnosis found the far-ahead visible pillow read came from shader-side forward reach; the default `pillow_forward_reach_tiles` is now `0.0`. Later raw/in-game reviews showed pillows still too far ahead, so Phase 6D tightened the raw classifier with contact anchoring and Phase 6E halved the raw pillow contact-search distance. After Phase 6E, the user still reports the start is too far ahead on the actual object; the next step is a formula review, not another blind distance reduction.
-- Current river bakes are source-signature version `19`:
-  - `waterways_bakes/Demo/Water_River.river_bake.res`
-  - `waterways_bakes/Demo/Water_River_obstacle_test.river_bake.res`
+- Phase 6B pillow visuals are closed as the accepted current visual baseline. Pillow height remains default-off, restrained, and visual-only. Follow-up diagnosis found the far-ahead visible pillow read came from shader-side forward reach; the default `pillow_forward_reach_tiles` is now `0.0`. Later raw/in-game reviews showed pillows still too far ahead, so Phase 6D tightened the raw classifier with contact anchoring and Phase 6E halved the raw pillow contact-search distance. After Phase 6E, diagnostic review showed bank-response anchoring still reached too far; signature `20` moves pillow anchoring to direct terrain contact first.
+- Godot metadata verification after the 2026-06-04 rebakes found matching review-bake state:
+  - `waterways_bakes/Demo/Water_River.river_bake.res` is source-signature version `20`.
+  - `waterways_bakes/Demo/Water_River_obstacle_test.river_bake.res` is source-signature version `20`.
+  - Cross-scene placement review can now proceed on matching river bakes.
 - `waterways_bakes/Demo/Water_River_legacy_test.river_bake.res` remains source-signature version `5`.
-- `waterways_bakes/Demo/WaterSystem.water_system_bake.res` was last regenerated after the Phase 5B signature-`16` main river rebake. Do not regenerate it unless final/physics flow changes are explicitly scoped.
-- Phase 7A2 classifier refinement is complete as data-only. It updated `obstacle_features.b` and rebaked the main and obstacle-test river resources to signature `17`; Phase 6D/6E later updated `obstacle_features.r` and bumped the current river bakes to signature `19`.
+- `waterways_bakes/Demo/WaterSystem.water_system_bake.res` was modified during the user's 2026-06-04 main-demo rebake. Do not treat it as accepted final-flow/physics work until it is explicitly reviewed or intentionally reverted.
+- Phase 7A2 classifier refinement is complete as data-only. It updated `obstacle_features.b` and rebaked the main and obstacle-test river resources to signature `17`; Phase 6D/6E later updated `obstacle_features.r` and bumped those bakes to signature `19`. The current direct-contact-first target is signature `20`; both review river bakes are verified.
 - Phase 7B visual-only wake/eddy-line material preview is implemented and accepted. It added `wake_` controls and debug modes `Wake Visual Mask`, `Eddy-Line Visual Mask`, and `Wake Edge Thinness`. For wake/eddy work, use `addons/waterways/docs/spec-driven/features/river-eddies/` as the feature-local source of truth.
 - Phase 7B follow-up debug modes now include `Wake Shared Gate`, `Gated Eddy-Line Source (B * Wake Gate)`, `Wake Confidence Gate`, `Wake Hard/Protrusion Gate`, `Wake Bank Keep Gate`, `Wake Energy Gate`, `Wake Flow Gate`, `Eddy-Line Context Gate`, `Experimental Gated Eddy Source`, `Eddy-Line Raw Low Range (B x4)`, `Eddy-Line Candidate Gate`, `Eddy-Line Hard Context Search`, `Eddy-Line Wake Context Search`, `Raw Wake-Edge Candidate (from G)`, and `Experimental Wake-Edge Eddy Source`.
 - Editor Debug View menu entries no longer use a leading `Display` prefix, and the toolbar button now shows the selected mode, for example `Debug View: Normal` or `Debug View: Foam Mix`. This was a label/caption-only cleanup; debug mode IDs and shader wiring stayed unchanged and are covered by `.codex-research/debug_view_menu_wiring_probe.gd`.
-- `.codex-research/phase7b_eddy_line_cpu_diagnostic.gd` is implemented and validated. It samples the existing main and obstacle-test signature-`19` bakes and reports raw B/G/A, `wake_shared_gate`, edge gradient, nearby wake, `wake_edge_thinness`, and final `B * wake_shared_gate * wake_edge_thinness * 1.35` for marked regions.
+- `.codex-research/phase7b_eddy_line_cpu_diagnostic.gd` is implemented and validated. It now samples the existing main and obstacle-test signature-`20` bakes and reports raw B/G/A, `wake_shared_gate`, edge gradient, nearby wake, `wake_edge_thinness`, and final `B * wake_shared_gate * wake_edge_thinness * 1.35` for marked regions.
 - `.codex-research/export_demo_phase7b_wake_edge_sample_sweep.gd` is implemented and validated. It exports the same review cameras at `wake_edge_sample_tiles = 0.006`, `0.012`, `0.0195`, and `0.024`, using only live material overrides on the instantiated scene.
 - The Phase 7B wake-edge sample sweep was refreshed after adding the new debug-only gate views. Current output under `.codex-research/phase7b_wake_edge_sample_sweep/` includes 268 PNG files: the refreshed sample-folder captures plus the older contact sheets.
 - A dedicated categorized citation index now exists at `addons/waterways/docs/research/river-research-citations.md`. Future research should add sources there with short Waterways-specific notes.
@@ -80,17 +89,24 @@ Preferred next review path:
 - After the override fix, the user reported the visible effect is still very subtle. Defaults were increased for a more legible visual pass: `wake_eddy_line_strength = 1.85`, `wake_eddy_line_normal_strength = 0.85`, `wake_eddy_line_foam_bias = 0.18`, with stronger roughness/specular/albedo response and less sparse eddy-line foam/color breakup.
 - The user then accepted the eddy-line visual pass: "It looks good." The current documentation records that the important fix was channel/phase alignment: raw B was plausible but too far from the source rocks, while raw G produced the accepted paired wake-edge distance and pattern.
 - The user clarified the apparent broad editor-field issue came from another setting being too high. Treat the editor-field handoff warning as reverted.
-- Phase 6E changed only the raw pillow classifier contact-search distance, direct filter fallback default, and river bakes. Fresh `.codex-research/phase6c_pillow_placement_diagnostic/` captures show diagnostic atlas-space raw R above `0.05` is about `4.70%` on main and `4.61%` on obstacle-test; no-reach visual mask above `0.05` is about `2.32%` main and `2.26%` obstacle-test.
+- The post-tooltip editor regression is fixed. Godot first reported `addons/zylann.hterrain/tools/packed_textures/packed_texture_importer.gd:93` because legacy hterrain packed-texture importer code had malformed converted method chains; after that was repaired, Godot exposed wider Godot 3 API errors in the same legacy importer set. These scripts are now Godot 4.6-compatible unavailable stubs because the project has no `.packed_tex` / `.packed_texarr` assets and no active importer registration. The user confirmed the editor errors are gone.
+- Tooltip/field-description implementation is parked. The Inspector keeps the Pillow subgroup organization and detailed field explanations live in `material-controls.md`.
+- The 2026-06-04 engineering audit is complete. First follow-up reset `Demo.tscn` to the documented pillow baseline, split the Black Zero/no-reach debug modes, and added parity protection. The user then rebaked the main demo river to signature `20`, and the agent rebaked the obstacle-test river to signature `20`; remaining blockers are live placement review, a decision on the modified WaterSystem bake, and support/facing evidence if raw R still starts early.
+- Phase 6E changed only the raw pillow classifier contact-search distance, direct filter fallback default, and river bakes. Historical `.codex-research/phase6c_pillow_placement_diagnostic/` captures showed signature-`19` raw R above `0.05` at about `4.70%` main and `4.61%` obstacle-test; the current signature-`20` feature-local `pillow_placement_diagnostic.gd` reports about `2.655%` main and `2.7588%` obstacle-test, with no-reach visual about `1.7059%` main and `1.7319%` obstacle-test.
 - Post-Phase-6E inspection found the visible shader is not inventing the current forward start when `pillow_forward_reach_tiles`, `pillow_contact_pull_tiles`, and `pillow_contact_pull_strength` are all default-off. The visible start mostly reveals the baked raw `obstacle_features.r` channel through gates.
-- Current raw pillow formula summary:
+- Historical signature-`19` raw pillow formula summary:
   - visible `Pillow Visual Mask` = raw `obstacle_features.r` multiplied by confidence, hard-boundary, ordinary-bank suppression, energy, flow, and strength gates;
   - raw `obstacle_features.r` = `max(pillow_source * pillow_contact_gate, pulled_contact_source)`;
   - `pillow_source` = dilated collision support * flow-facing obstacle normal squared * pillow bank/context suppression;
-  - `pillow_contact_gate` samples hard-boundary context at the current pixel and downstream by the pillow contact-search distance;
+  - `pillow_contact_gate` sampled hard-boundary context at the current pixel and downstream by the pillow contact-search distance;
   - `hard_boundary_at` = `max(bank_response.a, terrain_contact.b)`;
   - `bank_response.a` is a semantic hard-boundary/protrusion response that uses forward protrusion sampling, not literal object contact only.
-- Review finding: halving `pillow_contact_search_tiles` only reduced the explicit pillow search. It did not remove the forward-looking `bank_response.a` halo or the broad dilated support field, so the mask can still start ahead of the visible rock.
-- Review finding: the `0.07` source-tile contact search is not the full effective anchor reach. `pillow_contact_gate_at()` samples `hard_boundary_at()` as far as `1.5 * pillow_contact_search_uv`; `hard_boundary_at()` includes `bank_response.a`; and `bank_response.a` already uses `forward_protrusion()` at `0.75x` and `1.5x` of `RIVER_BANK_RESPONSE_PROBE_TILES = 0.20`. This means a candidate pixel can be contact-gated by a downstream semantic protrusion halo even when direct `terrain_contact.b` is much tighter.
+- Current direct-contact-first code shape:
+  - raw pillow R now requires direct `terrain_contact_features.b` search for pillow contact.
+  - `bank_response_features.a` is weak context, not the literal contact anchor.
+  - Broad support/facing may still be a source of early pixels, but it is not currently isolated in saved bake diagnostics.
+- Historical review finding: halving `pillow_contact_search_tiles` only reduced the explicit pillow search. It did not remove the forward-looking `bank_response.a` halo or the broad dilated support field, so signature-`19` masks could still start ahead of the visible rock.
+- Historical review finding: the `0.07` source-tile contact search was not the full effective anchor reach in the signature-`19` formula. `pillow_contact_gate_at()` sampled `hard_boundary_at()` as far as `1.5 * pillow_contact_search_uv`; `hard_boundary_at()` included `bank_response.a`; and `bank_response.a` already used `forward_protrusion()` at `0.75x` and `1.5x` of `RIVER_BANK_RESPONSE_PROBE_TILES = 0.20`. That allowed a candidate pixel to be contact-gated by a downstream semantic protrusion halo even when direct `terrain_contact.b` was much tighter.
 - Review finding: `pillow_source_at()` uses the generic dilated collision support generated from `baking_dilate = 0.6`, so support and normals can be alive before literal visible object contact.
 
 ## Pillow Formula Review Notes
@@ -171,7 +187,7 @@ What seems feasible:
 - bank-response thresholds
 - final flow/reverse/circulating physics
 - WaterSystem flow shader wiring
-- saved WaterSystem bake
+- saved WaterSystem bake, except for deciding how to handle the current user-generated change
 - river bake resources/source signature
 
 ## Next Checklist
@@ -207,6 +223,8 @@ What seems feasible:
 - `.codex-research/phase7a2_wake_eddy_demo_debug/`
 - `.codex-research/phase7b_wake_eddy_demo_debug/`
 - `.codex-research/phase7b_wake_edge_sample_sweep/`
+- `addons/waterways/docs/spec-driven/features/river-pillows/probes/`
+- `.codex-research/river-pillows-visual-review/`
 - `.codex-research/phase6c_pillow_placement_diagnostic/`
 - `.codex-research/phase6b_pillows_demo_debug/`
 - `.codex-research/phase6_pillow_height_experiment_debug/`
@@ -242,10 +260,14 @@ $env:LOCALAPPDATA = Join-Path $godotUser 'local'
 Recent expected checks:
 
 - `PHASE7B_EDDY_LINE_CPU_DIAGNOSTIC_OK`
+- `DEBUG_VIEW_MENU_WIRING_PROBE_OK`
+- `PILLOW_DIAGNOSTIC_PARITY_CHECK_OK`
+- `PILLOW_ANCHOR_SOURCE_PROBE_OK`
+- `PILLOW_PLACEMENT_DIAGNOSTIC_OK`
+- `PILLOW_INSPECTOR_WIRING_PROBE_OK`
+- `PILLOW_VISUAL_REVIEW_EXPORT_OK` (quick mode acceptable for smoke test)
 - `PHASE7B_WAKE_EDDY_VISUAL_PROBE_OK`
 - `PHASE7B_WAKE_EDDY_EXPORT_OK`
-- `PHASE6C_PILLOW_PLACEMENT_DIAGNOSTIC_OK`
-- `PHASE6C_PILLOW_EDITOR_WIRING_PROBE_OK`
 - `PHASE6B_PILLOW_TUNING_PROBE_OK`
 - `PHASE7A2_WAKE_EDDY_PREFLIGHT_OK`
 - `PHASE7A2_WAKE_EDDY_EXPORT_OK`

@@ -9,20 +9,24 @@ Consolidate the pillow-related findings from the shared changelog and latest han
 This is the research dashboard. Keep the recommended direction here and use the lower sections for evidence, options, cited sources, and rejected paths.
 
 - Status: Complete enough for formula review; roadmap details folded in
-- Recommendation: Add the audit-recommended diagnostic split and a readable final-mask diagnostic, then do live formula review before changing classifier constants again.
+- Recommendation: Review the now-matching signature-`20` main and obstacle-test river bakes with the direct-contact-first classifier before making further support/facing changes. For the separate height issue, treat the two named missing-height targets as confirmed height seam fade suppression and review the default-off height seam guard plus `pillow_height_smoothing_tiles = 0.10` and `pillow_height_seam_stitch_tiles = 0.015` at the supported `8/8` cap before changing classifier logic.
 - Confidence: Medium-high that the remaining forward offset is a baked raw-mask/formula issue, not default visible shader reach.
-- Biggest unknown that remains: Which signal should be allowed to anchor the upstream start of a pillow: direct terrain/world protrusion, semantic bank response, dilated collision support, or some overlap of those.
+- Biggest unknown that remains: For placement, which signal should be allowed to anchor the upstream start of a pillow: direct terrain/world protrusion, semantic bank response, dilated collision support, or some overlap of those. For height, whether the current `0.0` seam guard plus smoothed/stitched height mask is enough at `8/8`, or whether additional topology/mask work is needed.
 - Decision or plan section this research unlocked: `plan.md` "Next Implementation Slice" and `tasks.md` "Open Work".
 
 ## Questions
 
 - What visual feature should count as the start of a pillow?
 - Is the reported forward offset present in raw `Pillow / Impact Mask`, no-reach `Pillow Visual Mask`, or only final visible material response?
-  - Current user answer: raw `Pillow / Impact Mask` and final visible water both start about `0.3` to `0.5` too far ahead. `Pillow Visual Mask` is currently unreadable because it appears undifferentiated green.
+  - Current user answer: raw `Pillow / Impact Mask` and final visible water both start about `0.3` to `0.5` too far ahead. The original `Pillow Visual Mask` is unreadable because it appears undifferentiated green; `Pillow Visual Mask (Black Zero)` is now available for review.
 - Is `bank_response_features.a` too broad or too forward-looking to anchor pillow starts?
+  - Current answer: Yes for pillow anchoring. User review found bank-response anchor, combined contact gate, and bank-only contribution too broad, while direct terrain anchor search was much closer to intended placement.
 - Is the generic dilated collision support field too broad for pillow-specific placement?
 - Should pillow anchoring use direct `terrain_contact_features.b` protrusion/contact first, with semantic bank response only as context?
+  - Current answer: Yes for the next implementation slice.
 - Which diagnostic split views/probe outputs are the smallest useful set for the next review?
+- Does `pillow_height_tile_seam_fade` suppress valid obstruction pillow height at the two named problem spots?
+  - Current answer: Yes. User set `pillow_height_tile_seam_fade = 0.0`, and those spots began lifting again. The remaining issue is angular/janky displacement quality.
 
 ## Flow-Map and Water Tool Patterns
 
@@ -48,6 +52,7 @@ Useful principles preserved from the earlier research and review:
 - Existing Waterways channels already separate upstream impact from downstream features: `obstacle_features.r` is pillow/impact, while `.g` and `.b` support wake and eddy-line review. The current pillow pass should preserve that anatomy.
 - Vertex displacement remains higher risk than pressure/highlight/normal/band tuning because it can expose mesh density, depth/refraction, seam, and buoyancy mismatch issues.
 - The Phase 6B height experiment is default-off review behavior, not a placement fix. Its terrain and obstruction lifts are split, guarded by `pillow_height_tile_seam_fade`, and should stay subtle unless mesh density/topology work is deliberately scoped. The historical review capture used terrain/obstruction strengths `0.16`, curves `1.20`, and seam fade `0.035` while leaving saved/default river behavior off.
+- The 2026-06-03 height follow-up confirmed that `pillow_height_tile_seam_fade` can suppress valid obstruction height when the debug influence appears as one logical pillow blob split by black bands. Setting it to `0.0` restored lift at the two named targets, but exposed janky/angular vertex displacement.
 - Phase 6C editor wiring matters for future reviews: explicit shader range hints keep `pillow_terrain_height_curve` and `pillow_obstruction_height_curve` from being treated as generic easing controls, visible/debug material parameters must stay synced, and material revert hooks must restore current defaults.
 
 ## Audit Findings
@@ -60,6 +65,7 @@ Useful principles preserved from the earlier research and review:
 - The next pass should add diagnostic split views/probe output before the classifier is changed.
 - The current `Pillow Visual Mask` view is not reliable for review because the user sees undifferentiated green over the river, and static shader review shows the current grayscale gradient maps zero to green.
 - If confirmed in live review, raw R should move toward direct-contact-first anchoring, with `bank_response.a` used as context only.
+- 2026-06-01 live review confirmed this direction; the classifier now requires direct `terrain_contact_features.b` search for pillow contact and uses `bank_response.a` only as weak context.
 
 ## Channel Phase Alignment Lesson
 
@@ -77,10 +83,10 @@ The accepted Phase 7B eddy-line fix is the model for remaining pillow placement 
 - Visual/editor/shader behavior needs human-visible editor or runtime validation.
 - Local probes are useful for parser, metadata, saved-resource, and image/readback checks, but they are not proof of visible editor behavior.
 - Current validation uses repo-local Godot user data folders for scripted probes.
-- Current bakes relevant to pillows are signature version `19`.
+- Current review bakes relevant to pillows are matched: the main river bake and obstacle-test river bake are both signature version `20`.
 - Phase 6E's literal classifier-distance change was `RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_SEARCH_TILES` from `0.14` to `0.07`, with the direct filter fallback `pillow_contact_search_uv` changed from `0.02` to `0.01`; this still does not describe the full effective anchor reach.
 - Historical coverage anchors from the roadmap/changelog are useful for comparison, not acceptance: Phase 6A main raw R above `0.05` was about `8.08%`, gated visual was about `3.17%`; Phase 6B gated visual rose to about `3.88%`; Phase 6D raw R dropped to about `5.12%` main and `5.06%` obstacle-test; Phase 6E raw R dropped to about `4.70%` main and `4.61%` obstacle-test, with no-reach visual mask about `2.32%` main and `2.26%` obstacle-test.
-- The saved WaterSystem bake was not regenerated after Phase 6D/6E pillow-only bake changes and should remain untouched unless physics/system flow changes are explicitly scoped.
+- The saved WaterSystem bake was modified during the user's 2026-06-04 main-demo rebake. Treat that as pending explicit review/decision, and avoid further WaterSystem regeneration unless physics/system flow changes are scoped.
 
 ## Legacy Waterways Reference
 
@@ -139,21 +145,25 @@ Add or use diagnostics to compare these contributions at the same rocks/protrusi
 - raw `obstacle_features.r`
 - no-reach `Pillow Visual Mask`
 
-Only after the diagnostic split and live review should the formula move toward direct-contact anchoring, overlap-gated bank response, tighter support, or shader/material tuning.
+The diagnostic split and live review moved the formula to direct-contact anchoring. The direct-contact-first output is closer/better in some diagnostics, and the later material-seam review found that nonzero material seam fade was itself drawing visible straight bars. Keep `pillow_material_tile_seam_fade` default/current `0.0` unless a seam-specific review intentionally enables it.
 
-The live review should treat final-mask readability as a tooling problem before it treats green coverage as real coverage. If the current palette makes zero or near-zero look active, add a black-zero or threshold-band view and compare that against raw R and final visible water.
+The live review should treat final-mask readability as a tooling problem before it treats green coverage as real coverage. Use the Black Zero mode and compare it against raw R, direct terrain anchor search, bank-response anchor search, combined contact gate, bank-only anchor contribution, raw-to-final retention, `Pillow Material Response Mask`, `Pillow Height Influence`, terrain/obstruction height influence views, and final visible water. Use `Pillow Material Seam Guard` only if visible seam bands return.
+
+The 2026-06-03 height follow-up answered the missing-height part of that question: setting `pillow_height_tile_seam_fade = 0.0` makes the leading `"rock low"` target for `cliff8` and the `"smooth rock"` cluster target raise. Treat the remaining problem as height seam guard policy plus vertex-displacement quality. Because shape divisions are capped at `8/8`, review the new `pillow_height_smoothing_tiles = 0.10`, `pillow_height_seam_stitch_tiles = 0.015`, and gentler height curves at that cap before changing classifier logic. A cap lift above `8/8` is diagnostic-only unless the supported range is deliberately changed.
 
 For a numeric follow-up, prefer readings that report expected-region raw coverage, final-mask coverage, raw-to-final retention, ordinary-bank false-positive coverage, hard-protrusion support, grade/energy support, final-flow support, and the top gates suppressing expected pixels.
 
 ## Risks and Unknowns
 
-- `pillow_contact_search_tiles = 0.07` is not the full effective anchor reach because `pillow_contact_gate_at()` samples up to `1.5 * pillow_contact_search_uv`.
-- `hard_boundary_at()` uses `max(bank_response.a, terrain_contact.b)`.
-- `bank_response.a` already includes forward-looking protrusion sampling using `RIVER_BANK_RESPONSE_PROBE_TILES = 0.20`.
+- Historical signature-`19` risk: `pillow_contact_search_tiles = 0.07` was not the full effective anchor reach because `pillow_contact_gate_at()` sampled up to `1.5 * pillow_contact_search_uv`.
+- Historical signature-`19` risk: `hard_boundary_at()` used `max(bank_response.a, terrain_contact.b)`.
+- Historical signature-`19` risk: `bank_response.a` already included forward-looking protrusion sampling using `RIVER_BANK_RESPONSE_PROBE_TILES = 0.20`.
+- Current signature-`20` validation risk: the direct-contact-first code changes that anchor logic, but support/facing source is still not directly inspectable and live placement review remains pending.
 - `pillow_source_at()` uses generic dilated collision support built from `baking_dilate = 0.6`.
 - Reducing a single distance constant again may not address the true cause.
 - Any bake/classifier pass must preserve accepted Phase 7B eddy-line behavior.
-- Height, contact-pull, and material-response controls can change the visible read without fixing raw placement. Keep them default-off or review-only until raw/no-reach placement is accepted.
+- Height, contact-pull, and material-response controls can change the visible read without fixing raw placement. Keep them default-off or review-only until raw/no-reach placement is accepted, and keep `pillow_material_tile_seam_fade` at `0.0` unless actively testing a returned seam.
+- `pillow_height_tile_seam_fade` is separate from material seam fade and can remove valid vertex displacement through the middle of one detected pillow. Disabling it can reveal whether height data exists, but may also expose low mesh density or narrow-mask faceting.
 
 ## Context Challenge Notes
 
