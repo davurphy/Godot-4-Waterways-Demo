@@ -89,10 +89,11 @@ Status: Completed as a review-only pass. No code, scene, bake, or shader files w
    - Why it matters: main-demo visible-water and height review can be biased even if raw masks are correct.
    - Recommended fix: reset `Demo.tscn` to the placement-review baseline or explicitly label it as a non-baseline material/height review preset before using it as placement evidence.
 
-2. P1: Main and obstacle-test bakes appear to be on mixed generations.
-   - Evidence: binary metadata scan found signature-`20` direct-contact metadata strings in `waterways_bakes/Demo/Water_River.river_bake.res`, while `waterways_bakes/Demo/Water_River_obstacle_test.river_bake.res` still appears signature `19`.
+2. P1: Main and obstacle-test bakes appeared to be on mixed generations at audit time.
+   - Evidence at audit time: binary metadata scan found signature-`20` direct-contact metadata strings in `waterways_bakes/Demo/Water_River.river_bake.res`, while `waterways_bakes/Demo/Water_River_obstacle_test.river_bake.res` still appeared signature `19`. Follow-up Godot metadata verification confirmed main signature `20` after the user rebake and obstacle-test signature `19`.
    - Why it matters: cross-scene formula review is invalid if the two review resources use different raw classifiers.
-   - Recommended fix: confirm both resources in Godot or regenerate both river bakes to a known matching direct-contact-first/signature-`20` state. Do not regenerate the WaterSystem bake unless final/physics flow is explicitly scoped.
+   - Recommended fix: regenerate or verify the obstacle-test river bake to a known matching direct-contact-first/signature-`20` state. Do not further regenerate or accept WaterSystem bake changes unless final/physics flow is explicitly scoped; later follow-up found the user's main-demo rebake did modify that resource.
+   - Follow-up status: Resolved after the audit on 2026-06-04; the obstacle-test river bake was regenerated and both review river bakes now report source signature `20`.
 
 3. P2: `Pillow Visual Mask (Black Zero)` is not only a palette variant.
    - Evidence: mode `26` renders `pillow_visual`, while mode `48` renders `pillow_visual_no_reach`.
@@ -118,7 +119,31 @@ Status: Completed as a review-only pass. No code, scene, bake, or shader files w
 ### Next Steps
 
 1. Normalize or explicitly label `Demo.tscn` pillow material state.
-2. Confirm or regenerate both review bakes to matching direct-contact-first/signature-`20` state.
-3. Clarify mode `48` naming/semantics.
-4. Run the human-visible raw/final/source-term review in Godot.
-5. Add support/facing target-bound probe output only if signature-`20` raw R still starts too early.
+2. Decide whether the user-modified `WaterSystem.water_system_bake.res` should be kept, reviewed, or reverted before finalizing.
+3. Run the human-visible raw/final/source-term review in Godot.
+4. Add support/facing target-bound probe output only if signature-`20` raw R still starts too early.
+
+## First Follow-Up Status - 2026-06-04
+
+Completed after the audit:
+
+1. `Demo.tscn` was reset to the pillow placement-review baseline.
+   - Reset high foam bias, obstruction height, obstruction height curve, height smoothing, height seam fade, and mirrored `mat_pillow_*` values.
+2. Debug mode semantics were clarified.
+   - Mode `58`, `Pillow Visual Mask (Black Zero)`, renders the normal `pillow_visual` mask with a black-zero heat palette.
+   - Mode `48`, `Pillow No-Reach Mask (Black Zero)`, keeps the no-reach final-mask diagnostic.
+3. Diagnostic parity coverage was added.
+   - Added `addons/waterways/docs/spec-driven/features/river-pillows/probes/pillow_diagnostic_parity_check.gd`.
+   - Godot 4.6.3 console validation passed `DEBUG_VIEW_MENU_WIRING_PROBE_OK` and `PILLOW_DIAGNOSTIC_PARITY_CHECK_OK`.
+4. Review river bake metadata was verified after the rebakes.
+   - Godot metadata verification found `waterways_bakes/Demo/Water_River.river_bake.res` at source signature `20`.
+   - The obstacle-test river bake was regenerated and `waterways_bakes/Demo/Water_River_obstacle_test.river_bake.res` now also reports source signature `20`.
+   - `waterways_bakes/Demo/WaterSystem.water_system_bake.res` was modified by the user rebake and needs an explicit keep/review/revert decision.
+5. The requested Phase 7B CPU/readback diagnostic was rerun.
+   - Godot 4.6.3 console validation passed `PHASE7B_EDDY_LINE_CPU_DIAGNOSTIC_OK`.
+
+Still open:
+
+1. Decide how to handle the modified WaterSystem bake before finalizing or committing.
+2. Run live pillow placement review with the raw/final/source-term views.
+3. Add support/facing target-bound probe output only if signature-`20` raw R still starts early.

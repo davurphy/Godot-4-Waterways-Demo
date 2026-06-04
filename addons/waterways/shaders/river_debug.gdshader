@@ -53,7 +53,7 @@ const int EDDY_LINE_HARD_CONTEXT_SEARCH_MASK = 44;
 const int EDDY_LINE_WAKE_CONTEXT_SEARCH_MASK = 45;
 const int RAW_WAKE_EDGE_CANDIDATE_MASK = 46;
 const int EXPERIMENTAL_WAKE_EDGE_EDDY_SOURCE_MASK = 47;
-const int PILLOW_VISUAL_MASK_READABLE = 48;
+const int PILLOW_VISUAL_MASK_NO_REACH_BLACK_ZERO = 48;
 const int PILLOW_DIRECT_TERRAIN_ANCHOR_SEARCH = 49;
 const int PILLOW_BANK_RESPONSE_ANCHOR_SEARCH = 50;
 const int PILLOW_COMBINED_CONTACT_GATE = 51;
@@ -63,6 +63,7 @@ const int PILLOW_MATERIAL_RESPONSE_MASK = 54;
 const int PILLOW_MATERIAL_SEAM_GUARD = 55;
 const int PILLOW_HEIGHT_SEAM_GUARD = 56;
 const int PILLOW_HEIGHT_SEAM_STITCH = 57;
+const int PILLOW_VISUAL_MASK_BLACK_ZERO = 58;
 
 const float PILLOW_BAKE_CONTACT_SEARCH_TILES = 0.07;
 const float PILLOW_BAKE_CONTACT_GATE_START = 0.08;
@@ -1042,7 +1043,10 @@ if (i_valid_flowmap) {
 	} else if(mode == PILLOW_VISUAL_MASK) {
 		ALBEDO = grayscale_to_gradient(pillow_visual);
 
-	} else if(mode == PILLOW_VISUAL_MASK_READABLE) {
+	} else if(mode == PILLOW_VISUAL_MASK_BLACK_ZERO) {
+		ALBEDO = black_zero_to_heat(pillow_visual);
+
+	} else if(mode == PILLOW_VISUAL_MASK_NO_REACH_BLACK_ZERO) {
 		ALBEDO = black_zero_to_heat(pillow_visual_no_reach);
 
 	} else if(mode == PILLOW_DIRECT_TERRAIN_ANCHOR_SEARCH) {

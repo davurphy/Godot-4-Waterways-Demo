@@ -9,7 +9,7 @@ Consolidate the pillow-related findings from the shared changelog and latest han
 This is the research dashboard. Keep the recommended direction here and use the lower sections for evidence, options, cited sources, and rejected paths.
 
 - Status: Complete enough for formula review; roadmap details folded in
-- Recommendation: Rebake main and obstacle-test rivers to signature `20` and review the direct-contact-first classifier before making further support/facing changes. For the separate height issue, treat the two named missing-height targets as confirmed height seam fade suppression and review the default-off height seam guard plus `pillow_height_smoothing_tiles = 0.10` and `pillow_height_seam_stitch_tiles = 0.015` at the supported `8/8` cap before changing classifier logic.
+- Recommendation: Review the now-matching signature-`20` main and obstacle-test river bakes with the direct-contact-first classifier before making further support/facing changes. For the separate height issue, treat the two named missing-height targets as confirmed height seam fade suppression and review the default-off height seam guard plus `pillow_height_smoothing_tiles = 0.10` and `pillow_height_seam_stitch_tiles = 0.015` at the supported `8/8` cap before changing classifier logic.
 - Confidence: Medium-high that the remaining forward offset is a baked raw-mask/formula issue, not default visible shader reach.
 - Biggest unknown that remains: For placement, which signal should be allowed to anchor the upstream start of a pillow: direct terrain/world protrusion, semantic bank response, dilated collision support, or some overlap of those. For height, whether the current `0.0` seam guard plus smoothed/stitched height mask is enough at `8/8`, or whether additional topology/mask work is needed.
 - Decision or plan section this research unlocked: `plan.md` "Next Implementation Slice" and `tasks.md` "Open Work".
@@ -83,10 +83,10 @@ The accepted Phase 7B eddy-line fix is the model for remaining pillow placement 
 - Visual/editor/shader behavior needs human-visible editor or runtime validation.
 - Local probes are useful for parser, metadata, saved-resource, and image/readback checks, but they are not proof of visible editor behavior.
 - Current validation uses repo-local Godot user data folders for scripted probes.
-- Current bakes relevant to pillows are signature version `19`.
+- Current review bakes relevant to pillows are matched: the main river bake and obstacle-test river bake are both signature version `20`.
 - Phase 6E's literal classifier-distance change was `RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_SEARCH_TILES` from `0.14` to `0.07`, with the direct filter fallback `pillow_contact_search_uv` changed from `0.02` to `0.01`; this still does not describe the full effective anchor reach.
 - Historical coverage anchors from the roadmap/changelog are useful for comparison, not acceptance: Phase 6A main raw R above `0.05` was about `8.08%`, gated visual was about `3.17%`; Phase 6B gated visual rose to about `3.88%`; Phase 6D raw R dropped to about `5.12%` main and `5.06%` obstacle-test; Phase 6E raw R dropped to about `4.70%` main and `4.61%` obstacle-test, with no-reach visual mask about `2.32%` main and `2.26%` obstacle-test.
-- The saved WaterSystem bake was not regenerated after Phase 6D/6E pillow-only bake changes and should remain untouched unless physics/system flow changes are explicitly scoped.
+- The saved WaterSystem bake was modified during the user's 2026-06-04 main-demo rebake. Treat that as pending explicit review/decision, and avoid further WaterSystem regeneration unless physics/system flow changes are scoped.
 
 ## Legacy Waterways Reference
 
@@ -158,7 +158,7 @@ For a numeric follow-up, prefer readings that report expected-region raw coverag
 - Historical signature-`19` risk: `pillow_contact_search_tiles = 0.07` was not the full effective anchor reach because `pillow_contact_gate_at()` sampled up to `1.5 * pillow_contact_search_uv`.
 - Historical signature-`19` risk: `hard_boundary_at()` used `max(bank_response.a, terrain_contact.b)`.
 - Historical signature-`19` risk: `bank_response.a` already included forward-looking protrusion sampling using `RIVER_BANK_RESPONSE_PROBE_TILES = 0.20`.
-- Current signature-`20` validation risk: the direct-contact-first code changes that anchor logic, but saved review bakes appear mixed generation and support/facing source is still not directly inspectable.
+- Current signature-`20` validation risk: the direct-contact-first code changes that anchor logic, but support/facing source is still not directly inspectable and live placement review remains pending.
 - `pillow_source_at()` uses generic dilated collision support built from `baking_dilate = 0.6`.
 - Reducing a single distance constant again may not address the true cause.
 - Any bake/classifier pass must preserve accepted Phase 7B eddy-line behavior.

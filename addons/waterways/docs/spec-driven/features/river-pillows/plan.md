@@ -29,10 +29,10 @@ The review architecture follows the shared feature-detection loop:
 
 This is the plan dashboard. Keep current implementation state here and leave the detailed architecture, risks, and historical reasoning in the sections below.
 
-- Implementation status: Direct-contact-first classifier edit implemented; engineering audit completed. Review-state and bake-generation blockers must be resolved before visible placement review.
+- Implementation status: Direct-contact-first classifier edit implemented; engineering audit completed. Review-state, debug-mode, and river-bake generation blockers are resolved; the main demo and obstacle-test river bakes are verified signature `20`. Cross-scene visible placement review is still pending.
 - Open architectural decisions: Whether direct-contact-first raw R is sufficient after rebake, or whether pillow-specific support/facing needs additional tightening.
-- Last validation that proves the plan still works: Phase 6E/6F documentation, earlier Godot 4.6.3 probes, 2026-06-01 user source-term review, and 2026-06-04 static engineering audit. No Godot bake or viewport validation has run since the audit.
-- Next planned implementation slice: Reset or explicitly label `Demo.tscn` pillow material state, reconcile both review bakes to matching direct-contact-first/signature-`20` state, clarify mode `48` semantics, then run live placement review with raw/final/source-term diagnostics.
+- Last validation that proves the plan still works: Phase 6E/6F documentation, earlier Godot 4.6.3 probes, 2026-06-01 user source-term review, 2026-06-04 engineering audit/follow-up probes, Godot metadata verification that both review river bakes are signature `20`, and the requested CPU/readback diagnostic. No viewport placement acceptance has run since the audit.
+- Next planned implementation slice: Run live placement review with raw/final/source-term diagnostics on both signature-`20` review bakes. `Demo.tscn` baseline reset, Black Zero/no-reach debug-mode clarification, river bake verification, and diagnostic parity checks are complete.
 - Branch safety before implementation: Work is on `codex/river-pillows-diagnostics`; classifier/shader/bake formula edits still require target review before proceeding.
 - Sections below that are historical or superseded: Phase 6A/6B visual tuning history is summarized in `review.md` and `handoff-latest.md`.
 
@@ -45,8 +45,8 @@ Before implementing, record whether the problem is definitely a code/design issu
   - User confirmed the offset appears in raw `Pillow / Impact Mask` and final visible water, with the start about `0.3` to `0.5` too far ahead of the desired obstruction contact point.
   - User reports the original `Pillow Visual Mask` reads as undifferentiated green over the river; `Pillow Visual Mask (Black Zero)` now exists for placement review, but visible Godot confirmation is still pending.
   - 2026-06-01 diagnostic review found direct terrain anchor search closest to intended placement, while bank-response anchor, combined contact gate, bank-only contribution, raw R, and raw-to-final retention were too broad or too far ahead.
-  - 2026-06-04 engineering audit found `Demo.tscn` saves non-baseline pillow material values, including default-on obstruction height and high foam bias, so the main scene needs review-state cleanup before placement evidence is trusted.
-  - 2026-06-04 engineering audit found review bakes may be mixed generation: main appears signature `20` by metadata string scan, while obstacle-test appears signature `19`.
+  - 2026-06-04 engineering audit found `Demo.tscn` saved non-baseline pillow material values, including default-on obstruction height and high foam bias. First audit follow-up reset the main scene to baseline placement-review values.
+  - 2026-06-04 Godot metadata verification after the rebakes confirmed matching review bakes: main and obstacle-test are both signature `20`.
   - Phase 6F review found visible shader reach/contact-pull defaults are off.
   - Raw R is governed by dilated support plus hard-boundary context.
   - `bank_response.a` includes forward protrusion sampling and can create a semantic halo.
@@ -56,8 +56,8 @@ Before implementing, record whether the problem is definitely a code/design issu
   - Review camera direction or upstream/downstream interpretation can confuse pillow versus wake placement.
   - Some expected compression may start slightly upstream of collision contact in stylized water.
   - Stale material/debug overrides previously caused misleading review signals.
-  - Current saved material state can still confuse review because `Demo.tscn` has non-baseline pillow overrides.
-  - Current bake resources may not be comparable until both review scenes are on the same source signature/generation.
+  - Saved material state was reset on 2026-06-04; verify it stays baseline before any new placement review.
+  - Current bake resources are now comparable for cross-scene placement review because both review river bakes are on source-signature `20`.
 - User-facing pushback or clarification needed before patching:
   - Ask the user to identify the same should-detect and should-not-detect rocks while comparing raw and final pillow views.
   - Remind the user that screenshots are useful evidence, but acceptance should come from live viewport/runtime review.
@@ -160,8 +160,8 @@ Rules for that direction:
 
 ## Severity-Ordered Implementation Path
 
-1. High severity: Confirm or regenerate main and obstacle-test river bakes to the same direct-contact-first/source-signature-`20` generation.
-2. High severity: Review signature-`20` raw `Pillow / Impact Mask`, `Pillow Visual Mask (Black Zero)`, direct terrain anchor, bank-response anchor, combined contact gate, bank-only contribution, and raw-to-final retention.
+1. High severity: Review signature-`20` raw `Pillow / Impact Mask`, `Pillow Visual Mask (Black Zero)`, direct terrain anchor, bank-response anchor, combined contact gate, bank-only contribution, and raw-to-final retention.
+2. High severity: Confirm the result generalizes across the main and obstacle-test layouts now that both river bakes are on the same direct-contact-first/source-signature `20` generation.
 3. High severity: Add support/facing target-bound probe output if signature-`20` raw R still starts too early.
 4. High severity: If support/facing still starts too early, tighten pillow-specific support without touching shared `baking_dilate`.
 5. Medium-high severity: Record effective reach through the whole chain.
@@ -282,7 +282,7 @@ Potential future files, only after review confirms the diagnosed layer:
 | Saved debug/material override misleads review. | Controls appear broken or visuals look stale. | Confirm Debug View Normal restores visible material; use probe coverage if material wiring changes. |
 | Pillow height curve hints regress. | Height controls act like generic easing sliders or appear ineffective. | Preserve explicit shader range hints and editor revert defaults for height curves. |
 | Height seam guard is mistaken for placement logic. | Material/mesh seam artifacts get confused with raw detector problems. | Keep height default-off during placement review and treat `pillow_height_tile_seam_fade` as visual artifact control only. |
-| WaterSystem bake is regenerated unnecessarily. | Physics/runtime flow changes without review. | Leave WaterSystem out of scope unless final flow changes are planned. |
+| WaterSystem bake is regenerated unnecessarily. | Physics/runtime flow changes without review. | The user's 2026-06-04 rebake modified `WaterSystem.water_system_bake.res`; explicitly review, keep, or revert that change before finalizing, and leave further WaterSystem work out of scope unless final flow changes are planned. |
 | Demo-scene overfitting. | A fix works for one camera but harms other river layouts. | Check obstacle-test and multiple review angles; document why the change should generalize. |
 | Numeric metrics replace visible review. | Technically tidy masks may still look wrong. | Treat metrics as evidence and keep user viewport judgment as acceptance. |
 | Visible/debug shader helper drift. | Debug masks stop matching visible water. | Consider `.gdshaderinc` shared helpers after formula agreement, with parity probe coverage. |
@@ -303,5 +303,5 @@ Complete this with the user after the diagnostic plan is drafted and before impl
 - Active code targets Godot 4.6+.
 - No Godot 3 compatibility work is currently planned.
 - River bake source signatures must change when saved bake output semantics change.
-- Existing signature-`19` bakes are now stale after the direct-contact-first classifier edit; signature `20` is the target for the next pillow review.
+- Existing signature-`19` bakes are stale after the direct-contact-first classifier edit. The main and obstacle-test review river bakes are now signature `20`.
 - `waterways_bakes/Demo/Water_River_legacy_test.river_bake.res` remains intentionally stale at signature `5`.

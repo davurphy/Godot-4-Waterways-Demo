@@ -20,10 +20,10 @@
 This is the review dashboard. Lead with unresolved risks and next action; keep detailed findings, compliance checks, and history lower in the file.
 
 - Overall review status: Partial
-- Blocking issues remaining: Review-state and bake-generation consistency must be fixed before a human-assisted pillow formula review.
-- Important issues remaining: The remaining forward pillow offset was attributed to the broad bank-response/combined contact gate on the prior review. Direct-contact-first code exists, but current review surfaces are inconsistent: `Demo.tscn` has saved non-baseline pillow overrides, and static/binary audit suggests main and obstacle-test bakes are not on the same generation.
-- Last validation relied on: Historical Phase 6 and Phase 7 Godot 4.6.3 probes, the 2026-05-31 user live Godot review, 2026-06-01 static checks for new debug-mode wiring and normalized obstacle-test review state, and a 2026-06-04 review-only engineering audit using static scans.
-- Next action: Reset or explicitly label `Demo.tscn` material state, confirm or regenerate both river bakes to a matching direct-contact-first generation, then review raw/final/source-term views around the same rock targets in Godot.
+- Blocking issues remaining: Human-visible placement review and a WaterSystem bake decision remain before finalizing this slice.
+- Important issues remaining: The remaining forward pillow offset was attributed to the broad bank-response/combined contact gate on the prior review. Direct-contact-first code exists, `Demo.tscn` has been reset to the placement-review baseline, and both review river bakes are verified signature `20`.
+- Last validation relied on: Historical Phase 6 and Phase 7 Godot 4.6.3 probes, the 2026-05-31 user live Godot review, 2026-06-01 static checks for new debug-mode wiring and normalized obstacle-test review state, a 2026-06-04 review-only engineering audit using static scans, post-rebake Godot metadata verification, and the requested CPU/readback diagnostic.
+- Next action: Review raw/final/source-term views around the same rock targets in Godot on both signature-`20` bakes.
 - Historical detail starts at: `Historical Review Notes`
 
 ## Findings
@@ -31,10 +31,10 @@ This is the review dashboard. Lead with unresolved risks and next action; keep d
 ### Blocking
 
 - The next implementation should not proceed as another distance tweak. The audit says source-term evidence is needed before changing the classifier.
-- `Pillow Visual Mask` currently reads as undifferentiated green in the user's viewport. Debug mode `48`, `Pillow Visual Mask (Black Zero)`, now exists for final-mask placement review, but it still needs visible Godot confirmation.
+- `Pillow Visual Mask` currently reads as undifferentiated green in the user's viewport. Debug mode `58`, `Pillow Visual Mask (Black Zero)`, now exists as the true Black Zero version of mode `26`; mode `48`, `Pillow No-Reach Mask (Black Zero)`, remains available for no-reach final-mask placement review. Both still need visible Godot confirmation.
 - 2026-06-04 engineering audit found mode `48` is not just a palette variant: it renders the no-reach final mask, while mode `26` renders the current `pillow_visual` mask that can include reach/contact-pull when those controls are non-default.
-- 2026-06-04 engineering audit found `Demo.tscn` saves non-baseline pillow material values, including high foam bias and obstruction height. That scene must be reset or explicitly treated as a non-baseline material/height review preset before placement acceptance.
-- 2026-06-04 engineering audit found the review bakes may be mixed generation: the main river bake appears to include signature-`20` direct-contact metadata, while the obstacle-test bake still appears signature `19`.
+- 2026-06-04 engineering audit found `Demo.tscn` saved non-baseline pillow material values, including high foam bias and obstruction height. First audit follow-up reset the scene to the placement-review baseline.
+- 2026-06-04 post-rebake Godot metadata verification now confirms both review river bakes are signature `20`.
 - Pillow support/facing source is bake-only and is not saved in `RiverBakeData`; if signature-`20` raw R still starts too early, target-bound probe output is required before further classifier edits.
 - The 2026-06-01 user review resolved the first source question: bank-response/combined contact is too broad, direct terrain contact is closest to desired placement, and the raw classifier should be direct-contact-first. The new code needs a signature-`20` rebake before acceptance.
 
@@ -54,7 +54,7 @@ This is the review dashboard. Lead with unresolved risks and next action; keep d
 
 - The original pillow history was split across the general changelog, shared handoff, and roadmaps. This feature folder now gives future sessions a cleaner start point.
 - Visible/debug shader helper duplication is a medium drift risk; consider `.gdshaderinc` only after the next formula is agreed.
-- Debug shader bake constants for pillow contact diagnostics are duplicated from `river_manager.gd` and the filter shader; add a parity check or uniform path before changing those constants again.
+- Debug shader bake constants for pillow contact diagnostics are duplicated from `river_manager.gd` and the filter shader; `addons/waterways/docs/spec-driven/features/river-pillows/probes/pillow_diagnostic_parity_check.gd` now protects this with `PILLOW_DIAGNOSTIC_PARITY_CHECK_OK`.
 
 ## Premise Review
 
@@ -71,7 +71,7 @@ This is the review dashboard. Lead with unresolved risks and next action; keep d
 
 | Acceptance Criterion | Status | Notes |
 | --- | --- | --- |
-| Raw and final pillow masks separately inspectable | Partial | Existing views are available, and `Pillow Visual Mask (Black Zero)` is now wired. Visible Godot review still needs to confirm readability. |
+| Raw and final pillow masks separately inspectable | Partial | Existing views are available, mode `58` is the true Black Zero visual mask, and mode `48` is the no-reach final mask. Visible Godot review still needs to confirm readability. |
 | Pillow starts at upstream impact/compression faces | Fail/Partial | User confirms raw and visible starts are about `0.3` to `0.5` too far ahead. |
 | `Pillow Visual Mask` is readable for final-mask placement | Partial | Original mode remains ambiguous; new Black Zero mode added for review. |
 | Open water far ahead of rocks stays quiet | Partial | Needs target review. |
@@ -82,7 +82,7 @@ This is the review dashboard. Lead with unresolved risks and next action; keep d
 | Bank response cannot anchor raw pillows alone | Fail/Partial | Audit found this is currently too common. |
 | Material tuning deferred until placement accepted | Pass | Current docs preserve this rule. |
 | Accepted Phase 7B eddy-line behavior preserved | Pass historically | Must re-check after shared classifier edits. |
-| WaterSystem untouched for pillow-only work | Pass historically | Must preserve unless explicitly scoped. |
+| WaterSystem untouched for pillow-only work | Partial/needs decision | The user's 2026-06-04 main-demo rebake modified `WaterSystem.water_system_bake.res`; decide whether to keep, review, or revert it before finalizing. |
 
 ## Architecture Compliance
 
@@ -124,7 +124,7 @@ This is the review dashboard. Lead with unresolved risks and next action; keep d
 - Visual:
   - Needs new review at the same rock targets.
 - Bake output:
-  - Static/binary audit suggests current bake output is mixed: main appears signature `20`, obstacle-test appears signature `19`. Confirm in Godot or rebake both to a known matching state.
+  - Godot metadata verification confirms current review river bake output is matched: main and obstacle-test are both signature `20`.
 - Runtime:
   - Not scoped for current pillow placement review.
 - Performance:
@@ -146,9 +146,10 @@ This is the review dashboard. Lead with unresolved risks and next action; keep d
 
 ## Follow-Up Tasks
 
-- [ ] Normalize or explicitly label `Demo.tscn` pillow material state before placement review.
-- [ ] Confirm or regenerate both review bakes to matching direct-contact-first/signature-`20` state.
-- [ ] Clarify mode `48` naming/semantics, or add a true Black Zero palette variant of mode `26`.
+- [x] Normalize or explicitly label `Demo.tscn` pillow material state before placement review.
+- [x] Confirm the main river bake is direct-contact-first/signature-`20` after the 2026-06-04 user rebake.
+- [x] Regenerate or verify the obstacle-test river bake to matching direct-contact-first/signature-`20` state.
+- [x] Clarify mode `48` naming/semantics, and add a true Black Zero palette variant of mode `26`.
 - [ ] Add audit-recommended support/facing probe output if signature-`20` raw R remains too early.
 - [ ] Run the human-assisted formula review in `validation.md`.
 - [ ] If the direct-contact-first rebake still fails, revise raw R only after support/facing evidence identifies the failing source.
@@ -164,6 +165,8 @@ This is the review dashboard. Lead with unresolved risks and next action; keep d
 | 2026-05-31 | Promoted pillow audit findings into plan/tasks/roadmaps. | Audit severity makes diagnostic split the first implementation task and direct-contact-first anchoring the leading formula direction. |
 | 2026-05-31 | Backfilled lower-level pillow details from the changelog and roadmap. | Exact constants, editor wiring, height seam guard, and probe names are operationally important for future sessions. |
 | 2026-06-04 | Completed engineering audit and promoted findings into handoff/tasks/review/validation. | Next work should fix review-state and diagnostic consistency before placement tuning. |
+| 2026-06-04 | Reset `Demo.tscn` pillow review state, split Black Zero/no-reach debug modes, added parity probe, and reran Godot diagnostics. | Next work should reconcile review bakes before live placement review. |
+| 2026-06-04 | Verified the user-rebaked main river bake is signature `20`; then rebaked and verified the obstacle-test river bake to signature `20`. | Cross-scene placement review can proceed on matching river bakes; the modified WaterSystem bake still needs an explicit decision. |
 
 ## Historical Review Notes
 

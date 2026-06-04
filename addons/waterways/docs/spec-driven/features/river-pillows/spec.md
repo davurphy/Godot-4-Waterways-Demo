@@ -22,9 +22,9 @@ This is the spec dashboard. Keep it limited to active state and link to goals, c
 - Source of truth for open work: `tasks.md` "Open Work"
 - Last meaningful decision: 2026-06-01 diagnostic review confirmed bank-response/combined contact gating is too broad, so raw pillow R should be direct-contact-first.
 - Last audit update: Direct-contact-first raw R has been implemented in code and source signature bumped to `20`; the 2026-06-04 engineering audit found review-state and diagnostic blockers before placement can be judged.
-- Latest user-visible finding: `Pillow / Impact Mask` and Black Zero final mask still start ahead on the previous review bakes; direct terrain anchor search is closest to desired placement, while bank-response/combined contact remains too broad. Current audit caveat: `Demo.tscn` has non-baseline pillow material overrides, and the main/obstacle-test bakes may be mixed generation.
+- Latest user-visible finding: `Pillow / Impact Mask` and Black Zero final mask still started ahead on the previous review bakes; direct terrain anchor search was closest to desired placement, while bank-response/combined contact remained too broad. Current audit caveat: `Demo.tscn` has been reset to baseline and both review river bakes are verified signature `20`, but live placement review on those matching bakes is still pending.
 - Known deferred items: Material polish, stronger height response, final flow changes, reverse/circulating flow, WaterSystem/physics alignment.
-- Current non-goals that are easy to accidentally reopen: Do not change accepted Phase 5 flow, accepted Phase 7B eddy-line behavior, WaterSystem flow, terrain-contact thresholds, bank-response thresholds, or saved WaterSystem bakes unless explicitly scoped.
+- Current non-goals that are easy to accidentally reopen: Do not change accepted Phase 5 flow, accepted Phase 7B eddy-line behavior, WaterSystem flow, terrain-contact thresholds, bank-response thresholds, or saved WaterSystem bakes unless explicitly scoped. The user-generated 2026-06-04 WaterSystem bake change needs an explicit keep/review/revert decision before finalization.
 
 ## Goals
 
@@ -41,7 +41,7 @@ This is the spec dashboard. Keep it limited to active state and link to goals, c
 ## Non-Goals
 
 - Do not implement reverse or circulating eddy flow as part of pillow placement.
-- Do not regenerate WaterSystem/physics flow unless final flow changes are explicitly scoped.
+- Do not further regenerate or accept WaterSystem/physics flow changes unless final flow changes are explicitly scoped.
 - Do not tune wake/eddy material response while solving pillow placement.
 - Do not treat `bank_response_features.a` or dilated collision support as correct just because they are already available.
 - Do not accept screenshots or static exports alone when a visible editor/runtime review is needed.
@@ -55,8 +55,8 @@ This is the spec dashboard. Keep it limited to active state and link to goals, c
   - Phase 5A/5B flow and SDF steering are accepted baseline.
   - Phase 6A/6B added visual-only pillow response and tuning controls.
   - Phase 6C set default `pillow_forward_reach_tiles` to `0.0` after diagnosing shader-side forward reach.
-  - Phase 6D/6E moved into raw classifier changes. After the direct-contact-first classifier edit, signature `20` bakes are required for review; 2026-06-04 static/binary audit suggests the main bake may already contain signature-`20` direct-contact metadata while the obstacle-test bake still appears signature `19`.
-  - `Demo.tscn` currently saves non-baseline pillow material values, including strong pillow foam bias and default-on obstruction height. Reset or explicitly label that state before using the main demo for placement evidence.
+  - Phase 6D/6E moved into raw classifier changes. After the direct-contact-first classifier edit, signature `20` bakes are required for review; 2026-06-04 Godot metadata verification confirms the main and obstacle-test review bakes are now signature `20`.
+  - `Demo.tscn` previously saved non-baseline pillow material values, including strong pillow foam bias and default-on obstruction height. It was reset to baseline on 2026-06-04; verify that state before using the main demo for placement evidence.
   - Phase 6E specifically halved `RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_SEARCH_TILES` from `0.14` to `0.07` and changed the direct fallback `pillow_contact_search_uv` from `0.02` to `0.01`.
   - Phase 7B eddy-line visual pass is accepted and should be preserved.
 - User-reported observations:
@@ -122,7 +122,7 @@ Acceptance criteria:
 - Preserve `pillow_contact_pull_tiles` and `pillow_contact_pull_strength` as default-off review controls.
 - Preserve default-off height behavior. `pillow_terrain_height`, `pillow_obstruction_height`, and related curve controls are visual review accents, while `pillow_height_tile_seam_fade` guards source-tile and mesh-step separation.
 - Preserve explicit editor range hints and visible/debug material parity for pillow controls, especially the height curve controls.
-- Add a readable final-mask diagnostic, threshold band, or palette adjustment if `Pillow Visual Mask` cannot distinguish zero/near-zero, low, and meaningful pillow values during placement review.
+- Use `Pillow Visual Mask (Black Zero)` and `Pillow No-Reach Mask (Black Zero)` when the original `Pillow Visual Mask` cannot distinguish zero/near-zero, low, and meaningful pillow values during placement review.
 - If the raw mask is wrong, solve the bake/classifier source before material tuning.
 - If raw placement is correct but final no-reach mask is wrong, solve shader gates before material tuning.
 - If raw and final masks are correct but visible water reads wrong, tune pressure/highlight/normal/band/foam response.
@@ -246,7 +246,8 @@ Pillow debug views:
 
 - `Pillow / Impact Mask`: raw `obstacle_features.r`
 - `Pillow Visual Mask`: debug mode `26`; current green-zero gradient can make low/no signal read as full-river green, so use the Black Zero companion for placement acceptance.
-- `Pillow Visual Mask (Black Zero)`: debug mode `48`; no-reach final mask with zero/near-zero rendered black.
+- `Pillow Visual Mask (Black Zero)`: debug mode `58`; true Black Zero palette version of mode `26`.
+- `Pillow No-Reach Mask (Black Zero)`: debug mode `48`; no-reach final mask with zero/near-zero rendered black.
 - `Pillow Direct Terrain Anchor Search`: debug mode `49`
 - `Pillow Bank-Response Anchor Search`: debug mode `50`
 - `Pillow Combined Contact Gate`: debug mode `51`
@@ -302,7 +303,7 @@ Pillow debug views:
 - Should `bank_response_features.a` be allowed to anchor pillows at all?
 - Should broad dilated support be replaced or tightened for pillow-specific placement?
 - What minimum diagnostic split should be added: support/facing, direct terrain anchor, bank-response anchor, combined contact gate, bank-only contribution, or all of them?
-- Should `Pillow Visual Mask` keep the current debug gradient, gain a black-zero/threshold companion, or be replaced by a clearer review mode?
+- Does the added Black Zero split make final-mask review readable enough in live Godot viewport review, or is another low-range/threshold diagnostic still needed?
 - Which exact rocks/protrusions are the user treating as must-detect and must-not-detect review targets?
 - Are raw readings or named-region stats needed for the user-identified target areas?
 - What second-layout or synthetic check is enough before accepting a formula change as reusable add-on behavior?
@@ -329,3 +330,4 @@ Pillow debug views:
 | 2026-05-31 | Create this feature-local spec folder. | Keep pillow work from being scattered across general changelog and handoff files. |
 | 2026-05-31 | Promote audit-guided diagnostic split before classifier edits. | `pillow-system-audit.md` found about `35%` bank-response-only anchoring and recommends direct-contact-first anchoring if confirmed. |
 | 2026-06-01 | Make raw pillow R direct-contact-first. | User diagnostic review found direct terrain anchor search closest to desired placement and bank-response/combined contact gates too broad. |
+| 2026-06-04 | Split Black Zero diagnostics and verify the review river bakes. | Mode `58` is the true Black Zero visual mask, mode `48` is no-reach, and both review river bakes are signature `20`. |
