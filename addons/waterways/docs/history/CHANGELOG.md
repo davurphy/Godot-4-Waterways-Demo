@@ -8,6 +8,12 @@
 - Replaced the unused legacy `.packed_tex` and `.packed_texarr` custom importer implementation with Godot 4.6-compatible unavailable stubs. This keeps the editor stable for the current project, which has no `.packed_tex` / `.packed_texarr` assets and no active importer registration, but does not restore those legacy importer formats.
 - The user confirmed the reported hterrain packed-texture errors are gone. No Waterways pillow classifier, shader, river bake, WaterSystem bake, or tooltip functionality changed in this stability slice.
 
+### River Pillow Inspector Usability
+
+- Organized `Material / Pillow` controls into Inspector subgroups: Pillow Shape, Pillow Mask Gates, Pillow Surface, Pillow Bands & Foam, Pillow Height, and Pillow Seam Fades.
+- Researched Godot 4.6 inspector tooltip/description support for generated `mat_pillow_*` fields. Non-replacing helper-row and full-width helper-block prototypes were rejected as visually confusing, so in-inspector descriptions were removed.
+- Added `docs/spec-driven/features/river-pillows/material-controls.md` as the Pillow material-control reference instead.
+
 ### River Pillows Direct-Contact Diagnostic Pass
 
 - Added editor Debug View modes for pillow placement review:

@@ -6,7 +6,7 @@
 
 ## Current Focus
 
-Research inspector tooltip/field-description support before any further tooltip implementation. The next pillow placement step remains regenerating the signature-`20` river bakes and reviewing direct-contact-first raw pillow placement, but the user asked the next session to start with tooltip research and not immediately commit code changes.
+Inspector tooltip/field-description support has been researched and parked. The user rejected in-inspector helper text as visually confusing, so pillow material-control explanations now live in `material-controls.md`. The next pillow placement step is regenerating the signature-`20` river bakes and reviewing direct-contact-first raw pillow placement.
 
 - Feature folder:
   - `addons\waterways\docs\spec-driven\features\river-pillows\`
@@ -16,15 +16,14 @@ Research inspector tooltip/field-description support before any further tooltip 
 ## Current Truth
 
 - Overall status: In progress
-- Highest-priority open task: Research documented Godot 4.6 inspector tooltip/description APIs and examples, summarize options, and get user approval before any code changes.
+- Highest-priority open task: Regenerate the signature-`20` main and obstacle-test river bakes, then review direct-contact-first raw pillow placement.
 - Editor-regression status: Fixed on 2026-06-04. The hterrain packed-texture scripts under `addons/zylann.hterrain/tools/packed_textures/` now parse in Godot 4.6 as unavailable stubs, and the user confirmed the reported errors are gone. The project has no `.packed_tex` / `.packed_texarr` assets and no active registration for those legacy custom importers; do not treat `.packed_tex` import functionality as restored.
-- Tooltip/field-description status: Not complete; do not treat tooltips as implemented or validated.
-- Tooltip research boundary: Do not immediately edit code. Start with official Godot API/docs for `EditorInspectorPlugin`, `EditorProperty`, `EditorProperty.add_focusable()`, `EditorInspector`, `Object._get_property_list()`, `PROPERTY_USAGE_*`, and `Control.tooltip_text`; then do an online search for current Godot examples if the official docs are insufficient. Report sourced options, editor-stability risks, and a minimal isolated prototype plan before implementation.
+- Tooltip/field-description status: Researched and parked. Do not treat tooltips as implemented or validated; current decision is to keep the Inspector clean and use `addons\waterways\docs\spec-driven\features\river-pillows\material-controls.md` for Pillow material-control explanations until Godot exposes a better description path for generated properties.
 - Failed tooltip approach to avoid: do not repeat the shortcut inspector-plugin fallback that tried to create or wrap default inspector editors for generated `mat_pillow_*` fields from `_parse_property()` and then assign tooltip text to those controls. That path destabilized the editor. For any future attempt, first look up current Godot 4.6 documentation and examples for adding descriptions/tooltips to generated inspector properties, then use a documented approach such as a carefully scoped custom `EditorProperty` or non-replacing help control tested in isolation.
 - Last passing validation: Historical Phase 6/7 Godot 4.6.3 probes listed in `validation.md`, audit-reported `PILLOW_FORMULA_ANCHOR_AUDIT_OK`, plus 2026-06-01 static checks for new debug-mode wiring and normalized obstacle-test pillow review state.
 - Known failing or unproven check: User confirmed bank-response/combined contact gating was too broad on signature-`19` bakes; signature-`20` direct-contact-first bakes are not yet generated or reviewed.
 - Current debug-view issue: The original `Pillow Visual Mask` still reads as undifferentiated green over the river; use new mode `48`, `Pillow Visual Mask (Black Zero)`, for final-mask placement review.
-- Next recommended action: Research inspector tooltip/description support and present a no-code plan. After the user approves or parks that work, reopen the main and obstacle-test scenes in Godot, select each river, run `River > Generate Flow & Foam Map`, save the scenes/resources, then compare raw/final/source-term views around the same rocks.
+- Next recommended action: Reopen the main and obstacle-test scenes in Godot, select each river, run `River > Generate Flow & Foam Map`, save the scenes/resources, then compare raw/final/source-term views around the same rocks.
 - Packaging/artifact hygiene status: No new generated artifacts from this docs conversion.
 - Historical detail starts at: `Historical Change Log`
 
@@ -48,13 +47,11 @@ Read these first:
 7. `addons\waterways\docs\spec-driven\features\river-pillows\plan.md`
 8. `addons\waterways\docs\spec-driven\features\river-pillows\spec.md`
 9. `addons\waterways\docs\spec-driven\features\river-pillows\research.md`
-10. `addons\waterways\docs\research\river-research-citations.md`
+10. `addons\waterways\docs\spec-driven\features\river-pillows\material-controls.md`
+11. `addons\waterways\docs\research\river-research-citations.md`
 
 Then do this next:
 
-- Research Godot 4.6 inspector tooltip/field-description APIs and current examples before touching code.
-- Summarize at least two viable approaches or explain why only one is documented enough to try.
-- Ask the user before implementing; do not immediately commit code changes.
 - Regenerate the river bakes before judging the direct-contact-first classifier.
 - Add or ask to add a readable final-mask diagnostic if `Pillow Visual Mask` still appears all-green.
 - Ask the user to run or join a dedicated pillow formula review after the split is available.
@@ -78,7 +75,8 @@ Then do this next:
 - `addons\waterways\shaders\filters\obstacle_feature_mask_filter.gdshader`: Changed raw pillow contact gating to require direct `terrain_contact_features.b` search; `bank_response_features.a` is weak context only.
 - `addons\waterways\river_manager.gd`: Bumped river bake source signature to `20` and recorded direct-contact-first pillow anchor metadata.
 - `addons\zylann.hterrain\tools\packed_textures\`: Replaced legacy Godot 3 packed-texture importer code with Godot 4.6-compatible unavailable stubs after the user reported editor parse/API errors. The user confirmed the errors are gone; this does not restore `.packed_tex` or `.packed_texarr` import functionality.
-- Latest handoff update: Next session is now directed to research Godot inspector tooltip/description support from official docs and current examples, then ask before code changes.
+- `addons\waterways\docs\spec-driven\features\river-pillows\material-controls.md`: Added a separate Pillow material-control reference after in-inspector helper text proved visually confusing.
+- Latest handoff update: Inspector tooltip/description implementation is parked in favor of the reference document; next session should return to signature-`20` rebake and pillow placement review.
 
 ## Current Changes Summary
 
@@ -86,7 +84,7 @@ Then do this next:
 - 2026-06-01 diagnostic slice: Added modes `48` through `53` for Black Zero final mask, direct terrain anchor search, bank-response anchor search, combined contact gate, bank-only anchor contribution, and raw-to-final retention. Support/facing source remains probe-only because it is not stored in `RiverBakeData`.
 - 2026-06-01 classifier slice: User review confirmed bank-response/combined contact was too broad, so raw pillow R now requires direct terrain-contact search. Signature-`19` bakes are stale; signature `20` rebake is pending.
 - 2026-06-04 editor-stability slice: Fixed the hterrain packed-texture editor regression using Godot 4.6-compatible unavailable stubs for unused legacy importers. No Waterways pillow classifier, shader, river bake, WaterSystem bake, or tooltip work changed in this slice.
-- 2026-06-04 tooltip-planning slice: User requested a research-first next session for inspector tooltip/field descriptions. The next session should consult official Godot docs and current examples, summarize options, and avoid immediate code changes.
+- 2026-06-04 tooltip-planning slice: Official Godot inspector tooltip/description support was researched. A non-replacing helper-row prototype and a full-width subgroup helper block were rejected as visually confusing, so Inspector helper text was removed and a separate material-control reference document was added.
 
 ## Historical Change Log
 

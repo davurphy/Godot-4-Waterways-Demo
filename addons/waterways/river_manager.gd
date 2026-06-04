@@ -23,6 +23,72 @@ const MATERIAL_CATEGORIES = {
 	custom_ = "Custom"
 }
 
+const MATERIAL_PARAMETER_SUBGROUP_LAYOUTS = {
+	pillow_ = [
+		{
+			name = "Pillow Shape",
+			parameters = [
+				"pillow_strength",
+				"pillow_pressure_strength",
+				"pillow_highlight_strength",
+				"pillow_forward_reach_tiles",
+				"pillow_contact_pull_tiles",
+				"pillow_contact_pull_strength",
+			]
+		},
+		{
+			name = "Pillow Mask Gates",
+			parameters = [
+				"pillow_confidence_gate_start",
+				"pillow_confidence_gate_full",
+				"pillow_hard_gate_start",
+				"pillow_hard_gate_full",
+				"pillow_energy_gate_start",
+				"pillow_energy_gate",
+				"pillow_flow_gate_start",
+				"pillow_flow_gate",
+				"pillow_bank_suppression",
+			]
+		},
+		{
+			name = "Pillow Surface",
+			parameters = [
+				"pillow_pressure_color",
+				"pillow_highlight_color",
+				"pillow_specular_boost",
+				"pillow_roughness_reduction",
+				"pillow_normal_strength",
+			]
+		},
+		{
+			name = "Pillow Bands & Foam",
+			parameters = [
+				"pillow_band_strength",
+				"pillow_band_scale",
+				"pillow_foam_bias",
+			]
+		},
+		{
+			name = "Pillow Height",
+			parameters = [
+				"pillow_terrain_height",
+				"pillow_terrain_height_curve",
+				"pillow_obstruction_height",
+				"pillow_obstruction_height_curve",
+				"pillow_height_smoothing_tiles",
+			]
+		},
+		{
+			name = "Pillow Seam Fades",
+			parameters = [
+				"pillow_height_seam_stitch_tiles",
+				"pillow_height_tile_seam_fade",
+				"pillow_material_tile_seam_fade",
+			]
+		},
+	]
+}
+
 enum SHADER_TYPES {WATER, LAVA, CUSTOM}
 const BUILTIN_SHADERS = [
 	{
@@ -462,9 +528,12 @@ func _get_property_list() -> Array:
 	if _material.shader != null:
 		var shader_params: Array = RenderingServer.get_shader_parameter_list(_material.shader.get_rid())
 		shader_params = WaterHelperMethods.reorder_params(shader_params)
+		shader_params = _ordered_shader_parameters_for_inspector(shader_params)
+		var appended_subgroups := {}
 		for p in shader_params:
 			if p.name.begins_with("i_"):
 				continue
+			var parameter_category := _get_material_parameter_category(String(p.name))
 			var hit_category = null
 			for category in mat_categories:
 				if p.name.begins_with(category):
@@ -478,6 +547,17 @@ func _get_property_list() -> Array:
 					break
 			if hit_category != null:
 				mat_categories.erase(hit_category)
+			var subgroup_name := _get_material_parameter_subgroup_name(String(p.name), parameter_category)
+			if not subgroup_name.is_empty():
+				var subgroup_key := str(parameter_category, "/", subgroup_name)
+				if not appended_subgroups.has(subgroup_key):
+					props2.append({
+						name = subgroup_name,
+						type = TYPE_NIL,
+						hint_string = str("mat_", parameter_category),
+						usage = PROPERTY_USAGE_SUBGROUP | PROPERTY_USAGE_SCRIPT_VARIABLE
+					})
+					appended_subgroups[subgroup_key] = true
 			var cp := {}
 			for k in p:
 				cp[k] = p[k]
@@ -634,6 +714,63 @@ func _get_property_list() -> Array:
 	]
 	var combined_props = props + props2 + props3
 	return combined_props
+
+
+func _ordered_shader_parameters_for_inspector(shader_params: Array) -> Array:
+	var ordered_params := []
+	var consumed_params := {}
+	var inserted_layouts := {}
+	for param in shader_params:
+		var parameter_name := String(param.get("name", ""))
+		var category := _get_material_parameter_category(parameter_name)
+		if category.is_empty() or not MATERIAL_PARAMETER_SUBGROUP_LAYOUTS.has(category):
+			if not consumed_params.has(parameter_name):
+				ordered_params.append(param)
+			continue
+		if bool(inserted_layouts.get(category, false)):
+			continue
+		for ordered_param in _get_ordered_category_parameters(shader_params, category):
+			var ordered_name := String(ordered_param.get("name", ""))
+			ordered_params.append(ordered_param)
+			consumed_params[ordered_name] = true
+		inserted_layouts[category] = true
+	return ordered_params
+
+
+func _get_ordered_category_parameters(shader_params: Array, category: String) -> Array:
+	var remaining_params := {}
+	for param in shader_params:
+		var parameter_name := String(param.get("name", ""))
+		if parameter_name.begins_with(category):
+			remaining_params[parameter_name] = param
+	var ordered_params := []
+	for subgroup in MATERIAL_PARAMETER_SUBGROUP_LAYOUTS[category]:
+		for parameter_name in subgroup.parameters:
+			if remaining_params.has(parameter_name):
+				ordered_params.append(remaining_params[parameter_name])
+				remaining_params.erase(parameter_name)
+	for param in shader_params:
+		var parameter_name := String(param.get("name", ""))
+		if remaining_params.has(parameter_name):
+			ordered_params.append(param)
+			remaining_params.erase(parameter_name)
+	return ordered_params
+
+
+func _get_material_parameter_category(parameter_name: String) -> String:
+	for category in MATERIAL_CATEGORIES:
+		if parameter_name.begins_with(category):
+			return String(category)
+	return ""
+
+
+func _get_material_parameter_subgroup_name(parameter_name: String, category: String) -> String:
+	if category.is_empty() or not MATERIAL_PARAMETER_SUBGROUP_LAYOUTS.has(category):
+		return ""
+	for subgroup in MATERIAL_PARAMETER_SUBGROUP_LAYOUTS[category]:
+		if parameter_name in subgroup.parameters:
+			return String(subgroup.name)
+	return ""
 
 
 func _should_use_easing_curve_hint(property_info: Dictionary) -> bool:
