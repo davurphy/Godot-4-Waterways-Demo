@@ -11,12 +11,12 @@ This is the task dashboard. Keep active work and next action here; move complete
 - Remaining open task count: tracked by the checkboxes below; do not maintain a manual count while this document is still changing.
 - Last passing validation: Historical Godot 4.6.3 probes listed in `validation.md`, audit-reported `PILLOW_FORMULA_ANCHOR_AUDIT_OK`, plus 2026-06-01 static checks for new debug modes, normalized obstacle-test pillow review state, and source-signature bump to `20`.
 - Current review blockers:
-  - New editor regression errors were reported after the failed tooltip session and must be fixed by the next session before more pillow work. The reported error includes `res://addons/zylann.hterrain/tools/packed_textures/packed_texture_importer.gd:93 - Parse Error: Expected closing ")" after call arguments.`
+  - The post-tooltip editor regression has been fixed and user-confirmed. hterrain legacy `.packed_tex` / `.packed_texarr` importers now parse as unavailable Godot 4.6 stubs; do not treat those importer formats as restored functionality.
   - Tooltip/field-description work is not complete; do not treat tooltips as implemented or validated.
   - The original `Pillow Visual Mask` still uses the green-zero gradient; use `Pillow Visual Mask (Black Zero)` for placement review.
   - Existing signature-`19` river bakes are stale after the classifier edit; regenerate main and obstacle-test river bakes before judging raw placement.
   - Support/facing source is not available in saved `RiverBakeData`; add a target-bound probe if direct-contact-first output still starts too early.
-- Next recommended action: Fix the new editor regression errors first. After the editor is stable, rebake `Demo.tscn` and `Demo_obstacle_flow_test.tscn`, then review raw/final diagnostics live in Godot.
+- Next recommended action: Rebake `Demo.tscn` and `Demo_obstacle_flow_test.tscn`, then review raw/final diagnostics live in Godot.
 - Known deferred work: Material polish, stronger height response, final flow, WaterSystem/physics alignment.
 
 ## Open Work

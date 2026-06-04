@@ -2,11 +2,11 @@
 
 ## Date
 
-2026-05-31
+2026-06-04
 
 ## Current Focus
 
-Create a feature-local spec-driven home for pillow placement work by converting the general changelog and latest handoff into focused feature documents.
+Continue pillow placement review now that the editor regression from the failed tooltip session is fixed. The next functional step is to regenerate the signature-`20` river bakes and review direct-contact-first raw pillow placement in the editor.
 
 - Feature folder:
   - `addons\waterways\docs\spec-driven\features\river-pillows\`
@@ -16,13 +16,14 @@ Create a feature-local spec-driven home for pillow placement work by converting 
 ## Current Truth
 
 - Overall status: In progress
-- Highest-priority open task: Fix the new editor regression errors reported after the failed tooltip session before doing more pillow work. This includes `res://addons/zylann.hterrain/tools/packed_textures/packed_texture_importer.gd:93 - Parse Error: Expected closing ")" after call arguments.`
+- Highest-priority open task: Regenerate the main and obstacle-test river bakes to signature `20`, then review direct-contact-first raw pillow placement live in Godot.
+- Editor-regression status: Fixed on 2026-06-04. The hterrain packed-texture scripts under `addons/zylann.hterrain/tools/packed_textures/` now parse in Godot 4.6 as unavailable stubs, and the user confirmed the reported errors are gone. The project has no `.packed_tex` / `.packed_texarr` assets and no active registration for those legacy custom importers; do not treat `.packed_tex` import functionality as restored.
 - Tooltip/field-description status: Not complete; do not treat tooltips as implemented or validated.
 - Failed tooltip approach to avoid: do not repeat the shortcut inspector-plugin fallback that tried to create or wrap default inspector editors for generated `mat_pillow_*` fields from `_parse_property()` and then assign tooltip text to those controls. That path destabilized the editor. For any future attempt, first look up current Godot 4.6 documentation and examples for adding descriptions/tooltips to generated inspector properties, then use a documented approach such as a carefully scoped custom `EditorProperty` or non-replacing help control tested in isolation.
 - Last passing validation: Historical Phase 6/7 Godot 4.6.3 probes listed in `validation.md`, audit-reported `PILLOW_FORMULA_ANCHOR_AUDIT_OK`, plus 2026-06-01 static checks for new debug-mode wiring and normalized obstacle-test pillow review state.
 - Known failing or unproven check: User confirmed bank-response/combined contact gating was too broad on signature-`19` bakes; signature-`20` direct-contact-first bakes are not yet generated or reviewed.
 - Current debug-view issue: The original `Pillow Visual Mask` still reads as undifferentiated green over the river; use new mode `48`, `Pillow Visual Mask (Black Zero)`, for final-mask placement review.
-- Next recommended action: Fix the new editor regression errors first. After the editor is stable, reopen the main and obstacle-test scenes in Godot, select each river, run `River > Generate Flow & Foam Map`, save the scenes/resources, then compare raw/final/source-term views around the same rocks.
+- Next recommended action: Reopen the main and obstacle-test scenes in Godot, select each river, run `River > Generate Flow & Foam Map`, save the scenes/resources, then compare raw/final/source-term views around the same rocks.
 - Packaging/artifact hygiene status: No new generated artifacts from this docs conversion.
 - Historical detail starts at: `Historical Change Log`
 
@@ -50,7 +51,6 @@ Read these first:
 
 Then do this next:
 
-- Fix the new editor regression errors reported after the failed tooltip session before any more pillow, tooltip, bake, or shader work.
 - Regenerate the river bakes before judging the direct-contact-first classifier.
 - Add or ask to add a readable final-mask diagnostic if `Pillow Visual Mask` still appears all-green.
 - Ask the user to run or join a dedicated pillow formula review after the split is available.
@@ -73,12 +73,14 @@ Then do this next:
 - `Demo_obstacle_flow_test.tscn`: Reset saved pillow review material values to baseline placement-review defaults.
 - `addons\waterways\shaders\filters\obstacle_feature_mask_filter.gdshader`: Changed raw pillow contact gating to require direct `terrain_contact_features.b` search; `bank_response_features.a` is weak context only.
 - `addons\waterways\river_manager.gd`: Bumped river bake source signature to `20` and recorded direct-contact-first pillow anchor metadata.
+- `addons\zylann.hterrain\tools\packed_textures\`: Replaced legacy Godot 3 packed-texture importer code with Godot 4.6-compatible unavailable stubs after the user reported editor parse/API errors. The user confirmed the errors are gone; this does not restore `.packed_tex` or `.packed_texarr` import functionality.
 
 ## Current Changes Summary
 
 - New feature folder: Consolidates pillow-specific state from the general changelog, latest handoff, and relevant roadmap sections into spec-driven docs.
 - 2026-06-01 diagnostic slice: Added modes `48` through `53` for Black Zero final mask, direct terrain anchor search, bank-response anchor search, combined contact gate, bank-only anchor contribution, and raw-to-final retention. Support/facing source remains probe-only because it is not stored in `RiverBakeData`.
 - 2026-06-01 classifier slice: User review confirmed bank-response/combined contact was too broad, so raw pillow R now requires direct terrain-contact search. Signature-`19` bakes are stale; signature `20` rebake is pending.
+- 2026-06-04 editor-stability slice: Fixed the hterrain packed-texture editor regression using Godot 4.6-compatible unavailable stubs for unused legacy importers. No Waterways pillow classifier, shader, river bake, WaterSystem bake, or tooltip work changed in this slice.
 
 ## Historical Change Log
 

@@ -2,6 +2,12 @@
 
 ## Unreleased - 2026-05-26
 
+### Editor Stability
+
+- Fixed a post-tooltip-session editor regression in the bundled hterrain packed-texture scripts. Godot first reported `addons/zylann.hterrain/tools/packed_textures/packed_texture_importer.gd:93` from malformed converted method chains, then exposed broader Godot 3 importer API errors in the same legacy script set.
+- Replaced the unused legacy `.packed_tex` and `.packed_texarr` custom importer implementation with Godot 4.6-compatible unavailable stubs. This keeps the editor stable for the current project, which has no `.packed_tex` / `.packed_texarr` assets and no active importer registration, but does not restore those legacy importer formats.
+- The user confirmed the reported hterrain packed-texture errors are gone. No Waterways pillow classifier, shader, river bake, WaterSystem bake, or tooltip functionality changed in this stability slice.
+
 ### River Pillows Direct-Contact Diagnostic Pass
 
 - Added editor Debug View modes for pillow placement review:
