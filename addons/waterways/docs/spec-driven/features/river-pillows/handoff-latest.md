@@ -16,11 +16,13 @@ Create a feature-local spec-driven home for pillow placement work by converting 
 ## Current Truth
 
 - Overall status: In progress
-- Highest-priority open task: Regenerate main and obstacle-test river bakes to source signature `20`, then review direct-contact-first raw/final pillow placement in Godot.
+- Highest-priority open task: Fix the new editor regression errors reported after the failed tooltip session before doing more pillow work. This includes `res://addons/zylann.hterrain/tools/packed_textures/packed_texture_importer.gd:93 - Parse Error: Expected closing ")" after call arguments.`
+- Tooltip/field-description status: Not complete; do not treat tooltips as implemented or validated.
+- Failed tooltip approach to avoid: do not repeat the shortcut inspector-plugin fallback that tried to create or wrap default inspector editors for generated `mat_pillow_*` fields from `_parse_property()` and then assign tooltip text to those controls. That path destabilized the editor. For any future attempt, first look up current Godot 4.6 documentation and examples for adding descriptions/tooltips to generated inspector properties, then use a documented approach such as a carefully scoped custom `EditorProperty` or non-replacing help control tested in isolation.
 - Last passing validation: Historical Phase 6/7 Godot 4.6.3 probes listed in `validation.md`, audit-reported `PILLOW_FORMULA_ANCHOR_AUDIT_OK`, plus 2026-06-01 static checks for new debug-mode wiring and normalized obstacle-test pillow review state.
 - Known failing or unproven check: User confirmed bank-response/combined contact gating was too broad on signature-`19` bakes; signature-`20` direct-contact-first bakes are not yet generated or reviewed.
 - Current debug-view issue: The original `Pillow Visual Mask` still reads as undifferentiated green over the river; use new mode `48`, `Pillow Visual Mask (Black Zero)`, for final-mask placement review.
-- Next recommended action: Reopen the main and obstacle-test scenes in Godot, select each river, run `River > Generate Flow & Foam Map`, save the scenes/resources, then compare raw/final/source-term views around the same rocks.
+- Next recommended action: Fix the new editor regression errors first. After the editor is stable, reopen the main and obstacle-test scenes in Godot, select each river, run `River > Generate Flow & Foam Map`, save the scenes/resources, then compare raw/final/source-term views around the same rocks.
 - Packaging/artifact hygiene status: No new generated artifacts from this docs conversion.
 - Historical detail starts at: `Historical Change Log`
 
@@ -48,6 +50,7 @@ Read these first:
 
 Then do this next:
 
+- Fix the new editor regression errors reported after the failed tooltip session before any more pillow, tooltip, bake, or shader work.
 - Regenerate the river bakes before judging the direct-contact-first classifier.
 - Add or ask to add a readable final-mask diagnostic if `Pillow Visual Mask` still appears all-green.
 - Ask the user to run or join a dedicated pillow formula review after the split is available.

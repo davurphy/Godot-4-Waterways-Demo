@@ -3,6 +3,8 @@
 
 const MIN_DIRECTION_LENGTH_SQUARED := 0.000001
 const MIN_RIVER_WIDTH := 0.001
+const MIN_UV_TRIANGLE_AREA := 0.000000000001
+const MIN_BARYCENTRIC_DENOMINATOR := 0.000000000000000001
 const BARYCENTRIC_EDGE_EPSILON := 0.00001
 const EXTERNAL_BAKE_STORAGE_VERSION := 1
 const EXTERNAL_BAKE_ROOT := "res://waterways_bakes"
@@ -276,7 +278,7 @@ static func cart2bary(p : Vector3, a : Vector3, b : Vector3, c: Vector3) -> Vect
 	var d20 := v2.dot(v0)
 	var d21 := v2.dot(v1)
 	var denom := d00 * d11 - d01 * d01
-	if not _is_finite_number(denom) or abs(denom) <= MIN_DIRECTION_LENGTH_SQUARED:
+	if not _is_finite_number(denom) or abs(denom) <= MIN_BARYCENTRIC_DENOMINATOR:
 		return Vector3(-1.0, -1.0, -1.0)
 	var v = (d11 * d20 - d01 * d21) / denom
 	var w = (d00 * d21 - d01 * d20) / denom
@@ -812,7 +814,7 @@ static func _is_finite_vector3(value: Vector3) -> bool:
 static func _is_degenerate_uv_triangle(a: Vector2, b: Vector2, c: Vector2) -> bool:
 	if not _is_finite_vector2(a) or not _is_finite_vector2(b) or not _is_finite_vector2(c):
 		return true
-	return abs((b - a).cross(c - a)) <= MIN_DIRECTION_LENGTH_SQUARED
+	return abs((b - a).cross(c - a)) <= MIN_UV_TRIANGLE_AREA
 
 
 static func _get_bake_collision_root(mesh_instance: MeshInstance3D, river) -> Node:
