@@ -21,8 +21,8 @@ This is the spec dashboard. Keep it limited to active state and link to goals, c
 - Status: In progress
 - Source of truth for open work: `tasks.md` "Open Work"
 - Last meaningful decision: 2026-06-01 diagnostic review confirmed bank-response/combined contact gating is too broad, so raw pillow R should be direct-contact-first.
-- Last audit update: Direct-contact-first raw R has been implemented in code and source signature bumped to `20`; main and obstacle-test bakes still need regeneration and review.
-- Latest user-visible finding: `Pillow / Impact Mask` and Black Zero final mask still start ahead on signature-`19` bakes; direct terrain anchor search is closest to desired placement, while bank-response/combined contact remains too broad.
+- Last audit update: Direct-contact-first raw R has been implemented in code and source signature bumped to `20`; the 2026-06-04 engineering audit found review-state and diagnostic blockers before placement can be judged.
+- Latest user-visible finding: `Pillow / Impact Mask` and Black Zero final mask still start ahead on the previous review bakes; direct terrain anchor search is closest to desired placement, while bank-response/combined contact remains too broad. Current audit caveat: `Demo.tscn` has non-baseline pillow material overrides, and the main/obstacle-test bakes may be mixed generation.
 - Known deferred items: Material polish, stronger height response, final flow changes, reverse/circulating flow, WaterSystem/physics alignment.
 - Current non-goals that are easy to accidentally reopen: Do not change accepted Phase 5 flow, accepted Phase 7B eddy-line behavior, WaterSystem flow, terrain-contact thresholds, bank-response thresholds, or saved WaterSystem bakes unless explicitly scoped.
 
@@ -55,7 +55,8 @@ This is the spec dashboard. Keep it limited to active state and link to goals, c
   - Phase 5A/5B flow and SDF steering are accepted baseline.
   - Phase 6A/6B added visual-only pillow response and tuning controls.
   - Phase 6C set default `pillow_forward_reach_tiles` to `0.0` after diagnosing shader-side forward reach.
-  - Phase 6D/6E moved into raw classifier changes and current saved river bakes are signature `19`; after the direct-contact-first classifier edit, signature `20` bakes are required for review.
+  - Phase 6D/6E moved into raw classifier changes. After the direct-contact-first classifier edit, signature `20` bakes are required for review; 2026-06-04 static/binary audit suggests the main bake may already contain signature-`20` direct-contact metadata while the obstacle-test bake still appears signature `19`.
+  - `Demo.tscn` currently saves non-baseline pillow material values, including strong pillow foam bias and default-on obstruction height. Reset or explicitly label that state before using the main demo for placement evidence.
   - Phase 6E specifically halved `RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_SEARCH_TILES` from `0.14` to `0.07` and changed the direct fallback `pillow_contact_search_uv` from `0.02` to `0.01`.
   - Phase 7B eddy-line visual pass is accepted and should be preserved.
 - User-reported observations:

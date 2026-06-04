@@ -155,9 +155,10 @@ For a numeric follow-up, prefer readings that report expected-region raw coverag
 
 ## Risks and Unknowns
 
-- `pillow_contact_search_tiles = 0.07` is not the full effective anchor reach because `pillow_contact_gate_at()` samples up to `1.5 * pillow_contact_search_uv`.
-- `hard_boundary_at()` uses `max(bank_response.a, terrain_contact.b)`.
-- `bank_response.a` already includes forward-looking protrusion sampling using `RIVER_BANK_RESPONSE_PROBE_TILES = 0.20`.
+- Historical signature-`19` risk: `pillow_contact_search_tiles = 0.07` was not the full effective anchor reach because `pillow_contact_gate_at()` sampled up to `1.5 * pillow_contact_search_uv`.
+- Historical signature-`19` risk: `hard_boundary_at()` used `max(bank_response.a, terrain_contact.b)`.
+- Historical signature-`19` risk: `bank_response.a` already included forward-looking protrusion sampling using `RIVER_BANK_RESPONSE_PROBE_TILES = 0.20`.
+- Current signature-`20` validation risk: the direct-contact-first code changes that anchor logic, but saved review bakes appear mixed generation and support/facing source is still not directly inspectable.
 - `pillow_source_at()` uses generic dilated collision support built from `baking_dilate = 0.6`.
 - Reducing a single distance constant again may not address the true cause.
 - Any bake/classifier pass must preserve accepted Phase 7B eddy-line behavior.

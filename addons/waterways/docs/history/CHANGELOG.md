@@ -13,6 +13,7 @@
 - Organized `Material / Pillow` controls into Inspector subgroups: Pillow Shape, Pillow Mask Gates, Pillow Surface, Pillow Bands & Foam, Pillow Height, and Pillow Seam Fades.
 - Researched Godot 4.6 inspector tooltip/description support for generated `mat_pillow_*` fields. Non-replacing helper-row and full-width helper-block prototypes were rejected as visually confusing, so in-inspector descriptions were removed.
 - Added `docs/spec-driven/features/river-pillows/material-controls.md` as the Pillow material-control reference instead.
+- Added `docs/spec-driven/features/river-pillows/engineering-audit.md` and updated handoffs so the next session starts with a software-engineering audit of the pillow system before rebakes or feature tuning.
 
 ### River Pillows Direct-Contact Diagnostic Pass
 

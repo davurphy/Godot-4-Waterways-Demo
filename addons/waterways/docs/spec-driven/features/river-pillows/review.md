@@ -20,10 +20,10 @@
 This is the review dashboard. Lead with unresolved risks and next action; keep detailed findings, compliance checks, and history lower in the file.
 
 - Overall review status: Partial
-- Blocking issues remaining: A human-assisted pillow formula review is still needed before classifier or visible-material changes.
-- Important issues remaining: The remaining forward pillow offset was attributed to the broad bank-response/combined contact gate; signature-`20` bakes are needed to validate the direct-contact-first classifier.
-- Last validation relied on: Historical Phase 6 and Phase 7 Godot 4.6.3 probes, the 2026-05-31 user live Godot review, and 2026-06-01 static checks for new debug-mode wiring and normalized obstacle-test review state.
-- Next action: Regenerate main and obstacle-test river bakes, then review raw/final/source-term views around the same rock targets in Godot.
+- Blocking issues remaining: Review-state and bake-generation consistency must be fixed before a human-assisted pillow formula review.
+- Important issues remaining: The remaining forward pillow offset was attributed to the broad bank-response/combined contact gate on the prior review. Direct-contact-first code exists, but current review surfaces are inconsistent: `Demo.tscn` has saved non-baseline pillow overrides, and static/binary audit suggests main and obstacle-test bakes are not on the same generation.
+- Last validation relied on: Historical Phase 6 and Phase 7 Godot 4.6.3 probes, the 2026-05-31 user live Godot review, 2026-06-01 static checks for new debug-mode wiring and normalized obstacle-test review state, and a 2026-06-04 review-only engineering audit using static scans.
+- Next action: Reset or explicitly label `Demo.tscn` material state, confirm or regenerate both river bakes to a matching direct-contact-first generation, then review raw/final/source-term views around the same rock targets in Godot.
 - Historical detail starts at: `Historical Review Notes`
 
 ## Findings
@@ -32,6 +32,9 @@ This is the review dashboard. Lead with unresolved risks and next action; keep d
 
 - The next implementation should not proceed as another distance tweak. The audit says source-term evidence is needed before changing the classifier.
 - `Pillow Visual Mask` currently reads as undifferentiated green in the user's viewport. Debug mode `48`, `Pillow Visual Mask (Black Zero)`, now exists for final-mask placement review, but it still needs visible Godot confirmation.
+- 2026-06-04 engineering audit found mode `48` is not just a palette variant: it renders the no-reach final mask, while mode `26` renders the current `pillow_visual` mask that can include reach/contact-pull when those controls are non-default.
+- 2026-06-04 engineering audit found `Demo.tscn` saves non-baseline pillow material values, including high foam bias and obstruction height. That scene must be reset or explicitly treated as a non-baseline material/height review preset before placement acceptance.
+- 2026-06-04 engineering audit found the review bakes may be mixed generation: the main river bake appears to include signature-`20` direct-contact metadata, while the obstacle-test bake still appears signature `19`.
 - Pillow support/facing source is bake-only and is not saved in `RiverBakeData`; if signature-`20` raw R still starts too early, target-bound probe output is required before further classifier edits.
 - The 2026-06-01 user review resolved the first source question: bank-response/combined contact is too broad, direct terrain contact is closest to desired placement, and the raw classifier should be direct-contact-first. The new code needs a signature-`20` rebake before acceptance.
 
@@ -51,6 +54,7 @@ This is the review dashboard. Lead with unresolved risks and next action; keep d
 
 - The original pillow history was split across the general changelog, shared handoff, and roadmaps. This feature folder now gives future sessions a cleaner start point.
 - Visible/debug shader helper duplication is a medium drift risk; consider `.gdshaderinc` only after the next formula is agreed.
+- Debug shader bake constants for pillow contact diagnostics are duplicated from `river_manager.gd` and the filter shader; add a parity check or uniform path before changing those constants again.
 
 ## Premise Review
 
@@ -120,7 +124,7 @@ This is the review dashboard. Lead with unresolved risks and next action; keep d
 - Visual:
   - Needs new review at the same rock targets.
 - Bake output:
-  - Current main and obstacle-test river bakes are signature `19`.
+  - Static/binary audit suggests current bake output is mixed: main appears signature `20`, obstacle-test appears signature `19`. Confirm in Godot or rebake both to a known matching state.
 - Runtime:
   - Not scoped for current pillow placement review.
 - Performance:
@@ -142,10 +146,12 @@ This is the review dashboard. Lead with unresolved risks and next action; keep d
 
 ## Follow-Up Tasks
 
-- [ ] Add audit-recommended diagnostic split views/probe output.
-- [ ] Add a readable `Pillow Visual Mask` threshold/black-zero diagnostic if the existing view remains all-green in the editor.
+- [ ] Normalize or explicitly label `Demo.tscn` pillow material state before placement review.
+- [ ] Confirm or regenerate both review bakes to matching direct-contact-first/signature-`20` state.
+- [ ] Clarify mode `48` naming/semantics, or add a true Black Zero palette variant of mode `26`.
+- [ ] Add audit-recommended support/facing probe output if signature-`20` raw R remains too early.
 - [ ] Run the human-assisted formula review in `validation.md`.
-- [ ] If the split confirms the audit, revise raw R toward direct-contact-first anchoring and bank-response-as-context.
+- [ ] If the direct-contact-first rebake still fails, revise raw R only after support/facing evidence identifies the failing source.
 - [ ] Add raw readings or named-region stats only if the live review needs numeric support.
 
 ## Decision Updates
@@ -157,6 +163,7 @@ This is the review dashboard. Lead with unresolved risks and next action; keep d
 | 2026-05-31 | Folded relevant roadmap sections into the feature docs. | The feature folder now carries review loop, definitions, generalization checks, raw-tooling expectations, Phase 6 design rules, and change boundaries. |
 | 2026-05-31 | Promoted pillow audit findings into plan/tasks/roadmaps. | Audit severity makes diagnostic split the first implementation task and direct-contact-first anchoring the leading formula direction. |
 | 2026-05-31 | Backfilled lower-level pillow details from the changelog and roadmap. | Exact constants, editor wiring, height seam guard, and probe names are operationally important for future sessions. |
+| 2026-06-04 | Completed engineering audit and promoted findings into handoff/tasks/review/validation. | Next work should fix review-state and diagnostic consistency before placement tuning. |
 
 ## Historical Review Notes
 

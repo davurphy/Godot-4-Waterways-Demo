@@ -7,16 +7,18 @@ Complete tasks in order unless the plan is revised. Each task should be independ
 This is the task dashboard. Keep active work and next action here; move completed or superseded detail to `Historical or Closed Tasks`.
 
 - Current status: In progress
-- Current implementation slice: direct-contact-first raw pillow classifier is implemented in code; main and obstacle-test bakes need regeneration to signature `20`, then live review. Inspector tooltip/field-description support has been researched and parked in favor of `material-controls.md`.
+- Current implementation slice: direct-contact-first raw pillow classifier is implemented in code; review-state and bake-generation blockers found by the 2026-06-04 engineering audit must be resolved before live placement review. Inspector tooltip/field-description support has been researched and parked in favor of `material-controls.md`.
 - Remaining open task count: tracked by the checkboxes below; do not maintain a manual count while this document is still changing.
 - Last passing validation: Historical Godot 4.6.3 probes listed in `validation.md`, audit-reported `PILLOW_FORMULA_ANCHOR_AUDIT_OK`, plus 2026-06-01 static checks for new debug modes, normalized obstacle-test pillow review state, and source-signature bump to `20`.
 - Current review blockers:
+  - The engineering audit requested in `engineering-audit.md` is complete as a review-only pass. It found no immediate direct-contact-first classifier defect, but found review-state and diagnostic blockers.
+  - `Demo.tscn` currently saves non-baseline pillow material values (`pillow_foam_bias = 2.0`, `pillow_obstruction_height = 0.276`, `pillow_obstruction_height_curve = 4.0`, and related height tweaks), contrary to the previous task note that it had no saved pillow overrides.
+  - Static/binary audit suggests `waterways_bakes/Demo/Water_River.river_bake.res` contains signature-`20` direct-contact metadata, while `waterways_bakes/Demo/Water_River_obstacle_test.river_bake.res` still appears signature `19`; confirm or regenerate both before judging placement.
   - The post-tooltip editor regression has been fixed and user-confirmed. hterrain legacy `.packed_tex` / `.packed_texarr` importers now parse as unavailable Godot 4.6 stubs; do not treat those importer formats as restored functionality.
   - Tooltip/field-description work is parked; do not treat tooltips as implemented or validated. Pillow material-control explanations now live in `material-controls.md`.
-  - The original `Pillow Visual Mask` still uses the green-zero gradient; use `Pillow Visual Mask (Black Zero)` for placement review.
-  - Existing signature-`19` river bakes are stale after the classifier edit; regenerate main and obstacle-test river bakes before judging raw placement.
+  - The original `Pillow Visual Mask` still uses the green-zero gradient. Mode `48`, `Pillow Visual Mask (Black Zero)`, is clearer but uses the no-reach final mask, not a pure palette variant of mode `26`.
   - Support/facing source is not available in saved `RiverBakeData`; add a target-bound probe if direct-contact-first output still starts too early.
-- Next recommended action: Rebake `Demo.tscn` and `Demo_obstacle_flow_test.tscn`, then review raw/final diagnostics live in Godot.
+- Next recommended action: Reset or explicitly label `Demo.tscn` pillow material state, reconcile both review bakes to the same direct-contact-first generation, clarify mode `48` semantics, then review raw/final diagnostics live in Godot.
 - Known deferred work: Material polish, stronger height response, final flow, WaterSystem/physics alignment.
 
 ## Open Work
@@ -35,6 +37,15 @@ Use this section as the canonical checklist for unfinished pillow work. Items ar
   - Validate: The proposed prototype is isolated, reversible, and tested on a small property set before broader `mat_pillow_*` rollout.
   - Result: Non-replacing helper rows and full-width subgroup helper blocks were tested and rejected as visually confusing. The Inspector keeps the organized Pillow subgroup layout only; explanations moved to `material-controls.md`.
 
+### 0A. Engineering Audit
+
+- [x] Conduct an expert software-engineering audit of the pillow system.
+  - Validate: Use `engineering-audit.md` as the audit brief.
+  - Validate: Review code quality, consistency, efficiency, architecture, code comments, and maintainability.
+  - Validate: Report findings first, ordered by severity, with file/line references where possible.
+  - Validate: Do not make code changes during the audit unless the user explicitly asks for a follow-up implementation pass.
+  - Result: 2026-06-04 review-only audit completed. Findings were folded into this task list and handoff docs. Highest-priority issues are review-state and diagnostic consistency, not a new direct-contact-first classifier defect.
+
 ### 1. Review-State Preflight
 
 - [ ] Lock one detection question and a small target set before tuning.
@@ -46,19 +57,23 @@ Use this section as the canonical checklist for unfinished pillow work. Items ar
 - [x] Run the context challenge check before patching.
   - Validate: 2026-06-01 preflight found saved obstacle-test material overrides and confirmed support/facing source is not saved in `RiverBakeData`; both are recorded before classifier work.
 
-- [x] Normalize or explicitly record pillow review material state in both review scenes.
-  - Validate: `Demo.tscn` has no saved `pillow_` overrides. `Demo_obstacle_flow_test.tscn` was reset to baseline `pillow_` and mirrored `mat_pillow_` review values on 2026-06-01.
+- [ ] Normalize or explicitly record pillow review material state in both review scenes.
+  - Audit correction: `Demo.tscn` does have saved `pillow_` and mirrored `mat_pillow_` overrides. It currently saves non-baseline values including `pillow_foam_bias = 2.0`, `pillow_obstruction_height = 0.276`, `pillow_obstruction_height_curve = 4.0`, `pillow_height_smoothing_tiles = 0.11`, and `pillow_height_tile_seam_fade = 0.004`.
+  - Validate: Either reset `Demo.tscn` to the baseline placement-review state or explicitly document it as a material/height review preset so it is not used as raw placement evidence.
+  - Validate: `Demo_obstacle_flow_test.tscn` remains at baseline `pillow_` and mirrored `mat_pillow_` review values.
   - Required baseline for placement review: `pillow_forward_reach_tiles = 0.0`, `pillow_contact_pull_tiles = 0.0`, `pillow_contact_pull_strength = 0.0`, `pillow_terrain_height = 0.0`, and `pillow_obstruction_height = 0.0`.
   - Validate: Gate pairs in the obstacle-test pillow review state now have start less than or equal to full.
 
-- [x] Keep shader reach, contact pull, and height response out of placement review.
-  - Validate: Saved review scenes now show no default forward reach, contact pull, terrain height, or obstruction height during raw/final placement review.
+- [ ] Keep shader reach, contact pull, and height response out of placement review.
+  - Audit correction: `Demo.tscn` currently has obstruction height enabled. Do not use visible water or height debug views from that scene as placement evidence until the scene is reset or intentionally marked as a material/height preset.
+  - Validate: Saved review scenes show no default forward reach, contact pull, terrain height, or obstruction height during raw/final placement review, unless the scene is explicitly labeled as non-baseline.
 
 ### 2. Diagnostic Tooling Before Formula Changes
 
 - [x] Add a readable final-mask diagnostic before relying on `Pillow Visual Mask`.
   - Validate: Added `Pillow Visual Mask (Black Zero)` as debug mode `48`; zero/near-zero values render black while weak and stronger masks separate through a heat palette.
-  - Validate: The diagnostic is available in the editor before the next formula review. The original green-zero `Pillow Visual Mask` remains for historical comparison only.
+  - Audit correction: Mode `48` renders `pillow_visual_no_reach`, while mode `26` renders `pillow_visual`. That is useful for no-reach placement review, but it is not a pure Black Zero palette version of mode `26`.
+  - Follow-up: Rename mode `48` to make the no-reach semantics explicit or add a true Black Zero palette variant of mode `26`.
 
 - [ ] Add the audit-recommended pillow source split before changing the classifier.
   - Progress: Added editor-visible saved-term diagnostics for direct `terrain_contact_features.b` anchor search, `bank_response_features.a` anchor search, combined pillow contact gate, bank-only anchor contribution, and raw-to-final retention as debug modes `49` through `53`.
@@ -107,6 +122,7 @@ Use this section as the canonical checklist for unfinished pillow work. Items ar
   - Validate: Pressure/highlight/normal/band/foam response improves readability without moving the mask.
 
 - [ ] Rebake only when bake/classifier output changes.
+  - Audit correction: Static/binary scan suggests the main river bake already contains signature-`20` direct-contact metadata, while the obstacle-test bake still appears signature `19`. Confirm in Godot or rebake both to a known matching state.
   - Validate: Source signature, metadata, saved river bakes, and probe expectations match. WaterSystem/physics bakes remain untouched unless explicitly scoped.
 
 - [ ] Report effective anchor-chain reach in docs and diagnostics after any formula change.
@@ -117,6 +133,9 @@ Use this section as the canonical checklist for unfinished pillow work. Items ar
 
 - [ ] After the next formula is accepted, consider extracting shared visible/debug pillow mask logic into `.gdshaderinc`.
   - Validate: Visible/debug mask parity is preserved by a probe or static include/string check; keep debug mode selection in `river_debug.gdshader`.
+
+- [ ] Add a static parity check for duplicated bake diagnostic constants before further classifier-distance edits.
+  - Validate: Debug shader constants for pillow contact search/gates match `river_manager.gd` and the obstacle-feature filter, or the debug shader receives the values as uniforms.
 
 ### 5. Validation, Docs, and Cleanup
 
