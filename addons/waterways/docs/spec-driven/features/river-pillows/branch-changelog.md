@@ -112,13 +112,21 @@ The branch also fixed editor stability issues from unused legacy hterrain import
 
 ## Validation And Probes
 
-- Added `probes/pillow_diagnostic_parity_check.gd`.
+- Added and documented the reusable feature-local probe suite under `probes/`:
+  - `pillow_diagnostic_parity_check.gd`
+  - `pillow_anchor_source_probe.gd`
+  - `pillow_placement_diagnostic.gd`
+  - `pillow_inspector_wiring_probe.gd`
+  - `pillow_visual_review_export.gd`
 - Verified debug menu and shader diagnostic wiring with Godot 4.6.3.
 - Verified both review river bakes report source signature `20`.
 - Reran the requested CPU/readback diagnostic.
 - Current passing markers include:
-  - `PILLOW_FORMULA_ANCHOR_AUDIT_OK`
   - `PILLOW_DIAGNOSTIC_PARITY_CHECK_OK`
+  - `PILLOW_ANCHOR_SOURCE_PROBE_OK`
+  - `PILLOW_PLACEMENT_DIAGNOSTIC_OK`
+  - `PILLOW_INSPECTOR_WIRING_PROBE_OK`
+  - `PILLOW_VISUAL_REVIEW_EXPORT_OK` (quick mode)
   - `DEBUG_VIEW_MENU_WIRING_PROBE_OK`
   - `PHASE7B_EDDY_LINE_CPU_DIAGNOSTIC_OK`
   - `PILLOW_REVIEW_BAKES_SIGNATURE_20_CONFIRMED`

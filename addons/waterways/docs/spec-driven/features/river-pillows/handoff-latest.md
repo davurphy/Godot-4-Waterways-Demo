@@ -20,7 +20,7 @@ Inspector tooltip/field-description support has been researched and parked. The 
 - Editor-regression status: Fixed on 2026-06-04. The hterrain packed-texture scripts under `addons/zylann.hterrain/tools/packed_textures/` now parse in Godot 4.6 as unavailable stubs, and the user confirmed the reported errors are gone. The project has no `.packed_tex` / `.packed_texarr` assets and no active registration for those legacy custom importers; do not treat `.packed_tex` import functionality as restored.
 - Tooltip/field-description status: Researched and parked. Do not treat tooltips as implemented or validated; current decision is to keep the Inspector clean and use `addons\waterways\docs\spec-driven\features\river-pillows\material-controls.md` for Pillow material-control explanations until Godot exposes a better description path for generated properties.
 - Failed tooltip approach to avoid: do not repeat the shortcut inspector-plugin fallback that tried to create or wrap default inspector editors for generated `mat_pillow_*` fields from `_parse_property()` and then assign tooltip text to those controls. That path destabilized the editor. For any future attempt, first look up current Godot 4.6 documentation and examples for adding descriptions/tooltips to generated inspector properties, then use a documented approach such as a carefully scoped custom `EditorProperty` or non-replacing help control tested in isolation.
-- Last passing validation: Historical Phase 6/7 Godot 4.6.3 probes listed in `validation.md`, audit-reported `PILLOW_FORMULA_ANCHOR_AUDIT_OK`, 2026-06-04 `PHASE7B_EDDY_LINE_CPU_DIAGNOSTIC_OK`, `DEBUG_VIEW_MENU_WIRING_PROBE_OK`, and `PILLOW_DIAGNOSTIC_PARITY_CHECK_OK`.
+- Last passing validation: Historical Phase 6/7 Godot 4.6.3 probes listed in `validation.md`, 2026-06-04 `PHASE7B_EDDY_LINE_CPU_DIAGNOSTIC_OK`, `DEBUG_VIEW_MENU_WIRING_PROBE_OK`, and the consolidated feature-local pillow probe suite: `PILLOW_DIAGNOSTIC_PARITY_CHECK_OK`, `PILLOW_ANCHOR_SOURCE_PROBE_OK`, `PILLOW_PLACEMENT_DIAGNOSTIC_OK`, `PILLOW_INSPECTOR_WIRING_PROBE_OK`, and quick `PILLOW_VISUAL_REVIEW_EXPORT_OK`.
 - Known failing or unproven check: User confirmed bank-response/combined contact gating was too broad on signature-`19` bakes. Godot metadata now confirms both review river bakes are signature `20`; live cross-scene placement review on those matching bakes is still unrun.
 - Current debug-view status: The original `Pillow Visual Mask` still uses the green-zero gradient. Mode `58`, `Pillow Visual Mask (Black Zero)`, is now the true Black Zero version of mode `26`; mode `48`, `Pillow No-Reach Mask (Black Zero)`, is the no-reach final-mask diagnostic.
 - Next recommended action: Compare raw/final/source-term views around the same rocks in both signature-`20` review scenes. Treat the modified `WaterSystem.water_system_bake.res` from the user rebake as pending review/decision, not as accepted pillow physics work.
@@ -57,6 +57,7 @@ Then do this next:
 - Verify `Demo.tscn` remains at the reset pillow placement-review baseline before using the main demo for placement review.
 - Confirm both review scenes load their matching signature-`20` river bakes before judging the direct-contact-first classifier across scenes.
 - Use mode `58` for the true `Pillow Visual Mask (Black Zero)` and mode `48` for the no-reach Black Zero diagnostic.
+- Use `addons\waterways\docs\spec-driven\features\river-pillows\probes\README.md` for the current reusable pillow probe suite before reaching for old `.codex-research` scratch scripts.
 - Ask the user to run or join a dedicated pillow formula review after the split is available.
 - Use the exact human-assisted validation request in `validation.md`.
 - If the user wants Codex to implement immediately, start with the review-state/bake consistency fixes. Further classifier changes should still wait until raw R, no-reach final mask, or visible material response is identified as the failing layer.
@@ -84,6 +85,7 @@ Then do this next:
 - 2026-06-04 audit follow-up slice: Reset `Demo.tscn` to placement-review pillow defaults, added true `Pillow Visual Mask (Black Zero)` as mode `58`, renamed mode `48` to `Pillow No-Reach Mask (Black Zero)`, added `probes/pillow_diagnostic_parity_check.gd`, and reran relevant Godot probes.
 - 2026-06-04 user main-demo rebake: Godot metadata verifies `waterways_bakes/Demo/Water_River.river_bake.res` now has source signature `20`. `waterways_bakes/Demo/WaterSystem.water_system_bake.res` was also modified during the user rebake and needs an explicit keep/revert/review decision before commit.
 - 2026-06-04 agent obstacle-test rebake: Rebaked `waterways_bakes/Demo/Water_River_obstacle_test.river_bake.res` with Godot 4.6.3 and verified both review river bakes report source signature `20`. Reran the requested CPU/readback diagnostic with `PHASE7B_EDDY_LINE_CPU_DIAGNOSTIC_OK`.
+- 2026-06-04 probe consolidation slice: Promoted reusable pillow diagnostics into `probes/` with a README, anchor-source probe, placement diagnostic, inspector wiring probe, and visual review exporter. Godot 4.6.3 validation passed `PILLOW_DIAGNOSTIC_PARITY_CHECK_OK`, `PILLOW_ANCHOR_SOURCE_PROBE_OK`, `PILLOW_PLACEMENT_DIAGNOSTIC_OK`, `PILLOW_INSPECTOR_WIRING_PROBE_OK`, and quick `PILLOW_VISUAL_REVIEW_EXPORT_OK`.
 - Latest handoff update: Next session should run cross-scene signature-`20` placement review before any further classifier or material changes.
 
 ## Current Changes Summary
@@ -96,6 +98,7 @@ Then do this next:
 - 2026-06-04 audit-planning slice: User requested an expert software-engineering audit of the pillow system before returning to rebake/review work.
 - 2026-06-04 engineering-audit slice: Audit completed without code changes. Highest-impact findings were review-state/bake consistency issues rather than a new classifier-code defect.
 - 2026-06-04 first audit-follow-up slice: `Demo.tscn` review state is reset, Black Zero/no-reach debug modes are explicit, and diagnostic parity checks exist and pass in Godot.
+- 2026-06-04 probe-consolidation slice: current reusable pillow probes live under `addons/waterways/docs/spec-driven/features/river-pillows/probes/`; old `.codex-research` probes remain historical scratch helpers.
 
 ## Historical Change Log
 
@@ -173,7 +176,7 @@ Validation status:
 - Current support risk: `pillow_source_at()` uses generic dilated collision support generated from `baking_dilate = 0.6`.
 - Diagnostic limitation: support/facing source is not saved in `RiverBakeData`, so editor-visible diagnostics can split direct terrain, bank response, combined contact gate, bank-only contribution, raw R, and final retention, but not original support/facing without a probe or promoted bake diagnostic.
 - Diagnostic naming result: mode `58`, `Pillow Visual Mask (Black Zero)`, renders `pillow_visual`; mode `48`, `Pillow No-Reach Mask (Black Zero)`, renders `pillow_visual_no_reach`.
-- Maintainability result: `addons/waterways/docs/spec-driven/features/river-pillows/probes/pillow_diagnostic_parity_check.gd` now checks debug shader bake constants against `river_manager.gd` and the filter shader. It passed in Godot with `PILLOW_DIAGNOSTIC_PARITY_CHECK_OK`.
+- Maintainability result: `addons/waterways/docs/spec-driven/features/river-pillows/probes/` now contains the reusable pillow probe suite. `pillow_diagnostic_parity_check.gd` checks debug shader bake constants against `river_manager.gd` and the filter shader; `pillow_anchor_source_probe.gd`, `pillow_placement_diagnostic.gd`, `pillow_inspector_wiring_probe.gd`, and `pillow_visual_review_export.gd` cover current anchor stats, placement stats, inspector/material wiring, and review captures.
 - User formula review result: direct terrain anchor search was closest to desired pillow placement; bank-response anchor search, combined contact gate, bank-only anchor contribution, raw R, and raw-to-final retention were too broad or too early.
 - Audit evidence: about `35.17%` of main-river and `35.88%` of obstacle-test raw pillow pixels above `0.05` are strongly `bank_response.a` anchored while direct `terrain_contact.b` is weak or absent.
 - Implemented formula direction to validate: direct `terrain_contact.b` or tight local direct-contact search is now mandatory or near-mandatory in code; `bank_response.a` is weak context only.
@@ -185,9 +188,10 @@ Validation status:
 
 ## Artifact Hygiene
 
-- Scratch folders or temporary projects created: Repo-local Godot user-data folders under `.codex-research/` for the obstacle rebake, metadata verification, and CPU/readback diagnostic.
+- Scratch folders or temporary projects created: Repo-local Godot user-data folders under `.codex-research/` for the obstacle rebake, metadata verification, CPU/readback diagnostic, consolidated probe runs, and quick visual export.
 - Generated bakes/resources changed: The user's 2026-06-04 main demo rebake modified `waterways_bakes/Demo/Water_River.river_bake.res` and `waterways_bakes/Demo/WaterSystem.water_system_bake.res`. The 2026-06-04 agent rebake modified `waterways_bakes/Demo/Water_River_obstacle_test.river_bake.res`.
 - Active files mirrored into scratch validation: Not applicable.
+- Probe outputs created: quick visual captures under `.codex-research/river-pillows-visual-review/`; keep them as local review output unless a future review explicitly asks to commit reference captures.
 - Files/folders that must be excluded from packaging:
   - `.codex-research/`
   - Generated review captures unless intentionally committed.
@@ -227,8 +231,9 @@ Relevant audit sections:
 - `addons/waterways/river_manager.gd`
 - `addons/waterways/filter_renderer.gd`
 - `addons/waterways/resources/river_bake_data.gd`
-- `.codex-research/phase6c_pillow_placement_diagnostic.gd`
-- `.codex-research/phase6b_pillows_demo_debug/`
+- `addons/waterways/docs/spec-driven/features/river-pillows/probes/README.md`
+- `addons/waterways/docs/spec-driven/features/river-pillows/probes/`
+- `.codex-research/phase6b_pillows_demo_debug/` only when historical captures are useful.
 
 ## Commands or Checks Used
 

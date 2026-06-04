@@ -10,6 +10,8 @@ Resolved editor-regression note: the hterrain packed-texture scripts under `addo
 
 Engineering audit follow-up result for the next session: the review-only audit found that the direct-contact-first classifier shape is sensible, and the first follow-up slice resolved several review/diagnostic blockers. `Demo.tscn` now saves baseline pillow placement values, mode `58` is the true `Pillow Visual Mask (Black Zero)`, mode `48` is explicitly `Pillow No-Reach Mask (Black Zero)`, the bake diagnostic constants now have a parity probe, and both review river bakes are verified signature `20`; support/facing source still needs a target-bound probe if raw R remains early after matching bakes are reviewed.
 
+Probe consolidation result: reusable pillow probes now live in `addons/waterways/docs/spec-driven/features/river-pillows/probes/` with a README. The current Godot 4.6.3 markers are `PILLOW_DIAGNOSTIC_PARITY_CHECK_OK`, `PILLOW_ANCHOR_SOURCE_PROBE_OK`, `PILLOW_PLACEMENT_DIAGNOSTIC_OK`, `PILLOW_INSPECTOR_WIRING_PROBE_OK`, and quick `PILLOW_VISUAL_REVIEW_EXPORT_OK`; older `.codex-research` pillow probes are historical scratch helpers.
+
 Failed tooltip approach to avoid: do not repeat the shortcut inspector-plugin fallback that tried to create or wrap default inspector editors for generated `mat_pillow_*` fields from `_parse_property()` and then assign tooltip text to those controls. That path destabilized the editor. For any future attempt, first look up current Godot 4.6 documentation and examples for adding descriptions/tooltips to generated inspector properties, then use a documented approach such as a carefully scoped custom `EditorProperty` or non-replacing help control tested in isolation.
 
 Feature-local spec-driven docs now also exist at `addons/waterways/docs/spec-driven/features/river-eddies/`. For wake, eddy-line, or future Phase 7C/7D flow work, treat that folder as the current source of truth before returning to this shared handoff. The current eddy baseline is Phase 7B visual-only: `Eddy-Line Visual Mask` uses the raw-G wake-edge candidate plus nearby wake/obstruction context at `wake_edge_sample_tiles = 0.024`; old raw-B paths remain diagnostic; real reverse/circulating flow and WaterSystem/physics alignment remain deferred.
@@ -90,7 +92,7 @@ Preferred next review path:
 - The post-tooltip editor regression is fixed. Godot first reported `addons/zylann.hterrain/tools/packed_textures/packed_texture_importer.gd:93` because legacy hterrain packed-texture importer code had malformed converted method chains; after that was repaired, Godot exposed wider Godot 3 API errors in the same legacy importer set. These scripts are now Godot 4.6-compatible unavailable stubs because the project has no `.packed_tex` / `.packed_texarr` assets and no active importer registration. The user confirmed the editor errors are gone.
 - Tooltip/field-description implementation is parked. The Inspector keeps the Pillow subgroup organization and detailed field explanations live in `material-controls.md`.
 - The 2026-06-04 engineering audit is complete. First follow-up reset `Demo.tscn` to the documented pillow baseline, split the Black Zero/no-reach debug modes, and added parity protection. The user then rebaked the main demo river to signature `20`, and the agent rebaked the obstacle-test river to signature `20`; remaining blockers are live placement review, a decision on the modified WaterSystem bake, and support/facing evidence if raw R still starts early.
-- Phase 6E changed only the raw pillow classifier contact-search distance, direct filter fallback default, and river bakes. Fresh `.codex-research/phase6c_pillow_placement_diagnostic/` captures show diagnostic atlas-space raw R above `0.05` is about `4.70%` on main and `4.61%` on obstacle-test; no-reach visual mask above `0.05` is about `2.32%` main and `2.26%` obstacle-test.
+- Phase 6E changed only the raw pillow classifier contact-search distance, direct filter fallback default, and river bakes. Historical `.codex-research/phase6c_pillow_placement_diagnostic/` captures showed signature-`19` raw R above `0.05` at about `4.70%` main and `4.61%` obstacle-test; the current signature-`20` feature-local `pillow_placement_diagnostic.gd` reports about `2.655%` main and `2.7588%` obstacle-test, with no-reach visual about `1.7059%` main and `1.7319%` obstacle-test.
 - Post-Phase-6E inspection found the visible shader is not inventing the current forward start when `pillow_forward_reach_tiles`, `pillow_contact_pull_tiles`, and `pillow_contact_pull_strength` are all default-off. The visible start mostly reveals the baked raw `obstacle_features.r` channel through gates.
 - Historical signature-`19` raw pillow formula summary:
   - visible `Pillow Visual Mask` = raw `obstacle_features.r` multiplied by confidence, hard-boundary, ordinary-bank suppression, energy, flow, and strength gates;
@@ -221,6 +223,8 @@ What seems feasible:
 - `.codex-research/phase7a2_wake_eddy_demo_debug/`
 - `.codex-research/phase7b_wake_eddy_demo_debug/`
 - `.codex-research/phase7b_wake_edge_sample_sweep/`
+- `addons/waterways/docs/spec-driven/features/river-pillows/probes/`
+- `.codex-research/river-pillows-visual-review/`
 - `.codex-research/phase6c_pillow_placement_diagnostic/`
 - `.codex-research/phase6b_pillows_demo_debug/`
 - `.codex-research/phase6_pillow_height_experiment_debug/`
@@ -258,10 +262,12 @@ Recent expected checks:
 - `PHASE7B_EDDY_LINE_CPU_DIAGNOSTIC_OK`
 - `DEBUG_VIEW_MENU_WIRING_PROBE_OK`
 - `PILLOW_DIAGNOSTIC_PARITY_CHECK_OK`
+- `PILLOW_ANCHOR_SOURCE_PROBE_OK`
+- `PILLOW_PLACEMENT_DIAGNOSTIC_OK`
+- `PILLOW_INSPECTOR_WIRING_PROBE_OK`
+- `PILLOW_VISUAL_REVIEW_EXPORT_OK` (quick mode acceptable for smoke test)
 - `PHASE7B_WAKE_EDDY_VISUAL_PROBE_OK`
 - `PHASE7B_WAKE_EDDY_EXPORT_OK`
-- `PHASE6C_PILLOW_PLACEMENT_DIAGNOSTIC_OK`
-- `PHASE6C_PILLOW_EDITOR_WIRING_PROBE_OK`
 - `PHASE6B_PILLOW_TUNING_PROBE_OK`
 - `PHASE7A2_WAKE_EDDY_PREFLIGHT_OK`
 - `PHASE7A2_WAKE_EDDY_EXPORT_OK`

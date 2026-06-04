@@ -265,7 +265,7 @@ Potential future files, only after review confirms the diagnosed layer:
 - Manual: Review against spec acceptance criteria.
 - Generalization: Check at least the main demo and obstacle-test layout before accepting a detector as an add-on improvement.
 - Metrics when needed: Expected-region raw coverage, final-mask coverage, raw-to-final retention, ordinary-bank false-positive coverage, hard-protrusion support, grade/energy support, final-flow support, and top gate suppressors.
-- Audit checks after classifier changes: `PILLOW_FORMULA_ANCHOR_AUDIT_OK`, `PHASE6C_PILLOW_PLACEMENT_DIAGNOSTIC_OK`, `PHASE6C_PILLOW_EDITOR_WIRING_PROBE_OK`, `PHASE6B_PILLOW_TUNING_PROBE_OK`, and Phase 7B wake/eddy probes when shared classifier inputs are touched.
+- Current feature-local checks after classifier changes: `PILLOW_ANCHOR_SOURCE_PROBE_OK`, `PILLOW_PLACEMENT_DIAGNOSTIC_OK`, `PILLOW_INSPECTOR_WIRING_PROBE_OK`, `PILLOW_DIAGNOSTIC_PARITY_CHECK_OK`, and Phase 7B wake/eddy probes when shared classifier inputs are touched. Historical Phase 6 markers remain useful archive context but should not be the first validation target.
 - Historical probe names to preserve in summaries when relevant: `PHASE7A2_OBSTACLE_FEATURES_PROBE_OK`, `PHASE7A2_WAKE_EDDY_PREFLIGHT_OK`, and `DEBUG_VIEW_MENU_WIRING_PROBE_OK`.
 
 ## Risks

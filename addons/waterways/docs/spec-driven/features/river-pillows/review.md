@@ -22,7 +22,7 @@ This is the review dashboard. Lead with unresolved risks and next action; keep d
 - Overall review status: Partial
 - Blocking issues remaining: Human-visible placement review and a WaterSystem bake decision remain before finalizing this slice.
 - Important issues remaining: The remaining forward pillow offset was attributed to the broad bank-response/combined contact gate on the prior review. Direct-contact-first code exists, `Demo.tscn` has been reset to the placement-review baseline, and both review river bakes are verified signature `20`.
-- Last validation relied on: Historical Phase 6 and Phase 7 Godot 4.6.3 probes, the 2026-05-31 user live Godot review, 2026-06-01 static checks for new debug-mode wiring and normalized obstacle-test review state, a 2026-06-04 review-only engineering audit using static scans, post-rebake Godot metadata verification, and the requested CPU/readback diagnostic.
+- Last validation relied on: Historical Phase 6 and Phase 7 Godot 4.6.3 probes, the 2026-05-31 user live Godot review, 2026-06-01 static checks for new debug-mode wiring and normalized obstacle-test review state, a 2026-06-04 review-only engineering audit using static scans, post-rebake Godot metadata verification, the requested CPU/readback diagnostic, and the 2026-06-04 feature-local consolidated pillow probes.
 - Next action: Review raw/final/source-term views around the same rock targets in Godot on both signature-`20` bakes.
 - Historical detail starts at: `Historical Review Notes`
 
@@ -79,7 +79,7 @@ This is the review dashboard. Lead with unresolved risks and next action; keep d
 | Main and obstacle-test layouts agree | Partial | Roadmap requires more than one layout before acceptance. |
 | Raw/final/visible review order followed | Pass in docs | Next live review still needed. |
 | Audit diagnostic split exists before classifier edit | Partial | Saved-term editor diagnostics exist; support/facing still needs target-bound probe output or a promoted bake diagnostic. |
-| Bank response cannot anchor raw pillows alone | Fail/Partial | Audit found this is currently too common. |
+| Bank response cannot anchor raw pillows alone | Partial | Signature-`20` metadata records direct-contact-first anchoring and the current anchor-source probe passes, but it still reports bank-response context around some raw pixels; live target review remains the acceptance gate. |
 | Material tuning deferred until placement accepted | Pass | Current docs preserve this rule. |
 | Accepted Phase 7B eddy-line behavior preserved | Pass historically | Must re-check after shared classifier edits. |
 | WaterSystem untouched for pillow-only work | Partial/needs decision | The user's 2026-06-04 main-demo rebake modified `WaterSystem.water_system_bake.res`; decide whether to keep, review, or revert it before finalizing. |
@@ -99,7 +99,12 @@ This is the review dashboard. Lead with unresolved risks and next action; keep d
 ## Validation Results
 
 - Automated:
-  - Audit: `PILLOW_FORMULA_ANCHOR_AUDIT_OK`, with high-risk bank-response anchoring found.
+  - Current: `PILLOW_DIAGNOSTIC_PARITY_CHECK_OK`
+  - Current: `PILLOW_ANCHOR_SOURCE_PROBE_OK`
+  - Current: `PILLOW_PLACEMENT_DIAGNOSTIC_OK`
+  - Current: `PILLOW_INSPECTOR_WIRING_PROBE_OK`
+  - Current quick smoke: `PILLOW_VISUAL_REVIEW_EXPORT_OK`
+  - Audit archive: `PILLOW_FORMULA_ANCHOR_AUDIT_OK`, with high-risk bank-response anchoring found on the previous formula generation.
   - Historical: `PHASE6A_PILLOW_VISUAL_PROBE_OK`
   - Historical: `PHASE6B_PILLOW_TUNING_PROBE_OK`
   - Historical: `PHASE6C_PILLOW_PLACEMENT_DIAGNOSTIC_OK`

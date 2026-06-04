@@ -9,7 +9,7 @@ This is the task dashboard. Keep active work and next action here; move complete
 - Current status: In progress
 - Current implementation slice: direct-contact-first raw pillow classifier is implemented in code. The first engineering-audit follow-up slice reset `Demo.tscn` to the placement-review baseline, split the Black Zero visual/no-reach diagnostics, and added a static parity check. The main river bake and obstacle-test river bake are now both verified source-signature `20`; cross-scene live placement review is still pending.
 - Remaining open task count: tracked by the checkboxes below; do not maintain a manual count while this document is still changing.
-- Last passing validation: Historical Godot 4.6.3 probes listed in `validation.md`, audit-reported `PILLOW_FORMULA_ANCHOR_AUDIT_OK`, 2026-06-01 static checks for new debug modes and source-signature bump to `20`, and 2026-06-04 Godot console passes for `PHASE7B_EDDY_LINE_CPU_DIAGNOSTIC_OK`, `DEBUG_VIEW_MENU_WIRING_PROBE_OK`, and `PILLOW_DIAGNOSTIC_PARITY_CHECK_OK`.
+- Last passing validation: Historical Godot 4.6.3 probes listed in `validation.md`, 2026-06-01 static checks for new debug modes and source-signature bump to `20`, 2026-06-04 Godot console passes for `PHASE7B_EDDY_LINE_CPU_DIAGNOSTIC_OK` and `DEBUG_VIEW_MENU_WIRING_PROBE_OK`, and the consolidated feature-local pillow probe suite: `PILLOW_DIAGNOSTIC_PARITY_CHECK_OK`, `PILLOW_ANCHOR_SOURCE_PROBE_OK`, `PILLOW_PLACEMENT_DIAGNOSTIC_OK`, `PILLOW_INSPECTOR_WIRING_PROBE_OK`, and quick `PILLOW_VISUAL_REVIEW_EXPORT_OK`.
 - Current review blockers:
   - The engineering audit requested in `engineering-audit.md` is complete as a review-only pass. It found no immediate direct-contact-first classifier defect, but found review-state and diagnostic blockers.
   - `Demo.tscn` was reset to the same baseline pillow placement-review values as `Demo_obstacle_flow_test.tscn` on 2026-06-04.
@@ -138,6 +138,10 @@ Use this section as the canonical checklist for unfinished pillow work. Items ar
 - [x] Add a static parity check for duplicated bake diagnostic constants before further classifier-distance edits.
   - Validate: Debug shader constants for pillow contact search/gates match `river_manager.gd` and the obstacle-feature filter, or the debug shader receives the values as uniforms.
   - Result: Added `addons/waterways/docs/spec-driven/features/river-pillows/probes/pillow_diagnostic_parity_check.gd`; Godot console validation passed with `PILLOW_DIAGNOSTIC_PARITY_CHECK_OK`.
+
+- [x] Preserve and consolidate reusable pillow probes for future sessions.
+  - Validate: Feature-local probes cover diagnostic parity, anchor-source statistics, placement metrics, inspector/material wiring, and visual review export. Older `.codex-research` scripts remain historical scratch helpers.
+  - Result: Added `probes/README.md`, `pillow_anchor_source_probe.gd`, `pillow_placement_diagnostic.gd`, `pillow_inspector_wiring_probe.gd`, and `pillow_visual_review_export.gd`. Godot console validation passed `PILLOW_ANCHOR_SOURCE_PROBE_OK`, `PILLOW_PLACEMENT_DIAGNOSTIC_OK`, `PILLOW_INSPECTOR_WIRING_PROBE_OK`, and quick `PILLOW_VISUAL_REVIEW_EXPORT_OK`.
 
 ### 5. Validation, Docs, and Cleanup
 
