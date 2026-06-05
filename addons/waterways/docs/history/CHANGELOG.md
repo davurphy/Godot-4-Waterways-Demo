@@ -2,6 +2,19 @@
 
 ## Unreleased - 2026-05-26
 
+### Foam Debugging And Shader Contributions
+
+- Added a dedicated `Foam` editor debug submenu so foam-related views can be reviewed together. The group now includes baked foam, final foam mix, bank friction, bank foam contribution, pillow direct terrain anchor search, pillow anchor foam contribution, pillow visual mask, pillow visual foam contribution, grade/energy, pillow material response, wake visual, and eddy-line visual diagnostics.
+- Added separate material/inspector foam controls for shader-side semantic foam contributions:
+  - `foam_bank_friction_bias`
+  - `foam_pillow_anchor_bias`
+  - `foam_pillow_visual_bias`
+- Added a bank foam contribution derived from the edge of `bank_response_features.r` instead of raw bank friction, so broad bank-friction regions do not automatically create full-width foam.
+- Added a pillow direct-anchor foam contribution using the same direct terrain contact search as the pillow diagnostics, gated by `foam_pillow_anchor_bias`.
+- Added a pillow visual-mask foam contribution using the same source mask as `Pillow Visual Mask (Black Zero)`, gated by `foam_pillow_visual_bias`.
+- Mirrored all new foam contribution math in `river_debug.gdshader` and added debug modes for `Bank Foam Contribution`, `Pillow Anchor Foam Contribution`, and `Pillow Visual Foam Contribution`.
+- Kept these changes shader/material/debug-only. No bake source signature bump, river rebake, WaterSystem rebake, scene edit, or bake-resource update is required for this pass.
+
 ### River Pillows Diagnostics Branch Summary
 
 - Moved river pillow work from broad visual tuning into a source-term-first diagnostic workflow. Placement can now be reviewed through baked raw impact, final shader mask, source/contact diagnostics, visible material response, and optional height response.

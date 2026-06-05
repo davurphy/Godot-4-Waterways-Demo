@@ -1,10 +1,13 @@
 # Tasks: River Eddies
 
-Complete tasks in order unless the plan is revised. Each task should be independently reviewable.
+Complete tasks in order unless the plan is revised.
+Each task should be independently reviewable.
 
 ## Current Truth
 
-- Current status: Phase 7B visual baseline accepted; feature-folder migration complete in this docs pass.
+This is the task dashboard. Keep active work here and move completed or superseded detail to `Historical or Closed Tasks`.
+
+- Current status: Phase 7B visual baseline accepted; 2026-06-04 docs style refresh complete.
 - Current implementation slice: Preserve accepted wake/eddy-line visual baseline and document future Phase 7C/7D boundaries.
 - Remaining open task count: 10
 - Last passing validation: Historical Godot 4.6.3 probes `PHASE7B_WAKE_EDDY_VISUAL_PROBE_OK`, `PHASE7B_WAKE_EDDY_EXPORT_OK`, and `PHASE7B_EDDY_LINE_CPU_DIAGNOSTIC_OK`; user accepted the visible result after the material-override fix and stronger defaults.
@@ -49,12 +52,13 @@ Use this section as the canonical checklist for unfinished eddy work. Items are 
 
 - [x] Confirm the current workspace state.
 - [x] Read `spec-driven` constitution and workflow.
-- [x] Read feature-folder templates.
+- [x] Read newer feature-folder templates.
 - [x] Read `docs/history/CHANGELOG.md`.
 - [x] Read `docs/handoffs/handoff-latest.md`.
 - [x] Read `docs/roadmaps/river-feature-detection-roadmap.md`.
 - [x] Read `docs/roadmaps/river-improvements-roadmap.md`.
 - [x] Confirm there is no eddy audit document to fold in.
+- [ ] Check `addons/waterways/docs/research/river-research-citations.md` before research-driven changes; it is the shared works-cited list for river-reading, hydrology, flow-map, shader-water, and production-reference sources, and should be updated when new cited sources affect this feature.
 - [ ] Check any future `docs/audit/` notes for relevant known risks before code changes.
 - [ ] Confirm whether the next task affects active code in `addons/waterways`, legacy reference code in `legacy/godot-3/addons/waterways`, or both.
 - [ ] Run the context challenge check before patching: if the user or agent may be treating visual-only eddy cues as real flow/physics, raise that with evidence.
@@ -103,6 +107,7 @@ Use this section as the canonical checklist for unfinished eddy work. Items are 
 
 ## Historical or Closed Tasks
 
+- [x] 2026-06-04 aligned this feature folder with the newer feature-folder templates while preserving the accepted Phase 7B baseline.
 - [x] Phase 7A0 completed adversarial review and roadmap revision.
 - [x] Phase 7A1 added review-only wake/eddy preflight/export helpers and no runtime behavior change.
 - [x] Phase 7A2 narrowed raw `obstacle_features.b`, bumped river bakes to source signature `17`, and kept final flow/WaterSystem unchanged.

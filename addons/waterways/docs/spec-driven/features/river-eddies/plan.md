@@ -28,11 +28,13 @@ The review architecture follows the feature-detection loop:
 
 ## Current Truth
 
+This is the plan dashboard. Keep current implementation state here, and keep historical reasoning in the architecture and phase-boundary sections below.
+
 - Implementation status: Phase 7B visual baseline complete and accepted.
 - Open architectural decisions: Phase 7C data model for real reverse/circulating flow.
 - Last validation that proves the plan still works: Historical Godot 4.6.3 probes and user viewport acceptance of the Phase 7B visible pass.
 - Next planned implementation slice: Preserve and validate the accepted Phase 7B baseline after any shared shader/classifier change. If actual eddy flow is requested, write a Phase 7C plan before editing code.
-- Branch safety before implementation: Not checked for future code changes; this documentation consolidation is safe. Before shader, classifier, bake, or WaterSystem edits, use a dedicated feature branch or get explicit approval to continue on the current branch.
+- Branch safety before implementation: Current docs refresh was checked on the existing `eddy` branch with a clean worktree on 2026-06-04. Before shader, classifier, bake, or WaterSystem edits, use a dedicated feature branch or get explicit approval to continue on the current branch.
 - Sections below that are historical or superseded: Phase 7A1 raw-B preflight assumptions are superseded by the accepted raw-G visual path, but remain in `research.md` and diagnostics for comparison.
 
 ## Premise Check
@@ -248,6 +250,8 @@ Potential future files, only after review confirms the diagnosed layer:
   - Roadmaps only when high-level Phase 7/8 plan changes.
 - Validation docs to update:
   - `validation.md` current snapshot, matrix, recorded results, and human-assisted request.
+- Research citations index:
+  - `addons/waterways/docs/research/river-research-citations.md` is the shared works-cited list for river behavior, hydrology, flow-map, shader-water, and production-reference sources. Consult it before research-driven changes and update it when adding new sources.
 - Migration notes to update:
   - `docs/history/CHANGELOG.md` and shared `docs/handoffs/handoff-latest.md`.
 

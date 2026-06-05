@@ -4,7 +4,11 @@
 
 Consolidate the wake, eddy-line, and eddy-related findings from the shared changelog, latest handoff, and river roadmaps into a feature-local research record. There is no eddy audit document to fold in. This document preserves the accepted Phase 7B visual baseline and keeps later reverse/circulating flow work clearly separated from the current material preview.
 
+Use `addons/waterways/docs/research/river-research-citations.md` as the shared works-cited index for river behavior, hydrology, flow maps, shader-water references, and production examples. Update that file when new external sources inform this feature.
+
 ## Current Research Outcome
+
+This is the research dashboard. Keep the recommendation and unresolved decision here; keep detailed evidence, options, and rejected paths below.
 
 - Status: Complete for Phase 7B visual baseline; deferred for Phase 7C/7D flow design
 - Recommendation: Treat the accepted Phase 7B visual wake/eddy-line material preview as the current baseline. Do not reopen source flow, final flow, reverse flow, WaterSystem generation, or saved WaterSystem bakes unless Phase 7C/7D is explicitly scoped.
@@ -20,6 +24,10 @@ Consolidate the wake, eddy-line, and eddy-related findings from the shared chang
 - What exact scope must be included before Phase 7C changes reverse/circulating flow?
 - What human-assisted editor/runtime validation is needed before an eddy-flow change is accepted?
 - What additional eddy vector data or analytic model would be needed to move beyond a scalar visual mask?
+- What user or agent premise might be wrong, incomplete, or based on missing scene/data context?
+- What Godot 4.6+ constraints could change the design?
+- Which parts are editor-only, runtime-only, or shared?
+- What legacy Waterways behavior should be preserved, changed, or removed?
 
 ## Flow-Map and Water Tool Patterns
 
@@ -178,8 +186,8 @@ Keep Phase 7B as the accepted visual-only baseline:
 
 ## Sources
 
+- `addons/waterways/docs/research/river-research-citations.md`: shared works-cited index for Waterways river behavior, hydrology, flow-map, shader-water, and production-reference sources.
 - `addons/waterways/docs/history/CHANGELOG.md`
 - `addons/waterways/docs/handoffs/handoff-latest.md`
 - `addons/waterways/docs/roadmaps/river-feature-detection-roadmap.md`
 - `addons/waterways/docs/roadmaps/river-improvements-roadmap.md`
-- `addons/waterways/docs/research/river-research-citations.md`

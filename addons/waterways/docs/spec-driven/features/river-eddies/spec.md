@@ -17,6 +17,8 @@ Feature terms used by this spec:
 
 ## Current Truth
 
+Use this as the dashboard for the current eddy spec state. Keep older Phase 7A/7B evidence in the sections below instead of reopening it as active uncertainty.
+
 - Status: Phase 7B visual wake/eddy-line material preview accepted.
 - Source of truth for open work: `tasks.md` "Open Work".
 - Current baseline: `Eddy-Line Visual Mask` uses the raw-G wake-edge candidate plus nearby wake/obstruction context at `wake_edge_sample_tiles = 0.024`.
@@ -48,6 +50,7 @@ Feature terms used by this spec:
 
 ## Context and Assumptions
 
+- Shared works-cited index: `addons/waterways/docs/research/river-research-citations.md`. Future sessions should use it as the project-level source list for river behavior, hydrology, flow maps, shader-water references, and production examples, and should update it when new external research informs eddy work.
 - Known scene/data/context facts:
   - Phase 5A/5B final flow and WaterSystem behavior are accepted downstream-preserving baselines.
   - Phase 7A2 narrowed `obstacle_features.b` and bumped river bakes to source signature `17`.
@@ -267,3 +270,4 @@ Shared systems must not hard-code:
 | 2026-05-26 | Promote raw-G wake-edge candidate into `Eddy-Line Visual Mask`. | Raw G matched the desired paired wake-edge margins better than raw B. |
 | 2026-05-26 | Keep Phase 7B visual-only. | Existing scalar masks do not encode reverse/circulating flow or physics-ready velocity. |
 | 2026-05-31 | Create this feature-local spec folder. | Keep eddy/wake/eddy-line work from being scattered across changelog, handoff, and roadmaps. |
+| 2026-06-04 | Align this feature folder with the newer spec-driven templates. | Keep the accepted Phase 7B baseline easier to find without changing feature scope. |
