@@ -21,6 +21,8 @@ const MAX_CAMERA_PITCH := 1.35
 const MOVING_PATH_SECONDS := 5.0
 const MOVING_PATH_SEGMENT_STEPS := 4
 const FIELD_RESOLUTION := 256
+const REVIEW_RIPPLE_STRENGTH := 2.25
+const REVIEW_NORMAL_STRENGTH := 3.0
 const TERRAIN_HEIGHT_UNAVAILABLE := -1000000000.0
 const MIN_VISIBLE_WATER_TERRAIN_CLEARANCE := 0.08
 const EMITTER_DISPLAY_HEIGHT_ABOVE_WATER := 0.18
@@ -29,13 +31,13 @@ const MARKER_VERTICAL_OFFSET := 0.55
 const EMITTER_EXPECTED_UVS := {
 	"PulseEmitter_UpperWater": Vector2(0.662573, 0.336428),
 	"OneShotEmitter_MidBend": Vector2(0.755304, 0.355428),
-	"MovingEmitter_TestTrail": Vector2(0.701191, 0.373611),
+	"MovingEmitter_TestTrail": Vector2(0.744296, 0.313726),
 }
 const MOVING_PATH_UVS := [
-	Vector2(0.662573, 0.336428),
-	Vector2(0.701191, 0.373611),
-	Vector2(0.755304, 0.355428),
-	Vector2(0.701191, 0.373611),
+	Vector2(0.658509, 0.318055),
+	Vector2(0.744296, 0.313726),
+	Vector2(0.731226, 0.293750),
+	Vector2(0.744296, 0.313726),
 ]
 
 var _target_river: Node
@@ -219,6 +221,8 @@ func get_emitter_reports() -> Array:
 			"rejected_count": int(snapshot.get("rejected_count", 0)),
 			"radius": float(snapshot.get("radius", 0.0)),
 			"intensity": float(snapshot.get("intensity", 0.0)),
+			"pulse_rate": float(emitter.get("pulse_rate")),
+			"moving_emit_distance": float(emitter.get("moving_emit_distance")),
 			"priority": int(snapshot.get("priority", 0)),
 		})
 	return reports
@@ -355,7 +359,8 @@ func _configure_field_from_demo_river() -> void:
 	_field.set("boundary_source_paths", boundary_paths)
 	_field.set("require_boundary_mask", true)
 	_field.set("auto_generate_boundary_mask", true)
-	_field.set("normal_strength", 1.25)
+	_field.set("ripple_strength", REVIEW_RIPPLE_STRENGTH)
+	_field.set("normal_strength", REVIEW_NORMAL_STRENGTH)
 	_field.set("refraction_strength", 0.0)
 	_field.set("displacement_strength", 0.0)
 

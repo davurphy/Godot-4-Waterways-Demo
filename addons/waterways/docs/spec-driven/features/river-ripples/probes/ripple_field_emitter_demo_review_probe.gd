@@ -4,6 +4,13 @@ const REVIEW_SCENE_PATH := "res://addons/waterways/docs/spec-driven/features/riv
 const MIN_WATER_TERRAIN_CLEARANCE := 0.08
 const MIN_DISPLAY_TERRAIN_CLEARANCE := 0.75
 const MIN_MARKER_TERRAIN_CLEARANCE := 1.2
+const MIN_MOVING_WATER_TERRAIN_CLEARANCE := 1.0
+const MIN_REVIEW_RIPPLE_STRENGTH := 2.0
+const MIN_REVIEW_NORMAL_STRENGTH := 2.5
+const MIN_FIXED_EMITTER_INTENSITY := 0.95
+const MIN_MOVING_EMITTER_INTENSITY := 0.85
+const MIN_MOVING_EMITTER_PULSE_RATE := 10.0
+const MAX_MOVING_EMITTER_DISTANCE := 0.12
 
 var _errors := PackedStringArray()
 var _results := {}
@@ -43,6 +50,10 @@ func _run() -> void:
 	_expect(String(field_snapshot.get("boundary_source", "")) == "target_river_mesh_footprint", "Field should auto-generate the demo mesh-footprint boundary mask. Snapshot: " + str(field_snapshot))
 	_expect(int(field_snapshot.get("target_count", 0)) == 1, "Field should target exactly one demo river. Snapshot: " + str(field_snapshot))
 	_expect(int(field_snapshot.get("applied_target_count", 0)) == 1, "Field should apply to exactly one demo river. Snapshot: " + str(field_snapshot))
+	_expect(float(field.get("ripple_strength")) >= MIN_REVIEW_RIPPLE_STRENGTH, "Review scene should use stronger field impulse response for visible authoring review.")
+	_expect(float(field.get("normal_strength")) >= MIN_REVIEW_NORMAL_STRENGTH, "Review scene should use stronger normal response for visible authoring review.")
+	_expect(is_equal_approx(float(field.get("refraction_strength")), 0.0), "Review scene should keep refraction tuning disabled.")
+	_expect(is_equal_approx(float(field.get("displacement_strength")), 0.0), "Review scene should keep displacement tuning disabled.")
 
 	_validate_emitter_reports(status.get("emitter_reports", []))
 	_validate_moving_path_reports(status.get("moving_path_reports", []))
@@ -50,11 +61,12 @@ func _run() -> void:
 	if field != null:
 		field.set_process(false)
 	var emitted_count := int(review.call("fire_emitters_once"))
+	var emission_reports := review.call("get_emitter_reports")
 	_expect(emitted_count >= 3, "Manual review pulse should accept all configured emitters.")
 	var rendered_count := int(field.call("render_queued_impulses_once")) if field != null else 0
 	_expect(rendered_count >= 3, "Field should render all configured demo emitters in one impulse pass.")
 	await _settle_frames(4)
-	_validate_impulse_texture(field, review.call("get_emitter_reports"))
+	_validate_impulse_texture(field, emission_reports)
 	if field != null:
 		_expect(bool(field.call("step_once")), "Field should step after rendered demo impulses.")
 		await _settle_frames(3)
@@ -112,6 +124,13 @@ func _validate_emitter_reports(reports: Array) -> void:
 		_expect(uv_error >= 0.0 and uv_error < allowed_error, "Emitter " + name + " should stay near its authored water UV. Report: " + str(report))
 		_expect(bool(report.get("terrain_sample_available", false)), "Emitter " + name + " should have terrain clearance data. Report: " + str(report))
 		_expect(float(report.get("water_terrain_clearance", -INF)) >= MIN_WATER_TERRAIN_CLEARANCE, "Emitter " + name + " water anchor should be above terrain, not embedded. Report: " + str(report))
+		if mode == 3:
+			_expect(float(report.get("water_terrain_clearance", -INF)) >= MIN_MOVING_WATER_TERRAIN_CLEARANCE, "Moving emitter " + name + " should sit well inside exposed river water, not skim the bank. Report: " + str(report))
+			_expect(float(report.get("intensity", 0.0)) >= MIN_MOVING_EMITTER_INTENSITY, "Moving emitter should be strong enough for visible authoring review. Report: " + str(report))
+			_expect(float(report.get("pulse_rate", 0.0)) >= MIN_MOVING_EMITTER_PULSE_RATE, "Moving emitter should emit densely enough to read as a trail. Report: " + str(report))
+			_expect(float(report.get("moving_emit_distance", INF)) <= MAX_MOVING_EMITTER_DISTANCE, "Moving emitter should not require too much travel between trail stamps. Report: " + str(report))
+		else:
+			_expect(float(report.get("intensity", 0.0)) >= MIN_FIXED_EMITTER_INTENSITY, "Fixed emitter should be strong enough for visible authoring review. Report: " + str(report))
 		_expect(float(report.get("display_terrain_clearance", -INF)) >= MIN_DISPLAY_TERRAIN_CLEARANCE, "Emitter " + name + " authoring handle should be visibly above terrain. Report: " + str(report))
 		_expect(float(report.get("marker_terrain_clearance", -INF)) >= MIN_MARKER_TERRAIN_CLEARANCE, "Emitter " + name + " marker should be visibly above terrain. Report: " + str(report))
 
@@ -122,6 +141,7 @@ func _validate_moving_path_reports(reports: Array) -> void:
 		_expect(bool(report.get("in_bounds", false)), "Moving emitter path sample should map inside field bounds: " + str(report))
 		_expect(bool(report.get("terrain_sample_available", false)), "Moving emitter path sample should have terrain clearance data. Report: " + str(report))
 		_expect(float(report.get("water_terrain_clearance", -INF)) >= MIN_WATER_TERRAIN_CLEARANCE, "Moving emitter path water anchor should stay above terrain. Report: " + str(report))
+		_expect(float(report.get("water_terrain_clearance", -INF)) >= MIN_MOVING_WATER_TERRAIN_CLEARANCE, "Moving emitter path should stay well inside exposed river water, not skim the bank. Report: " + str(report))
 		_expect(float(report.get("display_terrain_clearance", -INF)) >= MIN_DISPLAY_TERRAIN_CLEARANCE, "Moving emitter path handle should stay visibly above terrain. Report: " + str(report))
 
 
