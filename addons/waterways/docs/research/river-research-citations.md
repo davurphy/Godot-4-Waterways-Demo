@@ -10,7 +10,7 @@ Update rules:
 - Re-check version-sensitive engine documentation before using it for implementation details.
 - Keep speculative or later-phase material in "Future Research Leads" until it is needed.
 
-Last major research pass: 2026-05-31.
+Last major research pass: 2026-05-31 for broad river-feature research; 2026-06-07 for runtime ripple shader/material, field lifecycle, viewport texture ownership, resource ownership, and editor/runtime boundary documentation checks.
 
 ## Current Waterways Context
 
@@ -149,8 +149,16 @@ Last major research pass: 2026-05-31.
 
 ## Godot Constraints, Tooling, And Readbacks
 
+- [Godot documentation, "Node" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_node.html)
+  - Waterways use: Authoritative lifecycle reference for `_enter_tree()`, `_ready()`, `_exit_tree()`, scene ownership, and cleanup timing used by prototype `WaterRippleField` and `WaterRippleEmitter`.
 - [Godot documentation, "Spatial shaders" 4.6](https://docs.godotengine.org/en/4.6/tutorials/shaders/shader_reference/spatial_shader.html)
-  - Waterways use: Authoritative shader-reference constraints for `river.gdshader` and `river_debug.gdshader`.
+  - Waterways use: Authoritative shader-reference constraints for `river.gdshader` and `river_debug.gdshader`, including fragment-space world-position reconstruction and built-ins used by the ripple debug parity path.
+- [Godot documentation, "Shading language" 4.6](https://docs.godotengine.org/en/4.6/tutorials/shaders/shader_reference/shading_language.html)
+  - Waterways use: Uniform defaults, sampler hints, GDScript-to-shader uniform type mapping, and per-instance uniform limitations for `i_ripple_*` river shader parameters.
+- [Godot documentation, "Built-in functions" 4.6](https://docs.godotengine.org/en/4.6/tutorials/shaders/shader_reference/shader_functions.html)
+  - Waterways use: Authoritative texture sampling and `textureSize()` reference for guarded runtime-ripple height/normal helper sample budgets.
+- [Godot documentation, "ShaderMaterial" 4.6](https://docs.godotengine.org/en/4.6/classes/class_shadermaterial.html)
+  - Waterways use: `set_shader_parameter()`/`get_shader_parameter()` name matching and material-sharing behavior; supports the RiverManager duplicate-before-runtime-write path for visible/debug ripple textures.
 - [Godot documentation, "Screen-reading shaders" 4.6](https://docs.godotengine.org/en/4.6/tutorials/shaders/screen-reading_shaders.html)
   - Waterways use: Screen/depth texture constraints for any future depth/contact or refraction work.
 - [Godot documentation, "3D rendering limitations"](https://docs.godotengine.org/en/latest/tutorials/3d/3d_rendering_limitations.html)
@@ -159,6 +167,20 @@ Last major research pass: 2026-05-31.
   - Waterways use: CPU-side pixel and region reads for raw numeric probes, mask coverage stats, and user-marked expected/forbidden regions.
 - [Godot documentation, "Viewport" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_viewport.html)
   - Waterways use: Capture/export workflow for rendered debug views. Remember to wait for `RenderingServer.frame_post_draw` before readback.
+- [Godot documentation, "ViewportTexture" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_viewporttexture.html)
+  - Waterways use: Dynamic scene-local texture reference for runtime `SubViewport` outputs used by the ripple field without saving or mutating bake resources.
+- [Godot documentation, "SubViewport" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_subviewport.html)
+  - Waterways use: Runtime and validation render-target update and clear-mode semantics for ripple feedback passes. `UPDATE_ONCE` renders the next frame and then returns to disabled.
+- [Godot documentation, "Resource" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_resource.html)
+  - Waterways use: Resource duplication and scene-local ownership reference for avoiding accidental edits to shared river materials or saved resources.
+- [Godot documentation, "Running code in the editor" 4.6](https://docs.godotengine.org/en/4.6/tutorials/plugins/running_code_in_the_editor.html)
+  - Waterways use: `@tool` and editor/runtime boundary reference; prototype ripple nodes warn in editor but keep runtime simulation/emission disabled while `Engine.is_editor_hint()` is true.
+- [Godot documentation, "RenderingServer" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_renderingserver.html)
+  - Waterways use: Per-viewport CPU/GPU render-time measurement, draw-call counters, current rendering method/driver/device reporting, and `frame_post_draw` synchronization for shader-cost probes.
+- [Godot documentation, "Time" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_time.html)
+  - Waterways use: Monotonic `get_ticks_usec()` timing reference for secondary wall-clock measurements in validation probes.
+- [Godot documentation, "CanvasItem shaders" 4.6](https://docs.godotengine.org/en/4.6/tutorials/shaders/shader_reference/canvas_item_shader.html)
+  - Waterways use: Authoritative `UV`, `FRAGCOORD`, `SCREEN_PIXEL_SIZE`, and CanvasItem shader coordinate behavior for offscreen ripple simulation and impulse passes.
 - [Godot documentation, "Command line tutorial" 4.6](https://docs.godotengine.org/en/4.6/tutorials/editor/command_line_tutorial.html)
   - Waterways use: Source for scripted probe/export runs via `--script`.
 - [Godot documentation, "ShaderInclude" 4.6](https://docs.godotengine.org/en/stable/classes/class_shaderinclude.html)

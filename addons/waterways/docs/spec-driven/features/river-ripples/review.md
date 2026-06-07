@@ -12,35 +12,56 @@
 - `addons/waterways/docs/spec-driven/01-workflow.md`
 - Existing feature-folder style from `addons/waterways/docs/spec-driven/features/river-eddies/`
 - This newly created `river-ripples` feature folder
+- `addons/waterways/river_manager.gd`
+- `addons/waterways/shaders/river.gdshader`
+- `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_material_ownership_probe.gd`
+- `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_river_shader_visible_normal_probe.gd`
+- `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_river_shader_visible_normal_review.tscn`
+- `addons/waterways/water_ripple_field.gd`
+- `addons/waterways/water_ripple_field.tscn`
+- `addons/waterways/water_ripple_emitter.gd`
+- `addons/waterways/water_ripple_emitter.tscn`
+- `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_probe.gd`
+- `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_performance_probe.gd`
 - `addons/waterways/docs/research/river-research-citations.md` should be checked before external research-driven implementation changes.
 
 ## Current Truth
 
 Use this as the review dashboard. Keep it concise and update it before handing off.
 
-- Overall review status: Partial.
-- Blocking issues remaining: None for the documentation scaffold; implementation is intentionally unstarted.
-- Important issues remaining: Phase 0 decisions must be locked before code, shader, scene, material, or generated-resource edits.
-- Last validation relied on: Documentation-only file creation, template alignment, and roadmap-detail consistency checks; no Godot runtime validation.
-- Next action: Resolve Phase 0 decisions and branch safety, then build the standalone no-readback feedback spike.
+- Overall review status: Partial; standalone feedback spike, standalone mapping probe, standalone mesh-footprint boundary-mask probe, RiverManager-facing material ownership/restore probe, minimal river shader neutral-path probe, river shader sampling-budget probe, visible-normal render probe, demo-backed review-scene smoke probe, demo-backed review-scene diagnostic probe, debug parity probe, shader-cost probe, reusable field/emitter lifecycle probe, field/emitter dispatch-performance probe, and post-clear-fix terrain-aware demo-backed field/emitter authoring probe/diagnostic pass automated review; feedback, mapping, boundary, demo-backed minimal visible normal blending, and demo-backed debug parity also pass human-visible review.
+- Blocking issues remaining: None for the standalone feedback spike.
+- Important issues remaining: Human-visible acceptance of the revised terrain-aware WaterRippleField/emitter authoring workflow in the demo scene, non-Forward+ renderer coverage, public custom type/API polish, and response/refraction/displacement tuning remain gated.
+- Last validation relied on: post-clear-fix Godot 4.6.3 console `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_DIAGNOSTIC_OK`, terrain-aware `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_PROBE_OK`, `RIPPLE_FIELD_EMITTER_PERFORMANCE_PROBE_OK`, `RIPPLE_FIELD_EMITTER_PROBE_OK`, `RIPPLE_SHADER_COST_PROBE_OK`, `RIPPLE_DEBUG_PARITY_PROBE_OK`, `RIPPLE_MATERIAL_OWNERSHIP_PROBE_OK`, `RIPPLE_RIVER_SHADER_NEUTRAL_PROBE_OK`, `RIPPLE_RIVER_SHADER_SAMPLING_PROBE_OK`, `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_PROBE_OK`, `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_REVIEW_PROBE_OK`, `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_REVIEW_DIAGNOSTIC_OK`, earlier `RIPPLE_BOUNDARY_MASK_PROBE_OK`, `RIPPLE_MAPPING_PROBE_OK`, `RIPPLE_FEEDBACK_PROBE_OK`, and `RIPPLE_FEEDBACK_ANALYSIS_OK`, plus user-visible `ripple_boundary_mask_review.tscn`, `ripple_mapping_review.tscn`, `ripple_feedback_review.tscn`, and demo-backed `ripple_river_shader_visible_normal_review.tscn` visible/debug reviews on 2026-06-07.
+- Next action: Human-rerun `ripple_field_emitter_demo_review.tscn`; check emitter handles/markers are over exposed river water, not embedded in terrain, and F pulses land under them. Keep response/refraction/displacement tuning deferred.
 - Historical detail starts at: `Decision Updates`.
 
 ## Findings
 
 ### Blocking
 
-- None for this documentation-only pass.
+- None for the current material ownership/restore gate.
 
 ### Important
 
-- Phase 0 decisions are still open: first demo scenario, field transform support, public/prototype node registration, debug parity path, emitter targeting model, renderer target, and exact material ownership implementation.
-- The feedback path is still unproven in Godot 4.6+. Do not integrate with `river.gdshader` until the no-readback ping-pong spike passes.
-- Boundary masking is a hard gate for visible river integration. A rectangular debug ripple texture is not enough.
-- Material ownership is a hard gate. Shared material mutation could affect unrelated rivers or leave stale runtime textures.
+- Phase 0 decisions are locked for the first spike: standalone fixed/click-style emitter first, axis-aligned X/Z fields first, prototype nodes before registration, field/probe debug first, Forward+ first, and RiverManager-facing `i_ripple_*` material ownership.
+- The feedback path is proven enough for the standalone gate in Godot 4.6.3 Forward+: console probes confirm distinct ping-pong targets, no same-target hazard, no normal-runtime readback, fixed impulse response, spread, decay, and 128/256/512 behavior. User-visible scene review confirmed center pulse spread and decay.
+- The user observed an inward-moving square outline in the standalone review scene. That is acceptable only as a rectangular field edge/boundary artifact in Phase 1 and reinforces that boundary masking is a hard gate before visible river integration.
+- The standalone mapping probe is proven enough for the current gate in Godot 4.6.3 Forward+: `world_to_ripple_uv` generation from fixed axis-aligned X/Z bounds maps four world-space markers to expected UVs, and a probe-only shader renders texture impulses at those same positions.
+- Official Godot docs were checked after user challenge. The implementation now relies on documented `SubViewport.UPDATE_ONCE`, viewport texture, and CanvasItem `UV` behavior instead of ad hoc coordinate assumptions.
+- The standalone mesh-footprint boundary-mask probe is proven enough for the current gate in Godot 4.6.3 Forward+: a generated Waterways river mesh footprint is transformed through `world_to_ripple_uv`, rendered into a boundary mask, sampled against water/dry points, and fed into the standalone feedback path. Dry impulse rejection and close-parallel dry-gap checks passed. User screenshot confirmed the visible boundary mask shape and dark dry gap.
+- RiverManager-facing material ownership is proven enough for the current gate with test-only shader materials: the runtime API accepts only planned `i_ripple_*` keys, duplicates per-target materials, rejects wrong-owner operations, preserves shared source material state, and restores on clear, owner exit, and river tree exit.
+- The minimal built-in river shader neutral path is proven enough for the current gate: `river.gdshader` declares the planned `i_ripple_*` uniforms with neutral defaults, the RiverManager API now applies them to a duplicated built-in river material, and `RIPPLE_RIVER_SHADER_NEUTRAL_PROBE_OK` reported zero pixel delta for disabled-with-textures, enabled-missing-simulation-texture, and enabled-missing-boundary-texture cases.
+- The river shader sampling and visible-normal slice is proven enough for the current automated gate: `RIPPLE_RIVER_SHADER_SAMPLING_PROBE_OK` confirms the shader maps world X/Z to ripple U/V, `ripple_height_at_uv()` uses one simulation sample plus one boundary-mask helper call, `ripple_normal_offset_at_uv()` uses three simulation samples plus one boundary-mask helper call, and visible `fragment()` calls the world normal helper once without direct height sampling. The follow-up neutral render probe still reports zero pixel delta.
+- Minimal visible normal blending is automated-proven and human-visible accepted for the current gate: `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_PROBE_OK` reported zero delta for disabled/flat/black-boundary cases and visible delta for an enabled wave texture. `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_REVIEW_PROBE_OK` proves the demo-backed review scene applies, toggles, restores runtime ripple state, preserves demo `flow_speed=1.0`, precomputes 48 animation frames, and advances frame references without generating images during playback. `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_REVIEW_DIAGNOSTIC_OK` proved the active rendered material receives expected `i_ripple_*` values, the mesh has tangents, all three revised centers land inside the close-overhead frame, and the enabled-vs-zero-strength capture shows visible annular normal changes at default strength `1.25`. User review confirmed the river keeps moving and ripple rings expand outward.
+- Debug parity is automated-proven and human-visible accepted for the current gate: `river_debug.gdshader` exposes raw ripple height, impulse/contact, boundary mask, and visible influence modes; the debug menu lists them under Ripples; `RIPPLE_DEBUG_PARITY_PROBE_OK` confirms runtime ripple textures survive visible/debug material switching, review-scene debug toggles preserve animation state, and all four debug renders have nonblank contrast. User confirmed all views work in the currently expected ways; the broad yellow contact view is expected for the current broad precomputed contact fixture.
+- Shader cost is automated-proven for the current gate: `RIPPLE_SHADER_COST_PROBE_OK` confirms disabled-ready and visible-fragment direct ripple samples are `0`, the enabled visible normal helper remains at three simulation samples plus one boundary helper call, disabled live-texture median GPU cost is `0.315 ms` versus baseline `0.312 ms`, enabled visible normal median GPU cost is `0.319 ms`, debug inspection modes are measured and recorded separately, and all measured cases use one draw call on the Forward+ desktop probe.
+- The reusable field/emitter prototype is automated-proven for the current console gate: `WaterRippleField` owns runtime ping-pong, impulse, and boundary `SubViewport` targets, applies owner-scoped `i_ripple_*` material state through RiverManager, generates a mesh-footprint boundary mask from intended targets, clears state on disable/free, and accepts impulses from `WaterRippleEmitter` pulse/continuous/one-shot/moving modes. `RIPPLE_FIELD_EMITTER_PROBE_OK` covers lifecycle, caps, priority, out-of-bounds rejection, no readback, and material cleanup; `RIPPLE_FIELD_EMITTER_PERFORMANCE_PROBE_OK` covers 128/256/512 fields with 0/4/16 emitters on Forward+.
+- The demo-backed field/emitter authoring scene is automated-proven for the current post-clear-fix terrain-aware console gate: `ripple_field_emitter_demo_review.tscn` instances `Demo.tscn`, exposes a real `WaterRippleField` and pulse/one-shot/moving `WaterRippleEmitter` children, targets the demo river without public custom type registration, generates the river mesh-footprint boundary mask, preserves base `flow_speed=1.0`, samples `World/HTerrain` to avoid buried visible handles, renders three localized emitter impulse stamps on a black impulse background, restores the baseline material on disable, reapplies cleanly, and reloads without stale runtime material state through `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_PROBE_OK`. The first human-visible authoring pass caught two emitters embedded in terrain; the next caught no visible ripples. `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_DIAGNOSTIC_OK` found the impulse viewport had been clearing to a nonzero project color, then proved transparent-zero viewport clearing restores localized blue/green/orange impulse stamps. Human-visible rerun remains open.
 
 ### Minor
 
-- The shared citations index already records the CBerry22 ripple simulation repository, so no citation update was needed for this docs-only pass.
+- The shared citations index now includes the Godot SubViewport, CanvasItem shader, spatial shader, shading-language, ShaderMaterial, RenderingServer, and Time references used for feedback, shader uniforms, runtime material ownership, and shader-cost measurement.
 
 ## Premise Review
 
@@ -51,7 +72,7 @@ Use this as the review dashboard. Keep it concise and update it before handing o
 - If yes, was that raised with the user early enough?
   - Captured in `spec.md`, `plan.md`, `research.md`, `tasks.md`, `validation.md`, and `handoff-latest.md`.
 - Was the final outcome a code/design fix, docs/validation clarification, or expected-behavior explanation?
-  - Documentation and validation clarification only.
+  - Code and validation clarification for the RiverManager-facing material ownership gate, minimal river shader neutral path, visible normal slice, and debug parity path; response/refraction/displacement tuning remains deliberately unstarted.
 
 ## Spec Compliance
 
@@ -60,39 +81,57 @@ Use this as the review dashboard. Keep it concise and update it before handing o
 | Create a `river-ripples` feature folder | Pass | Folder created under `addons/waterways/docs/spec-driven/features/`. |
 | Generate docs from feature-folder templates | Pass | Created `spec.md`, `plan.md`, `tasks.md`, `research.md`, `validation.md`, `review.md`, and workflow-renamed `handoff-latest.md`. |
 | Preserve roadmap constraints | Pass | Docs preserve visual-only scope, no-readback requirement, mapping, boundary, material ownership, debug, registration, shader cost gates, concrete `i_ripple_*` uniforms, field properties, emitter properties, and authoring-control notes. |
-| Validate runtime ripple behavior | Not applicable | No implementation exists yet. |
-| Validate Godot editor/runtime visuals | Not applicable | No scene or shader changes exist yet. |
+| Validate runtime ripple behavior | Partial pass | Standalone feedback, mapping, boundary-mask, RiverManager material ownership, river shader neutral-path, shader sampling-budget, visible-normal render, demo diagnostic, debug parity, reusable field/emitter probes, and post-clear-fix terrain-aware demo-backed field/emitter authoring probe/diagnostic pass; human-visible rerun of the field/emitter authoring workflow remains open. |
+| Validate Godot editor/runtime visuals | Partial pass | User confirmed standalone center pulse spreads and decays, confirmed mapping scene markers agree with texture impulses, confirmed boundary-mask shape/dry gap, confirmed the revised demo visible-normal fixture keeps the river moving while ripple rings expand outward after the framerate fix, and confirmed all demo debug views work in the currently expected ways. User then caught embedded field/emitter authoring markers, followed by a no-visible-emitter-ripples pass; terrain-aware placement and transparent-zero viewport clearing now need visible rerun. |
 
 ## Architecture Compliance
 
 - Godot 4.6+ API target preserved: Yes.
-- Editor/runtime boundary preserved: Yes in docs; unproven in implementation.
+- Editor/runtime boundary preserved: Partial; current runtime material/debug switching and prototype `WaterRippleField`/emitter runtime lifecycle are probe-proven, while human-visible editor authoring/reload workflow remains future work.
 - Bake data and generated resources explicit: Yes; first pass requires no bake/data changes.
 - Legacy Godot 3 behavior used only as reference: Yes.
 - Extension points preserved: Yes in docs; planned but not implemented.
-- Godot-native features preferred where practical: Partial; viewport feedback needs a spike.
-- Bespoke systems justified: Partial; runtime feedback is justified by feature needs but not yet proven.
-- Comments explain non-obvious intent without restating obvious code: Not applicable; no code.
+- Godot-native features preferred where practical: Yes for current spike; official SubViewport and CanvasItem shader docs were checked.
+- Bespoke systems justified: Partial; runtime feedback, the minimal river visible/debug integration, and prototype field/emitter workflow are justified and probe-proven, while demo authoring and non-Forward+ behavior remain gated.
+- Comments explain non-obvious intent without restating obvious code: Partial; validation-only readback is labeled in the analysis probe.
 - Feature and architecture docs updated for behavior, data flow, and boundary changes: Yes for this new folder.
 
 ## Validation Results
 
 - Automated:
-  - Documentation-only file creation checks. No parser, shader, or Godot runtime checks were run.
+  - Terrain-aware `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_PROBE_OK`
+  - `RIPPLE_FIELD_EMITTER_PERFORMANCE_PROBE_OK`
+  - `RIPPLE_FIELD_EMITTER_PROBE_OK`
+  - `RIPPLE_SHADER_COST_PROBE_OK`
+  - `RIPPLE_DEBUG_PARITY_PROBE_OK`
+  - `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_REVIEW_PROBE_OK`
+  - `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_REVIEW_DIAGNOSTIC_OK`
+  - `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_PROBE_OK`
+  - `RIPPLE_RIVER_SHADER_SAMPLING_PROBE_OK`
+  - `RIPPLE_RIVER_SHADER_NEUTRAL_PROBE_OK`
+  - `RIPPLE_MATERIAL_OWNERSHIP_PROBE_OK`
+  - `RIPPLE_MAPPING_PROBE_OK`
+  - `RIPPLE_BOUNDARY_MASK_PROBE_OK`
+  - `RIPPLE_FEEDBACK_PROBE_OK`
+  - `RIPPLE_FEEDBACK_ANALYSIS_OK`
 - Human-assisted:
-  - None.
+  - User confirmed standalone center pulse spreads outward and decays.
+  - User confirmed standalone mapping markers agree with matching texture impulses.
+  - User confirmed standalone boundary mask shape and dry gap through `ripple_boundary_mask_review.tscn` screenshot.
+  - User confirmed all demo debug views work in the currently expected ways; contact currently reads as a broad yellow field by fixture design.
+  - User caught the first `ripple_field_emitter_demo_review.tscn` placement as visibly wrong, with two emitters embedded in terrain; the revised terrain-aware placement still needs visible rerun.
 - Shader:
-  - None.
+  - Standalone simulation and impulse shaders compile through probes; built-in river shader declares neutral `i_ripple_*` uniforms and the disabled/missing-texture render comparison passes. `river_debug.gdshader` exposes raw height, impulse/contact, boundary mask, and visible influence debug modes.
 - Editor:
   - None.
 - Visual:
-  - None.
+  - Standalone review scene pass for center pulse spread/decay; mapping review pass for colored marker/texture agreement; boundary-mask review screenshot pass for mask shape/dry gap; demo visible-normal review pass; demo debug-view review pass; rectangular edge artifact documented.
 - Bake output:
   - None; no bake changes were made.
 - Runtime:
-  - None.
+  - Standalone feedback, mapping, and boundary-mask review/probe paths, plus RiverManager-facing runtime material ownership/restore API, built-in river shader neutral uniform path, prototype `WaterRippleField`/`WaterRippleEmitter` paths, and probes.
 - Performance:
-  - None.
+  - Review-scene fixture image-generation cost is addressed through precomputed frames. Current shader-cost validation passes with a `+0.004 ms` median GPU delta for enabled visible normals over disabled live textures on the controlled 640x360 Forward+ probe. Field/emitter dispatch-performance validation passes at 128/256/512 with 0/4/16 emitters on the Forward+ desktop probe; human-visible demo production and non-Forward+ coverage remain open.
 - Manual:
   - Roadmap was mapped into the feature-folder structure and checked against workflow naming.
 
@@ -102,17 +141,25 @@ Use this as the review dashboard. Keep it concise and update it before handing o
 - [x] No stale "open follow-up" language remains for completed docs creation.
 - [x] Resolved open questions moved to `spec.md` resolved questions or decision log where applicable.
 - [x] `plan.md` reflects intended architecture and lifecycle behavior from the roadmap.
-- [x] `validation.md` current snapshot and matrix match the current unrun status.
+- [x] `validation.md` current snapshot and matrix match the current debug-parity status.
 - [x] Latest handoff points to the true next action.
 - [x] Shared works-cited index checked or updated: `addons/waterways/docs/research/river-research-citations.md`.
 
 ## Follow-Up Tasks
 
-- [ ] Lock Phase 0 decisions with the user.
-- [ ] Create or confirm a feature branch before implementation.
-- [ ] Build the standalone no-readback ripple feedback spike.
-- [ ] Add the first mapping and boundary-mask probes before river shader integration.
-- [ ] Update this review after the first validation run.
+- [x] Lock Phase 0 decisions with the user.
+- [x] Create or confirm a feature branch before implementation.
+- [x] Build the standalone no-readback ripple feedback spike.
+- [x] Human-review the standalone feedback scene for visible ring spread/decay.
+- [x] Add the first mapping probe before river shader integration.
+- [x] Add the first boundary-mask probe before river shader integration.
+- [x] Add guarded river shader height/normal sampling helpers before visible blending.
+- [x] Update this review after the first validation run.
+- [x] Add debug parity views/probe before shader-cost validation.
+- [x] Run shader-cost/performance validation before response/refraction/displacement tuning.
+- [x] Build and validate the reusable `WaterRippleField` / emitter workflow.
+- [x] Integrate the reusable field/emitter prototype into a demo-backed authoring workflow and validate it by console probe.
+- [ ] Human-review the demo-backed field/emitter authoring workflow.
 
 ## Decision Updates
 
@@ -125,3 +172,5 @@ Record any spec or plan changes discovered during review.
 | 2026-06-07 | Treat Phase 0 decisions as prerequisites, not hidden assumptions. | The roadmap names them as safety gates before visible river integration. |
 | 2026-06-07 | Preserve concrete roadmap details in the feature docs. | Exact field properties, emitter properties, `i_ripple_*` uniforms, and authoring controls were too easy to lose in the first translation. |
 | 2026-06-07 | Split broad Phase 0 safety scope into separate task gates. | Source signatures, river bakes, WaterSystem behavior, and buoyancy deserve independent confirmation before implementation. |
+| 2026-06-07 | Use official Godot docs to guide the feedback spike. | `SubViewport.UPDATE_ONCE`, viewport texture access, and CanvasItem `UV` semantics are documented; avoid undocumented coordinate detours. |
+| 2026-06-07 | Pass spatial shader built-ins into ripple helper functions as arguments. | Godot 4.6.3 rejected reading `INV_VIEW_MATRIX` directly inside global helper scope; argument-based helpers compile and keep future world-position mapping explicit. |

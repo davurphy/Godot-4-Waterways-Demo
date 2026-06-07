@@ -4,6 +4,7 @@
 
 Describe why this research is needed and what decision it should unlock for Waterways.
 Use `addons/waterways/docs/research/river-research-citations.md` as the shared works-cited index for river behavior, hydrology, flow maps, shader-water references, and production examples. Update that file when new external sources inform this feature.
+For Godot-specific implementation work, search current official Godot documentation and API references online before coding. Prefer official Godot docs first for shaders, rendering, editor APIs, resources, physics, and version-specific behavior; use community examples only as secondary context.
 
 ## Current Research Outcome
 
@@ -43,6 +44,7 @@ Consider:
 ## Godot 4.6+ Findings
 
 Record relevant Godot 4.6+ assumptions, APIs, limitations, rendering behavior, import behavior, editor/runtime differences, and community practices.
+If a Godot API, shader rule, renderer behavior, or editor/runtime constraint affects the implementation, cite the current official documentation here and add it to the shared citations index when relevant.
 
 Check as relevant:
 

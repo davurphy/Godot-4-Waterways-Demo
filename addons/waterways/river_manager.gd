@@ -211,6 +211,20 @@ const MATERIAL_PARAMETER_REVERT_OVERRIDES = {
 	wake_fleck_noise_scale = 42.0,
 }
 
+const RUNTIME_RIPPLE_MATERIAL_PARAMETER_SET = {
+	"i_ripple_enabled": true,
+	"i_ripple_simulation_texture": true,
+	"i_ripple_impulse_texture": true,
+	"i_ripple_world_to_uv": true,
+	"i_ripple_boundary_mask": true,
+	"i_ripple_texel_size": true,
+	"i_ripple_normal_strength": true,
+	"i_ripple_refraction_strength": true,
+	"i_ripple_displacement_strength": true,
+	"i_ripple_height_fade_distance": true,
+	"i_ripple_boundary_fade": true,
+}
+
 const BAKE_CHANNEL_FLAT_EPSILON := 0.002
 const BAKE_CHANNEL_LOW_CONTRAST_EPSILON := 0.03
 const BAKE_CHANNEL_SATURATION_EPSILON := 0.02
@@ -465,6 +479,10 @@ var _selected_shader : int = SHADER_TYPES.WATER
 var _uv2_sides : int
 var _suppress_property_change_notifications := false
 var _flowmap_bake_in_progress := false
+var _runtime_ripple_owner_id := 0
+var _runtime_ripple_owner_node: Node = null
+var _runtime_ripple_original_material: ShaderMaterial = null
+var _runtime_ripple_original_debug_material: ShaderMaterial = null
 
 # river_changed used to update handles when values are changed on script side
 # progress_notified used to up progress bar when baking maps
@@ -932,6 +950,10 @@ func _enter_tree() -> void:
 	set_materials("i_texture_foam_noise", load(FOAM_NOISE_PATH) as Texture2D)
 
 
+func _exit_tree() -> void:
+	_restore_runtime_ripple_material_state()
+
+
 func _get_configuration_warnings() -> PackedStringArray:
 	var warnings := PackedStringArray()
 	if not valid_flowmap:
@@ -1092,6 +1114,72 @@ func set_materials(param : String, value) -> void:
 		_material.set_shader_parameter(param, value)
 	if _debug_material != null:
 		_debug_material.set_shader_parameter(param, value)
+
+
+func apply_runtime_ripple_material_state(owner: Object, parameters: Dictionary) -> bool:
+	if owner == null:
+		push_warning("Cannot apply runtime ripple material state without an owner.")
+		return false
+	if _material == null:
+		push_warning("Cannot apply runtime ripple material state because the river has no ShaderMaterial.")
+		return false
+
+	var validation_error := _validate_runtime_ripple_material_parameters(parameters)
+	if not validation_error.is_empty():
+		push_warning(validation_error)
+		return false
+	if parameters.is_empty():
+		return true
+
+	var owner_id := owner.get_instance_id()
+	if _runtime_ripple_owner_id != 0 and _runtime_ripple_owner_id != owner_id:
+		push_warning("Cannot apply runtime ripple material state because another ripple owner already controls this river.")
+		return false
+
+	var parameter_names := _get_runtime_ripple_parameter_names(parameters)
+	if not _shader_material_has_parameters(_material, parameter_names):
+		push_warning("Cannot apply runtime ripple material state because the river material does not declare all requested i_ripple_* uniforms.")
+		return false
+
+	if _runtime_ripple_owner_id == 0:
+		var visible_duplicate := _duplicate_runtime_ripple_material(_material)
+		if visible_duplicate == null:
+			push_warning("Cannot apply runtime ripple material state because the visible material could not be duplicated.")
+			return false
+		var debug_duplicate: ShaderMaterial = null
+		if _debug_material != null:
+			debug_duplicate = _duplicate_runtime_ripple_material(_debug_material)
+			if debug_duplicate == null:
+				push_warning("Cannot apply runtime ripple material state because the debug material could not be duplicated.")
+				return false
+		_runtime_ripple_owner_id = owner_id
+		_connect_runtime_ripple_owner(owner)
+		_runtime_ripple_original_material = _material
+		_runtime_ripple_original_debug_material = _debug_material
+		_material = visible_duplicate
+		_debug_material = debug_duplicate
+
+	_apply_runtime_ripple_parameters(_material, parameters)
+	_apply_runtime_ripple_parameters(_debug_material, parameters)
+	_apply_debug_view_material()
+	return true
+
+
+func clear_runtime_ripple_material_state(owner: Object) -> void:
+	if _runtime_ripple_owner_id == 0:
+		return
+	if owner == null or owner.get_instance_id() != _runtime_ripple_owner_id:
+		push_warning("Ignoring runtime ripple material clear from a non-owner.")
+		return
+	_restore_runtime_ripple_material_state()
+
+
+func has_runtime_ripple_material_state(owner: Object = null) -> bool:
+	if _runtime_ripple_owner_id == 0:
+		return false
+	if owner == null:
+		return true
+	return owner.get_instance_id() == _runtime_ripple_owner_id
 
 
 func set_debug_view(index : int) -> void:
@@ -1314,6 +1402,92 @@ func _get_shader_parameter_name_set(shader: Shader) -> Dictionary:
 	for parameter in parameters:
 		names[String(parameter.name)] = true
 	return names
+
+
+func _validate_runtime_ripple_material_parameters(parameters: Dictionary) -> String:
+	for parameter_name_variant in parameters.keys():
+		var parameter_name := String(parameter_name_variant)
+		if not parameter_name.begins_with("i_ripple_"):
+			return "Runtime ripple material state may only set i_ripple_* uniforms; rejected " + parameter_name + "."
+		if not RUNTIME_RIPPLE_MATERIAL_PARAMETER_SET.has(parameter_name):
+			return "Runtime ripple material state rejected unknown ripple uniform " + parameter_name + "."
+	return ""
+
+
+func _get_runtime_ripple_parameter_names(parameters: Dictionary) -> PackedStringArray:
+	var names := PackedStringArray()
+	for parameter_name_variant in parameters.keys():
+		names.append(String(parameter_name_variant))
+	return names
+
+
+func _shader_material_has_parameters(material: ShaderMaterial, parameter_names: PackedStringArray) -> bool:
+	if material == null or material.shader == null:
+		return false
+	var shader_parameters := _get_shader_parameter_name_set(material.shader)
+	for parameter_name in parameter_names:
+		if not shader_parameters.has(parameter_name):
+			return false
+	return true
+
+
+func _duplicate_runtime_ripple_material(source: ShaderMaterial) -> ShaderMaterial:
+	if source == null:
+		return null
+	var duplicate := source.duplicate(true) as ShaderMaterial
+	if duplicate == null:
+		return null
+	duplicate.resource_local_to_scene = true
+	if source.resource_name.is_empty():
+		duplicate.resource_name = "RuntimeRippleMaterial"
+	else:
+		duplicate.resource_name = source.resource_name + " RuntimeRipple"
+	return duplicate
+
+
+func _apply_runtime_ripple_parameters(material: ShaderMaterial, parameters: Dictionary) -> void:
+	if material == null or material.shader == null:
+		return
+	var shader_parameters := _get_shader_parameter_name_set(material.shader)
+	for parameter_name_variant in parameters.keys():
+		var parameter_name := String(parameter_name_variant)
+		if shader_parameters.has(parameter_name):
+			material.set_shader_parameter(parameter_name, parameters[parameter_name_variant])
+
+
+func _restore_runtime_ripple_material_state() -> void:
+	if _runtime_ripple_owner_id == 0:
+		return
+	_disconnect_runtime_ripple_owner()
+	_material = _runtime_ripple_original_material
+	_debug_material = _runtime_ripple_original_debug_material
+	_runtime_ripple_owner_id = 0
+	_runtime_ripple_original_material = null
+	_runtime_ripple_original_debug_material = null
+	_apply_debug_view_material()
+
+
+func _connect_runtime_ripple_owner(owner: Object) -> void:
+	if not owner is Node:
+		return
+	_runtime_ripple_owner_node = owner as Node
+	var callback := Callable(self, "_on_runtime_ripple_owner_tree_exiting")
+	if not _runtime_ripple_owner_node.is_connected("tree_exiting", callback):
+		_runtime_ripple_owner_node.connect("tree_exiting", callback)
+
+
+func _disconnect_runtime_ripple_owner() -> void:
+	if _runtime_ripple_owner_node == null or not is_instance_valid(_runtime_ripple_owner_node):
+		_runtime_ripple_owner_node = null
+		return
+	var callback := Callable(self, "_on_runtime_ripple_owner_tree_exiting")
+	if _runtime_ripple_owner_node.is_connected("tree_exiting", callback):
+		_runtime_ripple_owner_node.disconnect("tree_exiting", callback)
+	_runtime_ripple_owner_node = null
+
+
+func _on_runtime_ripple_owner_tree_exiting() -> void:
+	_restore_runtime_ripple_material_state()
 
 
 func _get_bake_preflight_failures(flowmap_resolution: int, require_mesh: bool, generation_behavior: String = "") -> PackedStringArray:

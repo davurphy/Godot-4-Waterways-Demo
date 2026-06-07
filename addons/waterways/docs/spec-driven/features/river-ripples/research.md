@@ -10,10 +10,10 @@ Use `addons/waterways/docs/research/river-research-citations.md` as the shared w
 
 Keep this short once research has produced a direction.
 
-- Status: In progress.
-- Recommendation: Start with a standalone visual-only GPU feedback spike, then prove `world_to_ripple_uv` mapping and mesh-footprint boundary masking before touching visible river materials.
-- Confidence: Medium-high for the architecture; medium for Godot-specific viewport feedback details until a local spike proves timing, precision, and pause/reload behavior.
-- Biggest unknown that remains: The exact Godot 4.6+ feedback implementation that satisfies no readback, no same-texture read/write, precision, update timing, and renderer compatibility.
+- Status: In progress; standalone feedback ownership, spread/decay, 128/256/512 analysis, axis-aligned `world_to_ripple_uv` marker mapping, mesh-footprint boundary masking, RiverManager-facing material ownership/restore, built-in river shader neutral-path behavior, helper-level shader sampling budget, minimal visible normal blending, revised demo review-scene diagnostic/performance-fixture behavior, debug parity, current shader-cost behavior, reusable field/emitter lifecycle, and current field/emitter dispatch performance are validated by console probes.
+- Recommendation: Keep the visual-only GPU feedback path and prototype `WaterRippleField`/`WaterRippleEmitter` workflow, human-review the new demo-backed authoring scene, then cover renderer/platform behavior before tuning response/refraction/displacement or polishing public API.
+- Confidence: Medium-high for the architecture; medium-high for Godot 4.6.3 Forward+ standalone feedback, mesh-footprint boundary masking, RiverManager-facing material ownership, built-in shader neutral path, helper-level shader sample budget, minimal visible normal render behavior, revised review-scene diagnostic/performance-fixture behavior, human-visible base-flow/ring-motion acceptance, debug parity, current shader-cost behavior, prototype field/emitter lifecycle, and current field/emitter dispatch performance; medium for human-visible field/emitter demo workflow, editor scene reload, public API polish, and non-Forward+ behavior.
+- Biggest unknown that remains: Human-visible `WaterRippleField`/emitter authoring workflow in the demo scene, non-Forward+ renderer behavior, public custom type/API polish, and later production visual polish beyond the minimal normal-blend acceptance.
 - Decision or plan section this research unlocked: `plan.md` "Architecture Summary", "Runtime Flow", and "Risks".
 
 ## Questions
@@ -65,16 +65,43 @@ Current local findings from the roadmap:
 - `filter_renderer.gd` and `system_map_renderer.gd` prove shader passes through `SubViewport` are available.
 - Existing bake paths use `SubViewport.UPDATE_ONCE`, wait frames, call `get_image()`, and store textures.
 - Runtime ripple simulation needs a different path: no CPU readback during normal runtime and no sampling from the active write target.
+- Official Godot 4.6 `SubViewport` docs say `UPDATE_ONCE` updates the render target once, then switches to disabled; manual validation and feedback passes should request the update and wait frames deliberately.
+- Official Godot 4.6 viewport docs confirm `SubViewport` content is accessed through the viewport texture returned by `get_texture()`.
+- Official Godot 4.6 `Node` docs define `_enter_tree()`, `_ready()`, and `_exit_tree()` lifecycle order; the prototype field/emitter path uses runtime setup/cleanup around `_ready()`/`_exit_tree()` and avoids relying on editor-time preview side effects.
+- Official Godot 4.6 `ViewportTexture` docs describe viewport textures as scene-local dynamic textures; the prototype field owns `SubViewport` nodes and passes their runtime textures to materials instead of saving or mutating bake resources.
+- Official Godot 4.6 `Resource` docs describe duplication and scene-local resource behavior; this reinforces keeping transient viewport/material state owned by the field/RiverManager runtime path rather than editing shared source resources directly.
+- Official Godot 4.6 editor-tool docs caution that `@tool` scripts run in the editor; the prototype field and emitter keep simulation/emission disabled under `Engine.is_editor_hint()` and use warnings for authoring feedback.
+- Official Godot 4.6 CanvasItem shader docs define `UV` as normalized texture coordinates and `FRAGCOORD.xy` as pixel-center viewport coordinates; the standalone shaders should stay on these documented built-ins instead of ad hoc vertex-derived UVs.
+- Official Godot screen-reading docs warn that `hint_screen_texture` relies on back-buffer copying behavior; ripple feedback should continue using explicit `ViewportTexture` ping-pong targets instead.
+- Official Godot shader-language docs confirm regular shader uniforms can declare defaults and sampler hints, and that `Transform3D` maps to `mat4` when set from GDScript; they also note per-instance uniforms cannot be textures, so the current runtime texture path remains material-parameter based rather than instance-uniform based.
+- Official Godot `ShaderMaterial` docs confirm shader parameter names are case-sensitive, `set_shader_parameter()`/`get_shader_parameter()` are the runtime material API, and shared materials require per-instance uniforms or material duplication to avoid cross-instance changes; this supports the RiverManager duplicate-before-runtime-write path.
+- Official Godot 4.6 spatial shader docs confirm fragment `VERTEX` is view-space, `INV_VIEW_MATRIX` maps view to world, `CAMERA_POSITION_WORLD` is available in fragment scope, and `NORMAL_MAP` is tangent-space output. Local shader validation showed these built-ins should be passed into helper functions instead of read directly from global helper scope.
+- Official Godot 4.6 shader built-in function docs confirm `textureSize()` and `textureLod()` are available for the guarded helper/sample-budget path.
+- Official Godot 4.6 `RenderingServer` docs confirm per-viewport CPU/GPU render-time measurement is available through `viewport_set_measure_render_time()`, `viewport_get_measured_render_time_cpu()`, and `viewport_get_measured_render_time_gpu()`, and that per-viewport draw-call info is available after frames have rendered.
+- Official Godot 4.6 `Time` docs confirm `get_ticks_usec()` is monotonic and appropriate for precise elapsed-time measurement; the shader-cost probe records wall-clock frame waits only as secondary context and uses `RenderingServer` timing for the pass criteria.
+- Local probe finding: manual-mode validation must not let `_process()` clear the impulse texture while `auto_step` is disabled. The first failing analysis run exposed this by showing a blank impulse despite valid render-target ownership.
+- Local probe result: `RIPPLE_FEEDBACK_ANALYSIS_OK` proves fixed impulse response, outward ring-band energy, decay, and no saturation at 128, 256, and 512 in Godot 4.6.3 Forward+.
+- Local probe result: `RIPPLE_MAPPING_PROBE_OK` proves the standalone axis-aligned X/Z `world_to_ripple_uv` transform maps four fixed world-space markers to expected UVs, and the probe-only shader renders texture impulses at those same positions in Godot 4.6.3 Forward+.
+- Local probe result: `RIPPLE_BOUNDARY_MASK_PROBE_OK` proves a generated Waterways river mesh footprint can be transformed through the same `world_to_ripple_uv`, rendered into a boundary mask, sampled against water/dry points, and fed into the standalone feedback path so dry impulses and close cross-bank leakage are rejected.
+- Local probe result: `RIPPLE_RIVER_SHADER_NEUTRAL_PROBE_OK` proves the built-in river shader declares planned neutral `i_ripple_*` uniforms and remains pixel-identical to baseline when ripples are disabled, when the simulation texture is missing, and when the boundary texture is missing.
+- Local probe finding: The standalone mapping and boundary probes treat `world_to_ripple_uv` as world X/Z to ripple U/V. The first river helper used mapped X/Y; this would pin flat river fragments to one texture row, so `river.gdshader` now samples mapped X/Z and the sampling probe checks for that contract.
+- Local probe result: `RIPPLE_RIVER_SHADER_SAMPLING_PROBE_OK` proves the visible normal river shader slice compiles, calls `ripple_normal_offset_at_world()` once from `fragment()`, keeps direct height sampling out of `fragment()`, keeps `ripple_height_at_uv()` to one simulation sample plus one boundary-mask helper call, and keeps `ripple_normal_offset_at_uv()` to three simulation samples plus one boundary-mask helper call.
+- Local probe result: `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_PROBE_OK` proves disabled, flat, and black-boundary cases stay pixel-identical while an enabled wave texture visibly changes rendered normal response in Godot 4.6.3 Forward+.
+- Local probe result: `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_REVIEW_PROBE_OK` proves the demo-backed visible review scene can load `Demo.tscn`, start on the close-overhead inspection camera, apply runtime ripple state to the existing river through RiverManager, toggle it off/on, and restore runtime material state on free.
+- Local diagnostic result: `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_REVIEW_DIAGNOSTIC_OK` diagnosed the previous no-visible-ripples review failure as fixture readability rather than material ownership. Later human reviews caught that the readability fix froze base flow, used a static texture, then caused a harsh enabled-framerate drop from playback-time 256x256 GDScript image generation/upload. The revised scene now clusters annular centers, focuses the camera on actual selected water positions, preserves demo material motion, precomputes 48 annular review frames once, swaps texture references during playback, confirms mesh tangents, and shows a visible enabled-vs-zero-strength delta in validation-only captures. Human rerun confirmed the precomputed-frame fix greatly improved enabled-ripple framerate, the river keeps moving, and rings expand outward.
+- Local probe result: `RIPPLE_DEBUG_PARITY_PROBE_OK` proves the selected debug parity path: `river_debug.gdshader` exposes raw ripple height, impulse/contact, boundary mask, and visible influence modes; the debug menu lists those modes; RiverManager applies the additional impulse/contact texture to duplicated runtime materials; switching visible/debug modes preserves texture state; and the demo-backed review scene can switch 0/4/5/6/7 without resetting the animated runtime ripple texture.
+- Local probe result: `RIPPLE_SHADER_COST_PROBE_OK` proves the current shader-cost gate in Godot 4.6.3 Forward+ on an AMD Radeon RX 6800 XT. Static checks found disabled-ready and visible-fragment direct ripple samples at `0`, one visible helper call from `fragment()`, and the accepted enabled-normal budget of three simulation samples plus one boundary helper call. The latest controlled 640x360 median GPU timings were baseline `0.312 ms`, disabled live textures `0.315 ms`, enabled visible normal `0.319 ms`, and debug raw/contact/boundary/influence `0.115/0.118/0.117/0.129 ms`, all with one draw call. Debug timings are inspection-tool evidence, not visual tuning targets.
+- Local probe result: `RIPPLE_FIELD_EMITTER_PROBE_OK` proves the current prototype field/emitter lifecycle gate in Godot 4.6.3 Forward+. The field initializes distinct read/write/impulse/boundary viewports and textures, generates a target river mesh-footprint boundary mask, applies material state to the intended river through RiverManager, accepts world-space emitter impulses, caps/sorts emitters, rejects out-of-bounds impulses, avoids normal-runtime readback, and clears material state on disable/free.
+- Local probe result: `RIPPLE_FIELD_EMITTER_PROBE_OK` and `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_PROBE_OK` still pass after switching `WaterRippleField` canvas `SubViewport` targets to transparent zero clear. This matters because the human-visible field/emitter review showed impulse/contact blue everywhere, raw height flat/nonlocal, visible influence black, and no visible rings. `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_DIAGNOSTIC_OK` found the impulse texture had a nonzero full-field background (`min=0.30196`) before the fix and a localized background after it (`min=0.0`, `mean=0.000208`, `changed_count=118`) with blue/green/orange emitter samples present.
+- Local probe result: `RIPPLE_FIELD_EMITTER_PERFORMANCE_PROBE_OK` proves the current Forward+ field/emitter dispatch sweep after transparent-zero viewport clearing. Dispatch medians for 0/4/16 emitters were `5.477/6.059/5.704 ms` at 128, `6.405/5.650/5.521 ms` at 256, and `5.754/5.508/5.377 ms` at 512 on Godot 4.6.3 Forward+ / AMD Radeon RX 6800 XT.
+- Local regression result: After splitting the additive runtime impulse shader from the standalone feedback-analysis impulse shader, `RIPPLE_FEEDBACK_ANALYSIS_OK`, `RIPPLE_FEEDBACK_PROBE_OK`, `RIPPLE_BOUNDARY_MASK_PROBE_OK`, `RIPPLE_MATERIAL_OWNERSHIP_PROBE_OK`, `RIPPLE_DEBUG_PARITY_PROBE_OK`, and `RIPPLE_SHADER_COST_PROBE_OK` all still passed. The latest shader-cost medians were baseline `0.312 ms`, disabled live textures `0.315 ms`, enabled visible normal `0.319 ms`, and debug raw/contact/boundary/influence `0.115/0.118/0.117/0.129 ms`.
 
 Items still needing verification:
 
-- Best ping-pong arrangement with separate render targets.
-- Clear mode and update mode behavior.
-- Precision/color format options for decaying wave height.
-- Pause/resume behavior.
-- Scene reload behavior.
+- Pause/resume behavior beyond the current fixed update-rate prototype.
+- Human-visible editor scene reload/authoring behavior.
 - Forward+, Mobile, and Compatibility renderer differences.
-- Whether instance shader parameters support the required texture and uniform types if considered for material ownership.
+- Human-visible demo scene integration with the reusable field/emitter prototype.
 
 ## Legacy Waterways Reference
 
@@ -143,7 +170,7 @@ Use this section when the feature needs to preserve or intentionally change beha
 
 ## Recommendation
 
-Use Option A first. Build a standalone no-readback runtime visual ripple field, prove coordinate mapping and mesh-footprint boundary masking, then add a minimal river shader normal overlay through a controlled runtime material API.
+Use Option A first. Build a standalone no-readback runtime visual ripple field, prove coordinate mapping and mesh-footprint boundary masking, prove material ownership/restore behavior, then add a minimal river shader normal overlay through a controlled runtime material API.
 
 Do not implement physics-facing behavior, flow changes, or saved ripple data until the visual layer has been accepted and a separate milestone defines how visible state, runtime sampling, WaterSystem data, and validation should agree.
 
@@ -180,3 +207,17 @@ Record any evidence that the reported issue may be expected behavior, stale data
 - `addons/waterways/docs/spec-driven/00-constitution.md`: project-level development constraints.
 - `addons/waterways/docs/spec-driven/01-workflow.md`: feature-folder workflow and handoff naming convention.
 - `https://github.com/CBerry22/Godot-Water-Ripple-Simulation-Shader`: algorithmic inspiration named by the roadmap; do not copy code unless licensing is clarified.
+- `https://docs.godotengine.org/en/4.6/classes/class_subviewport.html`: official `SubViewport` update and clear-mode semantics.
+- `https://docs.godotengine.org/en/4.6/tutorials/rendering/viewports.html`: official `SubViewport` render-target and `get_texture()` usage.
+- `https://docs.godotengine.org/en/4.6/classes/class_node.html`: official node lifecycle reference for `_ready()`, `_exit_tree()`, setup, and cleanup.
+- `https://docs.godotengine.org/en/4.6/classes/class_viewporttexture.html`: official dynamic viewport texture reference for runtime `SubViewport` texture ownership.
+- `https://docs.godotengine.org/en/4.6/classes/class_resource.html`: official resource duplication/local-to-scene reference for avoiding shared-resource mutation.
+- `https://docs.godotengine.org/en/4.6/tutorials/plugins/running_code_in_the_editor.html`: official editor `@tool` boundary reference for avoiding editor-time runtime simulation side effects.
+- `https://docs.godotengine.org/en/4.6/tutorials/shaders/shader_reference/canvas_item_shader.html`: official CanvasItem shader coordinate semantics.
+- `https://docs.godotengine.org/en/4.6/tutorials/shaders/screen-reading_shaders.html`: official screen/back-buffer behavior to avoid for explicit feedback targets.
+- `https://docs.godotengine.org/en/4.6/tutorials/shaders/shader_reference/spatial_shader.html`: official spatial shader built-ins and output semantics for fragment world-position and future normal-map blending.
+- `https://docs.godotengine.org/en/4.6/tutorials/shaders/shader_reference/shading_language.html`: official shader uniform, sampler, and per-instance uniform constraints used for runtime ripple uniform decisions.
+- `https://docs.godotengine.org/en/4.6/tutorials/shaders/shader_reference/shader_functions.html`: official texture sampling and size functions used by the helper guard and sample-budget probe.
+- `https://docs.godotengine.org/en/4.6/classes/class_shadermaterial.html`: official `ShaderMaterial` parameter and material-sharing guidance used for debug parity/material ownership work.
+- `https://docs.godotengine.org/en/4.6/classes/class_renderingserver.html`: official per-viewport CPU/GPU render-time and draw-call measurement API used by `ripple_shader_cost_probe.gd`.
+- `https://docs.godotengine.org/en/4.6/classes/class_time.html`: official monotonic timing reference used for secondary wall-clock measurement in the shader-cost probe.

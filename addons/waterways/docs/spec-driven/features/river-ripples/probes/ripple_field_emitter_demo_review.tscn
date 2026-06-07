@@ -1,0 +1,49 @@
+[gd_scene format=3 uid="uid://ch3x5h07rse66"]
+
+[ext_resource type="Script" uid="uid://dy3nvh1417tx1" path="res://addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_demo_review.gd" id="1"]
+[ext_resource type="PackedScene" uid="uid://dsls22tgilrdw" path="res://Demo.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://addons/waterways/water_ripple_field.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://addons/waterways/water_ripple_emitter.tscn" id="4"]
+
+[node name="RippleFieldEmitterDemoReview" type="Node3D" unique_id=1451089202]
+script = ExtResource("1")
+
+[node name="World" parent="." unique_id=306275296 instance=ExtResource("2")]
+
+[node name="WaterRippleField" parent="." unique_id=2065250244 instance=ExtResource("3")]
+enabled = false
+world_bounds = AABB(-0.001808, 11.7198, 10.97908, 50.53003, 14.27245, 53.26024)
+target_river_paths = Array[NodePath]([NodePath("../World/WaterSystem/Water River")])
+boundary_source_paths = Array[NodePath]([NodePath("../World/WaterSystem/Water River/RiverMeshInstance")])
+max_emitters = 8
+
+[node name="PulseEmitter_UpperWater" parent="WaterRippleField" unique_id=1149432915 instance=ExtResource("4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.478, 17.725939, 28.543756)
+enabled = false
+target_field_path = NodePath("..")
+radius = 1.2
+intensity = 0.85
+pulse_rate = 0.85
+priority = 10
+
+[node name="OneShotEmitter_MidBend" parent="WaterRippleField" unique_id=1919053861 instance=ExtResource("4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38.16373, 16.99245, 28.543127)
+enabled = false
+target_field_path = NodePath("..")
+emitter_mode = 2
+radius = 1.45
+intensity = 0.95
+falloff = 2.4
+pulse_rate = 1.0
+priority = 9
+
+[node name="MovingEmitter_TestTrail" parent="WaterRippleField" unique_id=225568613 instance=ExtResource("4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35.42937, 17.43198, 28.73246)
+enabled = false
+target_field_path = NodePath("..")
+emitter_mode = 3
+radius = 0.9
+intensity = 0.65
+pulse_rate = 3.0
+moving_emit_distance = 0.45
+priority = 6

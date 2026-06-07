@@ -10,9 +10,9 @@ This spec is derived from `addons/waterways/docs/roadmaps/runtime-ripple-simulat
 
 Use this as the dashboard for the current ripple spec state. Move older detail into the sections below instead of letting stale open questions linger.
 
-- Status: Draft from roadmap; implementation not started.
+- Status: Phase 0 decisions locked; standalone Phase 1 feedback ownership, 128/256/512 spread/decay, standalone Phase 2 mapping, standalone Phase 2 mesh-footprint boundary-mask validation, RiverManager-facing material ownership/restore validation, minimal river shader neutral-path validation, guarded river shader sampling-helper validation, minimal visible river normal-blend validation, revised demo review-scene diagnostic validation, debug parity validation, current shader-cost validation, reusable field/emitter lifecycle validation, current field/emitter dispatch-performance validation, and demo-backed field/emitter authoring validation passed automated checks.
 - Source of truth for open work: `tasks.md` "Open Work".
-- Last meaningful decision: First milestone is visual-only and must prove no-readback GPU feedback, one mapping contract, boundary masking, material ownership, debug parity, add-on registration status, and shader cost before river shader integration is accepted.
+- Last meaningful decision: First milestone is visual-only; no-readback standalone feedback, axis-aligned `world_to_ripple_uv` marker mapping, mesh-footprint boundary masking, RiverManager-facing `i_ripple_*` material ownership, built-in river shader disabled/missing-texture neutrality, helper-level sampling budget, minimal visible normal blending, revised demo review-scene diagnostic visibility, review-fixture framerate improvement, human-visible base-flow/outward-ring acceptance, debug parity, current shader-cost, prototype field/emitter lifecycle, Forward+ field/emitter dispatch performance, and automated demo authoring integration are now proven enough for their current gates. Add-on registration status, human-visible field/emitter demo authoring workflow, and non-Forward+ coverage remain unproven.
 - Known deferred items: Buoyancy, object drift, runtime flow changes, WaterSystem regeneration, saved ripple persistence, flow-aware advection, and full physics-facing shallow-water behavior.
 - Current non-goals that are easy to accidentally reopen: Do not change `flow`, `flow_force`, `i_flowmap`, final flow, source signatures, river bake resources, WaterSystem bake resources, `system_flow.gdshader`, or buoyancy behavior for the first visual ripple pass.
 
@@ -48,7 +48,11 @@ Use this as the dashboard for the current ripple spec state. Move older detail i
   - `filter_renderer.gd` proves shader passes through `SubViewport` exist in the project, but it is bake-oriented and uses CPU image readback.
   - Runtime ripples need a separate no-readback feedback path.
 - User-reported observations:
-  - None recorded yet for ripple visuals in this feature folder.
+  - User confirmed standalone feedback rings spread and decay.
+  - User confirmed standalone mapping markers agree with texture impulses.
+  - User confirmed standalone boundary mask shape and dry gap.
+  - User saw no ripples in the earlier demo normal-review scene; this led to clustered centers and better camera focus.
+  - User later saw visible demo ripples, but enabling them froze the base flow and the static texture did not expand outward. After that fixture fix, user saw ripples in the river and reported a harsh enabled-framerate drop. The fixture now preserves material flow speed, precomputes 48 review ripple frames once, and swaps them during playback; user rerun confirmed framerate is greatly improved, the river keeps moving, and ripple rings expand outward.
 - Agent confidence in the premise:
   - High that visual-only runtime ripple prototyping fits the current add-on architecture.
   - Medium that Godot viewport feedback can satisfy the no-readback requirement without additional engine constraints; this needs a feasibility spike.
@@ -159,6 +163,7 @@ Internal river shader uniforms should stay under the `i_ripple_*` prefix unless 
 
 - `i_ripple_enabled`
 - `i_ripple_simulation_texture`
+- `i_ripple_impulse_texture`
 - `i_ripple_world_to_uv`
 - `i_ripple_boundary_mask`
 - `i_ripple_texel_size`
@@ -266,7 +271,7 @@ Shared systems must not hard-code:
 - Boundary mask prevents obvious cross-bank or through-rock propagation.
 - Ripples blend with existing normal flow animation.
 - Pillow, wake, and eddy-line visuals still read correctly.
-- Debug view or targeted probe can inspect visible ripple influence.
+- Debug view or targeted probe can inspect raw ripple height, impulse/contact, boundary mask, and visible ripple influence.
 - River debug material switching does not lose or hide runtime ripple state.
 - Disabled ripple shader path has no avoidable ripple sampling cost.
 - Enabled ripple shader path stays within the accepted first-pass sample budget.
@@ -284,6 +289,7 @@ Shared systems must not hard-code:
 - Review a standalone ripple texture before visible river integration.
 - Review fixed and moving emitters in world space against the ripple debug texture.
 - Review boundary mask coverage in the same field space as the simulation.
+- Review raw ripple, impulse/contact, boundary mask, and visible influence debug views.
 - Review visible river response with ripples disabled, missing texture, fixed emitter, and moving emitter.
 - Compare existing pillow, wake, and eddy-line visuals before and after ripple shader changes.
 - Use human-assisted Godot viewport review for final visual acceptance unless the agent can genuinely inspect the editor/runtime viewport.
@@ -296,23 +302,18 @@ Shared systems must not hard-code:
 - Normal runtime must not use CPU readback.
 - Disabled ripple shader path should avoid ripple texture samples.
 - First-pass normal integration should target no more than three additional ripple texture samples near camera.
+- Current shader-cost validation passes this target: `RIPPLE_SHADER_COST_PROBE_OK` reported zero direct disabled/visible-fragment ripple samples, three enabled-normal simulation samples plus one boundary helper call, one draw call, and a `+0.004 ms` median GPU delta for enabled visible normals over disabled live textures at 640x360 on Godot 4.6.3 Forward+ / AMD Radeon RX 6800 XT.
+- Current field/emitter dispatch validation passes the first production sweep: `RIPPLE_FIELD_EMITTER_PERFORMANCE_PROBE_OK` measured 128/256/512 fields with 0/4/16 emitters and dispatch medians of `5.933/5.738/5.755 ms`, `5.981/5.518/5.799 ms`, and `5.511/6.202/5.866 ms` on Godot 4.6.3 Forward+ / AMD Radeon RX 6800 XT.
 - Update-rate control should be added if every-frame simulation is too expensive.
 - Emitter caps and priorities should prevent unbounded impulse cost.
 
 ## Open Questions
 
-- Should the first demo use ducks, click/test emitters, rain, or fixed rock-adjacent emitters?
-- Should the ripple field cover the whole demo river or a smaller fixed review area?
 - Which renderer and platform targets need first-pass support?
-- Should the first public field support only axis-aligned X/Z bounds, or full transformed fields?
-- If full transformed fields are deferred, what warning should unsupported rotated/scaled setups show?
 - Should `follow_camera` remain hidden until reprojection, clear-on-shift, or tile swapping is designed?
 - Is 256x256 enough for the default demo?
 - Should displacement stay completely off in the first release, or be available as a default-off control?
-- Should ripples be built-in Waterways nodes or a separate example/prototype scene first?
-- Should emitter groups be global with field filtering, or should emitters explicitly reference a target `WaterRippleField`?
 - How should multiple rivers in one scene share or separate ripple fields in the public API?
-- Should visible ripple influence be added to `river_debug.gdshader`, or is a separate `WaterRippleField` debug/probe path enough for the first pass?
 
 ## Resolved Questions
 
@@ -323,6 +324,14 @@ Move questions here once decided so future sessions do not keep treating them as
 | Is the first ripple milestone visual-only? | Yes. | 2026-06-07 | Adopted from `runtime-ripple-simulation-roadmap.md`; no first-pass flow, WaterSystem, or buoyancy changes. |
 | Should runtime ripples use CPU readback for simulation? | No. | 2026-06-07 | Normal runtime simulation must stay on the GPU. |
 | Can visible river integration happen before boundary masking and material ownership are selected? | No. | 2026-06-07 | These are roadmap hard constraints and acceptance gates. |
+| Is target river mesh-footprint rendering viable as the first boundary-mask source? | Yes for the standalone gate. | 2026-06-07 | `RIPPLE_BOUNDARY_MASK_PROBE_OK` rendered a generated Waterways river mesh footprint through `world_to_ripple_uv` and validated dry-area rejection in the standalone feedback path. |
+| Should visible ripple influence be added to `river_debug.gdshader`, or is a separate debug/probe path enough for the first pass? | Add debug shader parity plus targeted probes. | 2026-06-07 | `river_debug.gdshader` now has raw height, impulse/contact, boundary mask, and visible influence modes; `RIPPLE_DEBUG_PARITY_PROBE_OK` proves view switching preserves runtime ripple state. |
+| Should the first field support axis-aligned X/Z bounds or full transformed fields? | Use axis-aligned X/Z `world_bounds` for the prototype; defer full transformed fields. | 2026-06-07 | `WaterRippleField` builds the same `world_to_ripple_uv` contract already proven by mapping, boundary, shader, and field/emitter probes. Unsupported transformed-field/public API behavior remains later polish. |
+| Should ripples be built-in Waterways nodes or prototype scenes first? | Prototype scenes first. | 2026-06-07 | `water_ripple_field.tscn` and `water_ripple_emitter.tscn` are added without `plugin.gd` custom type registration or `class_name`; public add-on API polish remains gated. |
+| Should emitter groups be global with field filtering, or should emitters explicitly reference a target field? | Prototype emitters prefer explicit field paths, with ancestor/group fallback. | 2026-06-07 | `WaterRippleEmitter` resolves `target_field_path` first, then a parent field, then `field_group_name`; `RIPPLE_FIELD_EMITTER_PROBE_OK` validates the field API path. |
+| Should the first demo use ducks, click/test emitters, rain, or fixed rock-adjacent emitters? | Use prototype test emitters in a demo-backed review scene first. | 2026-06-07 | `ripple_field_emitter_demo_review.tscn` instances `Demo.tscn` and adds inspectable pulse, one-shot, and moving emitters under an inspectable field. Ducks/rain remain later authoring presets. |
+| Should the ripple field cover the whole demo river or a smaller fixed review area? | Use the generated demo river mesh AABB for the first review field. | 2026-06-07 | The scene script snaps authored emitter UVs to the live demo mesh, generates the boundary mask from `RiverMeshInstance`, and validates reload cleanup through `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_PROBE_OK`. |
+| What should empty runtime field viewports clear to? | Transparent zero/black for canvas ripple buffers. | 2026-06-07 | Human-visible no-ripples review showed impulse/contact blue everywhere and visible influence black. `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_DIAGNOSTIC_OK` found a nonzero full-field impulse background from the project clear color; `WaterRippleField` now uses transparent zero clear and the demo probe rejects nonblack impulse backgrounds. |
 
 ## Decision Log
 
@@ -331,3 +340,4 @@ Move questions here once decided so future sessions do not keep treating them as
 | 2026-06-07 | Create a dedicated `river-ripples` spec-driven feature folder. | Keep the runtime ripple roadmap actionable without scattering decisions across roadmap-only notes. |
 | 2026-06-07 | Treat `world_to_ripple_uv` as the required production mapping contract. | Avoid drift between emitters, debug views, simulation pixels, and river shader samples. |
 | 2026-06-07 | Keep first-pass runtime state transient. | Avoid corrupting or confusing saved river bakes, WaterSystem resources, or source signatures. |
+| 2026-06-07 | Keep the first boundary-mask proof standalone and mesh-footprint based. | Prove river-shaped masking and dry impulse rejection before material ownership or river shader integration. |

@@ -129,6 +129,17 @@ uniform sampler2D i_terrain_contact_features : hint_default_black, repeat_disabl
 uniform sampler2D i_bank_response_features : hint_default_black, repeat_disable, filter_linear;
 uniform bool i_valid_flowmap = false;
 uniform int i_uv2_sides = 2;
+uniform bool i_ripple_enabled = false;
+uniform sampler2D i_ripple_simulation_texture : hint_default_black, repeat_disable, filter_linear;
+uniform sampler2D i_ripple_impulse_texture : hint_default_black, repeat_disable, filter_linear;
+uniform mat4 i_ripple_world_to_uv = mat4(1.0);
+uniform sampler2D i_ripple_boundary_mask : hint_default_black, repeat_disable, filter_linear;
+uniform vec2 i_ripple_texel_size = vec2(0.0);
+uniform float i_ripple_normal_strength : hint_range(0.0, 4.0) = 0.0;
+uniform float i_ripple_refraction_strength : hint_range(0.0, 1.0) = 0.0;
+uniform float i_ripple_displacement_strength : hint_range(0.0, 1.0) = 0.0;
+uniform float i_ripple_height_fade_distance : hint_range(0.0, 200.0) = 0.0;
+uniform float i_ripple_boundary_fade : hint_range(0.0, 0.25) = 0.0;
 uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_linear_mipmap;
 uniform sampler2D depth_texture : hint_depth_texture, repeat_disable, filter_nearest;
 
@@ -731,6 +742,101 @@ float pillow_material_tile_seam_fade_mask(vec2 source_uv, vec2 mesh_uv, float sa
 	return pillow_tile_seam_fade_mask(pillow_material_tile_seam_fade, source_uv, mesh_uv, safe_uv2_sides);
 }
 
+vec3 ripple_fragment_world_position(mat4 inv_view_matrix, vec3 view_position) {
+	return (inv_view_matrix * vec4(view_position, 1.0)).xyz;
+}
+
+vec2 ripple_world_to_uv(vec3 world_position) {
+	vec4 mapped = i_ripple_world_to_uv * vec4(world_position, 1.0);
+	float safe_w = abs(mapped.w) > EPSILON ? mapped.w : 1.0;
+	return mapped.xz / safe_w;
+}
+
+bool ripple_sampling_ready() {
+	ivec2 simulation_size = textureSize(i_ripple_simulation_texture, 0);
+	ivec2 boundary_size = textureSize(i_ripple_boundary_mask, 0);
+	return i_ripple_enabled
+		&& i_ripple_texel_size.x > EPSILON
+		&& i_ripple_texel_size.y > EPSILON
+		&& simulation_size.x > 1
+		&& simulation_size.y > 1
+		&& boundary_size.x > 1
+		&& boundary_size.y > 1;
+}
+
+float ripple_uv_bounds_mask(vec2 uv) {
+	if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+		return 0.0;
+	}
+	float fade_width = max(i_ripple_boundary_fade, 0.0);
+	if (fade_width <= EPSILON) {
+		return 1.0;
+	}
+	float edge_distance = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+	return smoothstep(0.0, fade_width, edge_distance);
+}
+
+float ripple_boundary_mask_unchecked(vec2 uv) {
+	float bounds_mask = ripple_uv_bounds_mask(uv);
+	if (bounds_mask <= EPSILON) {
+		return 0.0;
+	}
+	float boundary = textureLod(i_ripple_boundary_mask, clamp(uv, vec2(0.0), vec2(1.0)), 0.0).r;
+	return clamp(boundary * bounds_mask, 0.0, 1.0);
+}
+
+float ripple_decode_height(float encoded_height) {
+	return encoded_height * 2.0 - 1.0;
+}
+
+float ripple_height_at_uv(vec2 uv) {
+	if (!ripple_sampling_ready()) {
+		return 0.0;
+	}
+	float mask = ripple_boundary_mask_unchecked(uv);
+	if (mask <= EPSILON) {
+		return 0.0;
+	}
+	return ripple_decode_height(textureLod(i_ripple_simulation_texture, clamp(uv, vec2(0.0), vec2(1.0)), 0.0).r) * mask;
+}
+
+float ripple_height_at_world(vec3 world_position) {
+	return ripple_height_at_uv(ripple_world_to_uv(world_position));
+}
+
+float ripple_distance_fade(vec3 camera_position_world, vec3 world_position) {
+	float fade_distance = max(i_ripple_height_fade_distance, 0.0);
+	if (fade_distance <= EPSILON) {
+		return 1.0;
+	}
+	float camera_distance = distance(camera_position_world, world_position);
+	return 1.0 - smoothstep(fade_distance * 0.75, fade_distance, camera_distance);
+}
+
+vec2 ripple_normal_offset_at_uv(vec2 uv) {
+	if (!ripple_sampling_ready() || i_ripple_normal_strength <= EPSILON) {
+		return vec2(0.0);
+	}
+	// Sample budget for the first visible-normal path: one boundary sample and
+	// three simulation height samples.
+	float center_mask = ripple_boundary_mask_unchecked(uv);
+	if (center_mask <= EPSILON) {
+		return vec2(0.0);
+	}
+	vec2 safe_uv = clamp(uv, vec2(0.0), vec2(1.0));
+	vec2 right_uv = clamp(uv + vec2(i_ripple_texel_size.x, 0.0), vec2(0.0), vec2(1.0));
+	vec2 up_uv = clamp(uv + vec2(0.0, i_ripple_texel_size.y), vec2(0.0), vec2(1.0));
+	float center_height = ripple_decode_height(textureLod(i_ripple_simulation_texture, safe_uv, 0.0).r) * center_mask;
+	float right_height = ripple_decode_height(textureLod(i_ripple_simulation_texture, right_uv, 0.0).r) * center_mask;
+	float up_height = ripple_decode_height(textureLod(i_ripple_simulation_texture, up_uv, 0.0).r) * center_mask;
+	vec2 slope = vec2(right_height - center_height, up_height - center_height);
+	return clamp(-slope * i_ripple_normal_strength, vec2(-1.0), vec2(1.0));
+}
+
+vec2 ripple_normal_offset_at_world(vec3 world_position, vec3 camera_position_world) {
+	return ripple_normal_offset_at_uv(ripple_world_to_uv(world_position)) * ripple_distance_fade(camera_position_world, world_position);
+}
+
 void vertex() {
 	if (i_valid_flowmap && (pillow_terrain_height > EPSILON || pillow_obstruction_height > EPSILON)) {
 		float safe_uv2_sides = max(float(i_uv2_sides), 1.0);
@@ -933,12 +1039,16 @@ void fragment() {
 	float pillow_normal_boost = clamp((pillow_material_mask * pillow_normal_strength + pillow_band_mask * 0.50) * pillow_detail_fade, 0.0, 1.0);
 	float wake_normal_boost = clamp((wake_mask * wake_normal_strength * (0.45 + wake_fleck_noise * 0.55) + eddy_line_mask * wake_eddy_line_normal_strength * (0.55 + eddy_fleck_noise * 0.45)) * wake_detail_fade, 0.0, 1.0);
 	water_norFBM = clamp((water_norFBM - 0.5) * (1.0 + pillow_normal_boost + wake_normal_boost) + 0.5, vec2(0.0), vec2(1.0));
-	NORMAL_MAP = vec3(water_norFBM, 0);
+	vec3 refraction_normal_map = vec3(water_norFBM, 0.0);
+	vec3 ripple_world_position = ripple_fragment_world_position(INV_VIEW_MATRIX, VERTEX);
+	vec2 ripple_normal_offset = ripple_normal_offset_at_world(ripple_world_position, CAMERA_POSITION_WORLD);
+	vec2 visible_normal_offset = water_norFBM * 2.0 - 1.0 + ripple_normal_offset;
+	NORMAL_MAP = vec3(clamp(visible_normal_offset * 0.5 + 0.5, vec2(0.0), vec2(1.0)), 0.0);
 	NORMAL_MAP_DEPTH = normal_scale * (1.0 + clamp(pillow_material_mask * pillow_normal_strength * pillow_detail_fade + wake_normal_boost, 0.0, 0.85));
 
 	
 	// Refraction - has to be done after normal is set
-	vec3 unpacted_normals = NORMAL_MAP * 2.0 - 1.0;
+	vec3 unpacted_normals = refraction_normal_map * 2.0 - 1.0;
 	//vec3 ref_normal = normalize( mix(NORMAL, TANGENT * unpacted_normals.x + BINORMAL * unpacted_normals.y + NORMAL, NORMAL_MAP_DEPTH) );
 	vec3 ref_vector = TANGENT * unpacted_normals.x + BINORMAL * unpacted_normals.y;
 	vec3 ref_normal = (length(ref_vector) > EPSILON ? normalize(ref_vector) : vec3(0.0)) * NORMAL_MAP_DEPTH * .1;

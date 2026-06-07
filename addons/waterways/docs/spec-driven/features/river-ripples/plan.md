@@ -23,11 +23,11 @@ The first accepted implementation must not touch river bakes, WaterSystem bakes,
 
 Keep this section short and update it whenever the plan changes.
 
-- Implementation status: Not started; docs created from roadmap.
-- Open architectural decisions: First demo scenario, axis-aligned vs full transformed fields, built-in vs prototype registration, debug parity path, emitter targeting model, renderer targets, and final shader sample budget confirmation.
-- Last validation that proves the plan still works: None yet for ripple code; this is a planning folder only.
-- Next planned implementation slice: Phase 0 decision lock and branch safety check before any code, shader, scene, or generated-resource edits.
-- Branch safety before implementation: Not checked. Before implementation, use a dedicated branch or get explicit approval to continue on the current branch.
+- Implementation status: Standalone Phase 1 feedback spike, standalone Phase 2 mapping probe, standalone Phase 2 mesh-footprint boundary-mask probe, RiverManager-facing material ownership/restore API/probe, minimal river shader disabled/missing-texture neutral path, guarded river shader height/normal sampling helpers, minimal visible normal blending, revised demo-backed visible review scene, debug parity path, shader-cost probe, prototype `WaterRippleField`/`WaterRippleEmitter` workflow, field/emitter dispatch-performance probe, and post-clear-fix demo-backed field/emitter authoring scene/probe/diagnostic are added.
+- Open architectural decisions: Public custom type/API polish and later renderer/platform coverage remain open; first-spike decisions are locked. Prototype emitter targeting uses explicit field path first, then ancestor/group fallback.
+- Last validation that proves the plan still works: `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_DIAGNOSTIC_OK`, `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_PROBE_OK`, `RIPPLE_FIELD_EMITTER_PERFORMANCE_PROBE_OK`, `RIPPLE_FIELD_EMITTER_PROBE_OK`, `RIPPLE_SHADER_COST_PROBE_OK`, `RIPPLE_DEBUG_PARITY_PROBE_OK`, `RIPPLE_MATERIAL_OWNERSHIP_PROBE_OK`, `RIPPLE_RIVER_SHADER_NEUTRAL_PROBE_OK`, `RIPPLE_RIVER_SHADER_SAMPLING_PROBE_OK`, `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_PROBE_OK`, `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_REVIEW_PROBE_OK`, `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_REVIEW_DIAGNOSTIC_OK`, `RIPPLE_BOUNDARY_MASK_PROBE_OK`, `RIPPLE_MAPPING_PROBE_OK`, `RIPPLE_FEEDBACK_PROBE_OK`, `RIPPLE_FEEDBACK_ANALYSIS_OK`, static runtime-readback review, and forbidden-file diff on 2026-06-07.
+- Next planned implementation slice: Human-visible review of the reusable field/emitter demo authoring workflow; keep response, refraction, displacement, final flow, WaterSystem, bakes, source signatures, and buoyancy deferred.
+- Branch safety before implementation: Satisfied on user-created branch `ripples`.
 - Sections below that are historical or superseded: None yet.
 
 ## Premise Check
@@ -85,16 +85,20 @@ Legacy reference layer:
 ## Godot Components
 
 - Nodes:
-  - Future `addons/waterways/water_ripple_field.gd`.
-  - Future `addons/waterways/water_ripple_field.tscn`.
-  - Future `addons/waterways/water_ripple_emitter.gd`.
+  - Prototype `addons/waterways/water_ripple_field.gd`.
+  - Prototype `addons/waterways/water_ripple_field.tscn`.
+  - Prototype `addons/waterways/water_ripple_emitter.gd`.
+  - Prototype `addons/waterways/water_ripple_emitter.tscn`.
 - Resources:
   - Runtime-created viewport textures or equivalent transient textures.
   - No saved bake resources in first pass.
 - Shaders:
-  - Future `addons/waterways/shaders/runtime/ripple_simulation.gdshader`.
-  - Future internal `i_ripple_*` additions to `addons/waterways/shaders/river.gdshader`.
-  - Optional parity additions to `addons/waterways/shaders/river_debug.gdshader`.
+  - `addons/waterways/shaders/runtime/ripple_simulation.gdshader`.
+  - `addons/waterways/shaders/runtime/ripple_impulse.gdshader`.
+  - `addons/waterways/shaders/runtime/ripple_impulse_additive.gdshader`.
+  - `addons/waterways/shaders/runtime/ripple_boundary_mask.gdshader`.
+  - Internal `i_ripple_*` declarations, including neutral `i_ripple_impulse_texture` plumbing, guarded height/normal helpers, and minimal visible normal blending are now present in `addons/waterways/shaders/river.gdshader`; future work should keep response tuning behind human-visible review and performance checks.
+  - Debug parity modes for raw height, impulse/contact, boundary mask, and visible influence are now present in `addons/waterways/shaders/river_debug.gdshader`.
 - Editor tools:
   - Future `addons/waterways/plugin.gd` custom type registration if nodes are public.
   - Optional icons if registered.
@@ -104,11 +108,20 @@ Legacy reference layer:
   - None expected unless a later plan justifies global emitter discovery.
 - Scenes:
   - Temporary standalone ripple prototype scene.
-  - Future demo integration in `Demo.tscn` or a small ripple review scene.
+  - Revised demo-backed visible normal review scene at `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_river_shader_visible_normal_review.tscn`.
+  - Demo-backed field/emitter authoring review scene at `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_demo_review.tscn`.
 - Validation scenes:
-  - Standalone ripple texture review.
-  - Mapping and boundary-mask review.
-  - Demo visible river overlay review.
+  - Standalone ripple texture review at `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_feedback_review.tscn`.
+  - Automated feedback probes at `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_feedback_probe.gd` and `ripple_feedback_analysis_probe.gd`.
+  - Standalone mapping review at `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_mapping_review.tscn`.
+  - Automated mapping probe at `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_mapping_probe.gd`.
+  - Boundary-mask review at `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_boundary_mask_review.tscn`.
+  - Automated boundary-mask probe at `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_boundary_mask_probe.gd`.
+  - Demo visible river overlay/debug parity review.
+  - Automated debug parity probe at `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_debug_parity_probe.gd`.
+  - Automated field/emitter lifecycle probe at `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_probe.gd`.
+  - Automated field/emitter dispatch-performance probe at `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_performance_probe.gd`.
+  - Automated demo-backed field/emitter authoring probe at `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_demo_review_probe.gd`.
 
 ## Data Model
 
@@ -138,8 +151,8 @@ Roadmap detail carried into implementation:
 - `world_bounds` can be a convenience input only if it generates the same `world_to_ripple_uv` transform used by GDScript and shaders.
 - `follow_camera` should stay hidden or unsupported until reprojection, clear-on-shift, or tile swapping is designed.
 - Emitter configuration should cover radius, intensity, falloff, pulse rate, one-shot behavior, enabled state, priority, and optional target-field routing.
-- River shader integration should use `i_ripple_enabled`, `i_ripple_simulation_texture`, `i_ripple_world_to_uv`, `i_ripple_boundary_mask`, `i_ripple_texel_size`, `i_ripple_normal_strength`, `i_ripple_refraction_strength`, `i_ripple_displacement_strength`, `i_ripple_height_fade_distance`, and `i_ripple_boundary_fade` unless the plan is revised.
-- First visible integration should add ripple normals only; refraction follows after normal stability, and displacement stays default off.
+- River shader integration should use `i_ripple_enabled`, `i_ripple_simulation_texture`, `i_ripple_impulse_texture`, `i_ripple_world_to_uv`, `i_ripple_boundary_mask`, `i_ripple_texel_size`, `i_ripple_normal_strength`, `i_ripple_refraction_strength`, `i_ripple_displacement_strength`, `i_ripple_height_fade_distance`, and `i_ripple_boundary_fade` unless the plan is revised. The visible shader currently declares but does not sample the impulse/contact texture; it exists for runtime/debug plumbing.
+- First visible integration adds ripple normals only; custom refraction still uses the pre-ripple normal, refraction tuning follows after normal stability, and displacement stays default off.
 - Later authoring should use clear controls and restrained presets rather than exposing unstable runtime plumbing.
 
 ## Editor/Runtime Boundary
@@ -220,15 +233,22 @@ Scene reload or runtime boundary:
 
 ## Files to Change
 
-- `addons/waterways/shaders/runtime/ripple_simulation.gdshader`: Add Waterways-owned runtime simulation shader.
-- `addons/waterways/water_ripple_field.gd`: Add runtime field node.
-- `addons/waterways/water_ripple_field.tscn`: Add reusable field scene if needed.
-- `addons/waterways/water_ripple_emitter.gd`: Add emitter node when emitter phase starts.
-- `addons/waterways/river_manager.gd`: Add runtime uniform application/clear API if selected.
-- `addons/waterways/shaders/river.gdshader`: Add minimal internal visible ripple normal overlay after spikes pass.
-- `addons/waterways/shaders/river_debug.gdshader`: Add debug parity only if selected.
+- `addons/waterways/shaders/runtime/ripple_simulation.gdshader`: Waterways-owned runtime simulation shader is added.
+- `addons/waterways/shaders/runtime/ripple_impulse.gdshader`: Standalone/probe runtime impulse shader is added and remains compatible with feedback analysis.
+- `addons/waterways/shaders/runtime/ripple_impulse_additive.gdshader`: Runtime field additive multi-emitter impulse shader is added.
+- `addons/waterways/shaders/runtime/ripple_boundary_mask.gdshader`: Runtime field boundary-mask footprint shader is added.
+- `addons/waterways/water_ripple_field.gd`: Prototype runtime field node is added.
+- `addons/waterways/water_ripple_field.tscn`: Prototype reusable field scene is added.
+- `addons/waterways/water_ripple_emitter.gd`: Prototype emitter node is added.
+- `addons/waterways/water_ripple_emitter.tscn`: Prototype reusable emitter scene is added.
+- `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_demo_review.tscn`: Demo-backed review scene with inspectable prototype field and emitter nodes is added.
+- `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_demo_review.gd`: Review-scene controller for camera, markers, toggles, emitter movement, and validation hooks is added.
+- `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_demo_review_probe.gd`: Console validation for demo authoring setup, emitter positions, disable baseline, and reload cleanup is added.
+- `addons/waterways/river_manager.gd`: Runtime uniform application/clear API is added, including the internal impulse/contact texture key.
+- `addons/waterways/shaders/river.gdshader`: Neutral `i_ripple_*` declarations, guarded height/normal helpers, X/Z `world_to_ripple_uv` sampling, and minimal visible ripple normal overlay are added.
+- `addons/waterways/shaders/river_debug.gdshader`: Debug parity modes for raw height, impulse/contact, boundary mask, and visible influence are added.
 - `addons/waterways/plugin.gd`: Register custom types and icons if nodes are public.
-- `Demo.tscn` or a dedicated review scene: Optional demo integration after runtime path is stable.
+- `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_river_shader_visible_normal_review.tscn`: Demo-backed visible normal review scene for the current river shader slice.
 - `addons/waterways/docs/spec-driven/features/river-ripples/*`: Keep this folder current after each decision and validation run.
 
 ## Documentation Plan
@@ -254,6 +274,21 @@ Scene reload or runtime boundary:
 
 - Automated:
   - Static scan for forbidden runtime `get_image()` use in ripple simulation.
+  - Standalone ownership probe `RIPPLE_FEEDBACK_PROBE_OK`.
+  - Standalone analysis probe `RIPPLE_FEEDBACK_ANALYSIS_OK` at 128, 256, and 512; this may use validation-only readback and saved scratch captures.
+  - Standalone mapping probe `RIPPLE_MAPPING_PROBE_OK`; this uses validation-only readback to confirm shader-rendered texture markers land at GDScript-predicted UVs.
+  - Standalone boundary-mask probe `RIPPLE_BOUNDARY_MASK_PROBE_OK`; this uses validation-only readback to confirm mesh-footprint coverage and boundary-fed feedback behavior.
+  - River shader neutral-path probe `RIPPLE_RIVER_SHADER_NEUTRAL_PROBE_OK`; this uses validation-only readback to compare disabled and missing-texture river renders against baseline.
+  - River shader sampling-budget probe `RIPPLE_RIVER_SHADER_SAMPLING_PROBE_OK`; this statically confirms the visible normal slice calls the helper once from `fragment()`, keeps the normal helper at three simulation texture samples, and keeps direct height sampling out of `fragment()`.
+  - River shader visible-normal probe `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_PROBE_OK`; this uses validation-only readback to prove disabled, flat, and black-boundary cases stay neutral while an enabled wave texture visibly changes the rendered river material normal response.
+  - Demo-backed visible review scene smoke probe `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_REVIEW_PROBE_OK`; this proves `ripple_river_shader_visible_normal_review.tscn` loads `Demo.tscn`, starts on the close-overhead camera, applies runtime ripple material state, preserves demo `flow_speed`, precomputes review texture frames, advances the animated review texture without playback-time image generation, toggles it off/on, and restores on free.
+  - Demo-backed visible review diagnostic probe `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_REVIEW_DIAGNOSTIC_OK`; this uses validation-only captures to prove active material state, clustered center projection, mesh tangent availability, ripple texture slope, preserved demo flow speed, precomputed frame reuse, and enabled-vs-zero-strength visible delta in the revised view.
+  - Debug parity probe `RIPPLE_DEBUG_PARITY_PROBE_OK`; this proves `river_debug.gdshader`, the debug view menu, RiverManager runtime texture application, visible/debug material switching, and review-scene debug controls expose raw height, impulse/contact, boundary mask, and visible influence without losing runtime ripple state.
+  - Shader-cost probe `RIPPLE_SHADER_COST_PROBE_OK`; this uses static shader sample counts plus `RenderingServer` per-viewport CPU/GPU timing to prove disabled live textures stay near baseline, enabled visible normals stay within the first-pass budget, and debug modes are recorded as inspection-tool costs.
+  - Field/emitter lifecycle probe `RIPPLE_FIELD_EMITTER_PROBE_OK`; this proves prototype scene/script loading, field initialization, boundary generation, material ownership, world impulse mapping, emitter caps/priority, out-of-bounds rejection, no readback, disable cleanup, and free cleanup.
+  - Field/emitter dispatch-performance probe `RIPPLE_FIELD_EMITTER_PERFORMANCE_PROBE_OK`; this measures 128/256/512 field dispatch with 0/4/16 emitters through the reusable prototype nodes.
+  - Demo-backed field/emitter review probe `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_PROBE_OK`; this proves the authoring scene loads `Demo.tscn`, exposes real field/emitter nodes, targets the demo river, generates a mesh-footprint boundary mask, maps emitters to expected water positions, renders localized emitter impulses on a black background, preserves base flow speed, restores baseline material on disable, and reloads without stale runtime state.
+  - Demo-backed field/emitter diagnostic `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_DIAGNOSTIC_OK`; this reproduced the no-visible-ripples debug symptoms, caught nonzero offscreen clear color in the impulse texture, and now proves transparent-zero canvas viewport clearing restores localized blue/green/orange impulse stamps.
   - Parser/headless checks for new scripts and shaders when Godot tooling is available.
   - Probe for target material uniform application and clear behavior.
 - Validation matrix location:
@@ -269,7 +304,9 @@ Scene reload or runtime boundary:
 - Runtime:
   - Confirm scene reload, pause/resume, multiple fields, and missing targets.
 - Performance:
-  - Measure 128, 256, and 512 resolutions; no-emitter idle; few emitters; many emitters; shader enabled/disabled.
+  - Current shader-cost gate is measured: disabled-ready and visible-fragment direct ripple samples `0`, enabled normal helper `3` simulation samples plus `1` boundary helper call, one draw call, and 640x360 median GPU `0.319 ms` enabled versus `0.315 ms` disabled on Godot 4.6.3 Forward+ / AMD Radeon RX 6800 XT.
+  - Current field/emitter dispatch gate is measured: 128/256/512 resolutions with 0/4/16 emitters passed on Godot 4.6.3 Forward+ / AMD Radeon RX 6800 XT. Dispatch medians were `5.933/5.738/5.755 ms`, `5.981/5.518/5.799 ms`, and `5.511/6.202/5.866 ms` respectively.
+  - Future performance review should cover human-visible demo authoring acceptance, exported/runtime workflows if needed, and non-Forward+ renderers.
 - Manual:
   - Confirm docs do not imply physics-facing behavior.
 
@@ -282,8 +319,8 @@ Scene reload or runtime boundary:
 | Mapping differs between emitters and shader | Ripples appear in wrong world locations | Use one `world_to_ripple_uv` contract and probe fixed markers. |
 | Boundary mask is rectangular or atlas-based | Waves cross banks, rocks, or disconnected bends | Require target river mesh-footprint mask before visible integration. |
 | Runtime uniforms mutate shared materials | Cross-talk between rivers and stale scene state | Use RiverManager-facing API or explicit duplication/restore path. |
-| Debug material switching hides ripple state | Review cannot trust visible/debug comparison | Implement selected debug parity path or targeted probe. |
-| Shader sampling cost is too high | Regresses already heavy river material | Keep disabled path cheap and first normal pass within sample budget. |
+| Debug material switching hides ripple state | Review cannot trust visible/debug comparison | Covered for the current gate by `RIPPLE_DEBUG_PARITY_PROBE_OK` and human-visible debug-view review; keep this in the performance/regression sweep if debug plumbing changes. |
+| Shader sampling cost is too high | Regresses already heavy river material | Current shader-cost gate is covered by `RIPPLE_SHADER_COST_PROBE_OK`; preserve the disabled-path guard, three-sample normal helper budget, and one-draw-call profile in future shader edits. |
 | Users infer physics from visuals | Buoyancy and visible rings appear inconsistent | Keep docs, UI, and validation explicit that first pass is visual-only. |
 
 ## Adversarial Plan Review
@@ -304,7 +341,7 @@ Complete this with the user after the plan is drafted and before implementation 
 - Validation that will catch the riskiest failure early:
   - No-readback ping-pong probe, fixed world marker mapping probe, boundary mask debug view, two-river material cross-talk probe, and disabled-path visual comparison.
 - Branch safety reminder sent before code changes:
-  - No. This docs pass is not implementation. Send the reminder before shader, script, scene, or generated-resource edits.
+  - Satisfied before implementation on user-created branch `ripples`.
 
 ## Migration and Compatibility
 
