@@ -16,9 +16,9 @@ This folder collects the working documentation for the Waterways add-on.
 
 For current river feature-detection work, read:
 
-1. `handoffs/handoff-latest.md`
-2. `roadmaps/river-feature-detection-roadmap.md`
-3. `roadmaps/river-improvements-roadmap.md`
-4. `research/river-research-citations.md`
-5. `history/CHANGELOG.md`
-
+1. `architecture-and-features.md`
+2. `handoffs/handoff-latest.md`
+3. `roadmaps/river-feature-detection-roadmap.md`
+4. `roadmaps/river-improvements-roadmap.md`
+5. `research/river-research-citations.md`
+6. `history/CHANGELOG.md`

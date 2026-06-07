@@ -64,6 +64,9 @@ const int PILLOW_MATERIAL_SEAM_GUARD = 55;
 const int PILLOW_HEIGHT_SEAM_GUARD = 56;
 const int PILLOW_HEIGHT_SEAM_STITCH = 57;
 const int PILLOW_VISUAL_MASK_BLACK_ZERO = 58;
+const int BANK_FOAM_CONTRIBUTION = 59;
+const int PILLOW_ANCHOR_FOAM_CONTRIBUTION = 60;
+const int PILLOW_VISUAL_FOAM_CONTRIBUTION = 61;
 
 const float PILLOW_BAKE_CONTACT_SEARCH_TILES = 0.07;
 const float PILLOW_BAKE_CONTACT_GATE_START = 0.08;
@@ -95,6 +98,9 @@ uniform float flow_max : hint_range(0.0, 8.0) = 4.0;
 uniform float foam_amount : hint_range(0.0, 4.0) = 1.0;
 uniform float foam_steepness : hint_range(0.0, 8.0) = 2.0;
 uniform float foam_energy_bias : hint_range(0.0, 8.0) = 0.5;
+uniform float foam_bank_friction_bias : hint_range(0.0, 2.0) = 0.35;
+uniform float foam_pillow_anchor_bias : hint_range(0.0, 2.0) = 0.35;
+uniform float foam_pillow_visual_bias : hint_range(0.0, 2.0) = 0.35;
 uniform float foam_smoothness : hint_range(0.0, 1.0) = 1.0;
 uniform vec3 uv_scale = vec3(1.0, 1.0, 1.0);
 
@@ -280,6 +286,25 @@ vec2 boundary_gradient_at(vec2 uv, vec2 offset) {
 		boundary_context_at(uv + dx) - boundary_context_at(uv - dx),
 		boundary_context_at(uv + dy) - boundary_context_at(uv - dy)
 	);
+}
+
+float bank_friction_at(vec2 uv) {
+	return textureLod(i_bank_response_features, clamp(uv, vec2(0.0), vec2(1.0)), 0.0).r;
+}
+
+float bank_friction_edge_mask(vec2 uv, vec2 texel_size) {
+	vec2 sample_offset = vec2(max(texel_size.x * 2.0, EPSILON), max(texel_size.y * 2.0, EPSILON));
+	vec2 dx = vec2(sample_offset.x, 0.0);
+	vec2 dy = vec2(0.0, sample_offset.y);
+	float center = bank_friction_at(uv);
+	float left = bank_friction_at(uv - dx);
+	float right = bank_friction_at(uv + dx);
+	float up = bank_friction_at(uv - dy);
+	float down = bank_friction_at(uv + dy);
+	float local_min = min(min(left, right), min(up, down));
+	float local_max = max(max(left, right), max(up, down));
+	float edge = local_max - local_min;
+	return smoothstep(0.04, 0.24, center) * smoothstep(0.015, 0.18, edge);
 }
 
 float smooth_gate(float gate_start, float gate_full, float value) {
@@ -969,6 +994,11 @@ if (i_valid_flowmap) {
 	float experimental_wake_edge_eddy_source = clamp(raw_wake_edge_candidate * wake_edge_context_gate, 0.0, 1.0);
 	float eddy_line_visual = eddy_line_visual_mask(raw_wake_edge_candidate, wake_edge_context_gate);
 	flow *= flow_force;
+	float foam_randomness = texture(i_texture_foam_noise, UV * uv_scale.xy).r;
+	float bank_friction_edge = bank_friction_edge_mask(custom_UV, 1.0 / atlas_size);
+	float bank_foam_contribution = bank_friction_edge * clamp(foam_bank_friction_bias, 0.0, 2.0) * max(grade_energy_channel, normalized_flow_force) * foam_randomness;
+	float pillow_anchor_foam_contribution = pillow_direct_contact_gate * clamp(foam_pillow_anchor_bias, 0.0, 2.0) * max(grade_energy_channel, normalized_flow_force) * foam_randomness;
+	float pillow_visual_foam_contribution = pillow_visual * clamp(foam_pillow_visual_bias, 0.0, 2.0) * max(grade_energy_channel, normalized_flow_force) * foam_randomness;
 	
 	if(mode == EFFECTIVE_FLOWMAP) {
 		ALBEDO = vec3(clamp(flow * 0.5 + 0.5, vec2(0.0), vec2(1.0)), 0.0);
@@ -1176,6 +1206,15 @@ if (i_valid_flowmap) {
 
 	} else if(mode == HARD_BOUNDARY_PROTRUSION) {
 		ALBEDO = grayscale_to_gradient(hard_boundary_protrusion);
+
+	} else if(mode == BANK_FOAM_CONTRIBUTION) {
+		ALBEDO = grayscale_to_gradient(bank_foam_contribution);
+
+	} else if(mode == PILLOW_ANCHOR_FOAM_CONTRIBUTION) {
+		ALBEDO = grayscale_to_gradient(pillow_anchor_foam_contribution);
+
+	} else if(mode == PILLOW_VISUAL_FOAM_CONTRIBUTION) {
+		ALBEDO = grayscale_to_gradient(pillow_visual_foam_contribution);
 		
 	} else if(mode == FOAM_MIX) {
 		
@@ -1196,13 +1235,15 @@ if (i_valid_flowmap) {
 		
 		float water_foamFBM = water.b; // LOD1
 		water_foamFBM *= waterx2.b * 2.0; // LOD0 - add second level of detail
-		float foam_randomness = texture(i_texture_foam_noise, UV * uv_scale.xy).r;
 		float wake_noise_scale = max(wake_fleck_noise_scale, 1.0);
 		float wake_noise = texture(i_texture_foam_noise, UV * uv_scale.xy * wake_noise_scale + vec2(flow_foam_noise.a * 3.17, time * 0.017)).r;
 		float wake_fleck_noise = smoothstep(0.62, 0.98, wake_noise);
 		float eddy_noise = texture(i_texture_foam_noise, UV * uv_scale.xy * wake_noise_scale * 1.65 - vec2(time * 0.021, flow_foam_noise.a * 2.41)).r;
 		float eddy_fleck_noise = smoothstep(0.58, 0.96, eddy_noise);
 		foam_mask += (steepness_map * foam_steepness + grade_energy_channel * foam_energy_bias) * foam_randomness;
+		foam_mask += bank_foam_contribution;
+		foam_mask += pillow_anchor_foam_contribution;
+		foam_mask += pillow_visual_foam_contribution;
 		foam_mask += pillow_material_visual * pillow_foam_bias * grade_energy_channel * normalized_flow_force * foam_randomness * smoothstep(0.35, 0.8, water_foamFBM);
 		foam_mask += wake_visual * wake_foam_fleck_bias * grade_energy_channel * normalized_flow_force * wake_fleck_noise * smoothstep(0.45, 0.85, water_foamFBM);
 		foam_mask += eddy_line_visual * wake_eddy_line_foam_bias * max(grade_energy_channel, normalized_flow_force) * eddy_fleck_noise * smoothstep(0.35, 0.85, water_foamFBM);

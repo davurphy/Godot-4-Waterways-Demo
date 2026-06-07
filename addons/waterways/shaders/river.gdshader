@@ -54,6 +54,9 @@ uniform vec4 foam_color : source_color = vec4(0.9, 0.9, 0.9, 1.0);
 uniform float foam_amount : hint_range(0.0, 4.0) = 2.0;
 uniform float foam_steepness : hint_range(0.0, 8.0) = 2.0;
 uniform float foam_energy_bias : hint_range(0.0, 8.0) = 0.5;
+uniform float foam_bank_friction_bias : hint_range(0.0, 2.0) = 0.35;
+uniform float foam_pillow_anchor_bias : hint_range(0.0, 2.0) = 0.35;
+uniform float foam_pillow_visual_bias : hint_range(0.0, 2.0) = 0.35;
 uniform float foam_smoothness : hint_range(0.0, 1.0) = 0.3;
 
 // Pillow
@@ -134,6 +137,9 @@ const float EDDY_CONTEXT_UPSTREAM_NEAR_TILES = 0.16;
 const float EDDY_CONTEXT_UPSTREAM_MID_TILES = 0.38;
 const float EDDY_CONTEXT_UPSTREAM_FAR_TILES = 0.70;
 const float EDDY_CONTEXT_LATERAL_TILES = 0.14;
+const float PILLOW_BAKE_CONTACT_SEARCH_TILES = 0.07;
+const float PILLOW_BAKE_CONTACT_GATE_START = 0.08;
+const float PILLOW_BAKE_CONTACT_GATE_FULL = 0.38;
 
 vec3 FlowUVW(vec2 uv_in, vec2 flowVector, vec2 jump, vec3 tiling, float time, bool flowB) {
 	float phaseOffset = flowB ? 0.5 : 0.0;
@@ -241,10 +247,47 @@ vec2 boundary_gradient_at(vec2 uv, vec2 offset) {
 	);
 }
 
+float bank_friction_at(vec2 uv) {
+	return textureLod(i_bank_response_features, clamp(uv, vec2(0.0), vec2(1.0)), 0.0).r;
+}
+
+float bank_friction_edge_mask(vec2 uv, vec2 texel_size) {
+	vec2 sample_offset = vec2(max(texel_size.x * 2.0, EPSILON), max(texel_size.y * 2.0, EPSILON));
+	vec2 dx = vec2(sample_offset.x, 0.0);
+	vec2 dy = vec2(0.0, sample_offset.y);
+	float center = bank_friction_at(uv);
+	float left = bank_friction_at(uv - dx);
+	float right = bank_friction_at(uv + dx);
+	float up = bank_friction_at(uv - dy);
+	float down = bank_friction_at(uv + dy);
+	float local_min = min(min(left, right), min(up, down));
+	float local_max = max(max(left, right), max(up, down));
+	float edge = local_max - local_min;
+	return smoothstep(0.04, 0.24, center) * smoothstep(0.015, 0.18, edge);
+}
+
 float smooth_gate(float gate_start, float gate_full, float value) {
 	float start = min(clamp(gate_start, 0.0, 1.0), 1.0 - EPSILON);
 	float full = min(1.0, max(start + EPSILON, clamp(gate_full, 0.0, 1.0)));
 	return smoothstep(start, full, value);
+}
+
+float pillow_direct_terrain_anchor_sample(vec2 uv) {
+	return textureLod(i_terrain_contact_features, clamp(uv, vec2(0.0), vec2(1.0)), 0.0).b;
+}
+
+float pillow_contact_search_direct_terrain(vec2 uv, vec2 source_tile_uv_size, vec2 flow_direction) {
+	vec2 downstream_direction = safe_direction(flow_direction, vec2(0.0, 1.0));
+	vec2 search_offset = downstream_direction * source_tile_uv_size * PILLOW_BAKE_CONTACT_SEARCH_TILES;
+	float contact = pillow_direct_terrain_anchor_sample(uv);
+	contact = max(contact, pillow_direct_terrain_anchor_sample(uv + search_offset * 0.50));
+	contact = max(contact, pillow_direct_terrain_anchor_sample(uv + search_offset));
+	contact = max(contact, pillow_direct_terrain_anchor_sample(uv + search_offset * 1.50) * 0.65);
+	return clamp(contact, 0.0, 1.0);
+}
+
+float pillow_bake_contact_gate(float anchor_value) {
+	return smooth_gate(PILLOW_BAKE_CONTACT_GATE_START, PILLOW_BAKE_CONTACT_GATE_FULL, anchor_value);
 }
 
 float pillow_visual_mask(vec4 obstacle_features, vec4 terrain_contact_features, vec4 bank_response_features, float grade_energy_map, float normalized_flow_force) {
@@ -809,6 +852,8 @@ void fragment() {
 	float wake_seed_mask = wake_gated_seed(obstacle_features, terrain_contact_features, bank_response_features, grade_energy_map, normalized_flow_force);
 	float wake_mask = clamp(wake_seed_mask * wake_strength, 0.0, 1.0);
 	float eddy_line_mask = eddy_line_visual_mask(custom_UV, source_tile_uv_size, pillow_reach_direction, terrain_contact_features, bank_response_features, grade_energy_map, normalized_flow_force);
+	float pillow_direct_terrain_anchor_search = pillow_contact_search_direct_terrain(custom_UV, source_tile_uv_size, pillow_reach_direction);
+	float pillow_direct_contact_gate = pillow_bake_contact_gate(pillow_direct_terrain_anchor_search);
 	flow *= flow_force;
 	
 	vec2 jump1 = vec2(0.24, 0.2083333);
@@ -850,8 +895,15 @@ void fragment() {
 	float wake_fleck_noise = smoothstep(0.62, 0.98, wake_noise);
 	float eddy_noise = texture(i_texture_foam_noise, UV * uv_scale.xy * wake_noise_scale * 1.65 - vec2(time * 0.021, flow_foam_noise.a * 2.41)).r;
 	float eddy_fleck_noise = smoothstep(0.58, 0.96, eddy_noise);
+	float bank_friction_edge = bank_friction_edge_mask(custom_UV, 1.0 / atlas_size);
+	float bank_foam_contribution = bank_friction_edge * clamp(foam_bank_friction_bias, 0.0, 2.0) * max(grade_energy_map, normalized_flow_force) * foam_randomness;
+	float pillow_anchor_foam_contribution = pillow_direct_contact_gate * clamp(foam_pillow_anchor_bias, 0.0, 2.0) * max(grade_energy_map, normalized_flow_force) * foam_randomness;
+	float pillow_visual_foam_contribution = pillow_mask * clamp(foam_pillow_visual_bias, 0.0, 2.0) * max(grade_energy_map, normalized_flow_force) * foam_randomness;
 	
 	foam_mask += (steepness_map * foam_steepness + grade_energy_map * foam_energy_bias) * foam_randomness;
+	foam_mask += bank_foam_contribution;
+	foam_mask += pillow_anchor_foam_contribution;
+	foam_mask += pillow_visual_foam_contribution;
 	foam_mask += pillow_material_mask * pillow_foam_bias * grade_energy_map * normalized_flow_force * foam_randomness * smoothstep(0.35, 0.8, water_foamFBM);
 	foam_mask += wake_mask * wake_foam_fleck_bias * grade_energy_map * normalized_flow_force * wake_fleck_noise * smoothstep(0.45, 0.85, water_foamFBM);
 	foam_mask += eddy_line_mask * wake_eddy_line_foam_bias * max(grade_energy_map, normalized_flow_force) * (0.25 + eddy_fleck_noise * 0.75) * smoothstep(0.25, 0.78, water_foamFBM);

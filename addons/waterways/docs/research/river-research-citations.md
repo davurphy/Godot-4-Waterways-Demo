@@ -93,6 +93,8 @@ Last major research pass: 2026-05-31.
   - Waterways use: Godot-specific flow-map shader example and lineage-adjacent technique reference.
 - [Godot Shaders, "Simple River"](https://godotshaders.com/shader/simple-river/)
   - Waterways use: Recent Godot 4 river shader example. Good for comparison, but it is simpler than Waterways and not a replacement architecture.
+- [CBerry22, "Godot-Water-Ripple-Simulation-Shader"](https://github.com/CBerry22/Godot-Water-Ripple-Simulation-Shader)
+  - Waterways use: Godot 4 viewport-feedback ripple simulation reference. Useful as algorithmic inspiration for an optional runtime visual ripple layer that samples transient height/normal data without replacing Waterways' baked river flow or WaterSystem maps.
 
 ## Production Water Systems, Baked Data, And Engine Examples
 

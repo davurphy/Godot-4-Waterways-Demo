@@ -2,21 +2,26 @@
 
 ## Review Date
 
-2026-05-31
+2026-06-04
 
 ## Scope Reviewed
 
-- `addons/waterways/docs/history/CHANGELOG.md`
-- `addons/waterways/docs/handoffs/handoff-latest.md`
-- `addons/waterways/docs/roadmaps/river-feature-detection-roadmap.md`
-- `addons/waterways/docs/roadmaps/river-improvements-roadmap.md`
+- `addons/waterways/docs/spec-driven/features/river-eddies/spec.md`
+- `addons/waterways/docs/spec-driven/features/river-eddies/plan.md`
+- `addons/waterways/docs/spec-driven/features/river-eddies/research.md`
+- `addons/waterways/docs/spec-driven/features/river-eddies/tasks.md`
+- `addons/waterways/docs/spec-driven/features/river-eddies/validation.md`
+- `addons/waterways/docs/spec-driven/features/river-eddies/handoff-latest.md`
 - Spec-driven templates under `addons/waterways/docs/spec-driven/templates/feature-folder/`
-- Current wake/eddy-line workstream state from Phase 7A0 through Phase 7B
+- `addons/waterways/docs/research/river-research-citations.md` as the shared works-cited index reference; no new external citations were added in this docs style pass.
+- Historical 2026-05-31 migration sources preserved in this folder: `docs/history/CHANGELOG.md`, `docs/handoffs/handoff-latest.md`, `docs/roadmaps/river-feature-detection-roadmap.md`, `docs/roadmaps/river-improvements-roadmap.md`, and current wake/eddy-line workstream state from Phase 7A0 through Phase 7B.
 
 ## Current Truth
 
-- Overall review status: Pass for Phase 7B visual baseline; partial for future Phase 7C/7D flow.
-- Blocking issues remaining: None for preserving Phase 7B; Phase 7C requires a new plan before code.
+Use this as the review dashboard. Lead with unresolved risks and next action; keep detailed compliance checks and history lower in the file.
+
+- Overall review status: Pass for 2026-06-04 docs style refresh and accepted Phase 7B visual baseline; partial for future Phase 7C/7D flow.
+- Blocking issues remaining: None for preserving Phase 7B or this docs style refresh; Phase 7C requires a new plan before code.
 - Important issues remaining: Real reverse/circulating flow has no accepted data model or runtime validation yet.
 - Last validation relied on: Historical Phase 7B Godot 4.6.3 probes and user viewport acceptance.
 - Next action: Use this feature folder before any future wake/eddy edit; classify requests by raw source, final mask, visible response, or final-flow/physics layer.
@@ -26,7 +31,7 @@
 
 ### Blocking
 
-- No blocking issue for the current docs migration or accepted Phase 7B visual baseline.
+- No blocking issue for the current docs style refresh or accepted Phase 7B visual baseline.
 - Actual reverse/circulating flow is blocked on a Phase 7C plan that includes visible shader, debug shader, system-flow shader, WaterSystem generation, and runtime validation together.
 
 ### Important
@@ -47,7 +52,7 @@
 ## Premise Review
 
 - Was the original premise correct, partially correct, or wrong?
-  - Correct for docs migration: the eddy work needed a feature-local source of truth.
+  - Correct for docs migration and style refresh: the eddy work needed a feature-local source of truth, and the folder needed to match the newer template conventions.
 - Did any evidence suggest the user or agent was overlooking scene/data/context?
   - Yes. Earlier Phase 7B review showed stronger or wider edge sampling alone was not enough, and the old raw-B source was spatially wrong despite being semantically plausible.
 - If yes, was that raised with the user early enough?
@@ -117,6 +122,7 @@
 - [x] `validation.md` current snapshot and matrix match the handoff summary.
 - [x] Latest feature handoff points to the true next action.
 - [x] Relevant broader roadmap sections have been migrated into this feature folder.
+- [x] Shared works-cited index is linked where the newer templates expect it; no new external sources were added in this style pass.
 
 ## Follow-Up Tasks
 
@@ -133,6 +139,7 @@
 | 2026-05-31 | Preserve Phase 7B as the current accepted visual baseline. | User accepted the visible material pass and no later eddy change superseded it. |
 | 2026-05-31 | Record raw-G over raw-B as a channel/phase alignment decision. | Future sessions need to avoid repeating the edge-sample-only or raw-B exact-gate path. |
 | 2026-05-31 | Treat Phase 7C/7D as deferred final-flow work. | Real reverse/circulating flow must update visible/debug/system-flow/WaterSystem/runtime validation together. |
+| 2026-06-04 | Align the eddy feature folder with the newer feature-folder templates. | The docs already had strong content; the refresh adds current dashboards, shared citation reminders, Godot launch instructions, and handoff usage guidance. |
 
 ## Historical Review Notes
 

@@ -2,11 +2,11 @@
 
 ## Date
 
-2026-05-31
+2026-06-04
 
 ## Current Focus
 
-Create a feature-local spec-driven home for wake, eddy-line, and future eddy-flow work by converting the general changelog, shared handoff, and roadmaps into focused feature documents.
+Refresh the River Eddies feature folder to match the newer spec-driven feature-folder templates while preserving the accepted Phase 7B visual wake/eddy-line baseline.
 
 - Feature folder:
   - `addons\waterways\docs\spec-driven\features\river-eddies\`
@@ -24,8 +24,15 @@ Create a feature-local spec-driven home for wake, eddy-line, and future eddy-flo
 - Last passing validation: Historical Godot 4.6.3 probes `PHASE7B_WAKE_EDDY_VISUAL_PROBE_OK`, `PHASE7B_WAKE_EDDY_EXPORT_OK`, and `PHASE7B_EDDY_LINE_CPU_DIAGNOSTIC_OK`; user accepted the visible result.
 - Known failing or unproven check: Real reverse/circulating flow, WaterSystem/physics alignment, and new eddy vector data are deferred and unimplemented.
 - Next recommended action: If future eddy work is requested, review raw source first, final visual mask second, and visible water last. If real flow is requested, write a Phase 7C plan first.
-- Packaging/artifact hygiene status: No new generated artifacts from this docs conversion.
+- Packaging/artifact hygiene status: No new generated artifacts from this docs style refresh.
 - Historical detail starts at: `Historical Change Log`
+
+## How To Use This Feature Folder
+
+- Treat this handoff and the `Current Truth` sections as the dashboard.
+- Use `tasks.md` for active work, `review.md` for unresolved risks, and `validation.md` for what is currently proven.
+- Open `plan.md`, `spec.md`, `research.md`, and the shared citations index only when the dashboard needs explanation or source provenance.
+- Move old session notes, superseded assumptions, and closed work into historical sections instead of growing the dashboard.
 
 ## Start Here Next Session
 
@@ -40,6 +47,7 @@ Read these first:
 7. `addons\waterways\docs\spec-driven\features\river-eddies\plan.md`
 8. `addons\waterways\docs\spec-driven\features\river-eddies\spec.md`
 9. `addons\waterways\docs\spec-driven\features\river-eddies\research.md`
+10. `addons\waterways\docs\research\river-research-citations.md`
 
 Then do this next:
 
@@ -51,22 +59,21 @@ Then do this next:
 
 ## What Changed This Session
 
-- `addons\waterways\docs\spec-driven\features\river-eddies\research.md`: Captured Phase 7 research, Phase 7A/7B evidence, channel/phase alignment, and future Phase 7C options.
-- `addons\waterways\docs\spec-driven\features\river-eddies\spec.md`: Defined accepted baseline, goals, non-goals, requirements, acceptance tests, and deferred flow work.
-- `addons\waterways\docs\spec-driven\features\river-eddies\plan.md`: Converted roadmap guidance into a preservation-first plan with clear Phase 7B/7C/7D boundaries.
-- `addons\waterways\docs\spec-driven\features\river-eddies\tasks.md`: Created the canonical open checklist for future wake/eddy work.
-- `addons\waterways\docs\spec-driven\features\river-eddies\validation.md`: Created a validation matrix and exact human-assisted review request.
-- `addons\waterways\docs\spec-driven\features\river-eddies\review.md`: Recorded the current review stance, risks, and deferred flow requirements.
-- `addons\waterways\docs\spec-driven\features\river-eddies\handoff-latest.md`: Created this feature-local handoff.
-- `addons\waterways\docs\roadmaps\river-feature-detection-roadmap.md` and `addons\waterways\docs\roadmaps\river-improvements-roadmap.md`: Read and folded relevant wake/eddy sections into this feature folder.
-- `addons\waterways\docs\history\CHANGELOG.md` and `addons\waterways\docs\handoffs\handoff-latest.md`: Updated to point at this new feature folder.
+- `addons\waterways\docs\spec-driven\features\river-eddies\spec.md`: Added the newer dashboard cue and shared citations reminder while preserving the accepted Phase 7B baseline.
+- `addons\waterways\docs\spec-driven\features\river-eddies\plan.md`: Updated the plan dashboard, branch-safety note, and documentation plan to match the newer template style.
+- `addons\waterways\docs\spec-driven\features\river-eddies\research.md`: Added the shared works-cited guidance and premise/context questions from the newer research template.
+- `addons\waterways\docs\spec-driven\features\river-eddies\tasks.md`: Refreshed the task dashboard and setup checklist for the current template expectations.
+- `addons\waterways\docs\spec-driven\features\river-eddies\validation.md`: Added the validation dashboard cue, shared citations check, exact Godot launch instructions, and updated manual checklist item.
+- `addons\waterways\docs\spec-driven\features\river-eddies\review.md`: Updated the latest review date/scope and recorded the 2026-06-04 docs style alignment decision.
+- `addons\waterways\docs\spec-driven\features\river-eddies\handoff-latest.md`: Added the newer "How To Use This Feature Folder" section, shared citations reading step, latest-session summary, and Godot launch instructions.
 
 ## Current Changes Summary
 
-- New feature folder: Consolidates wake/eddy-line-specific state from the general changelog, latest handoff, and relevant roadmap sections into spec-driven docs.
+- 2026-06-04 docs style refresh: The feature folder now follows the newer template organization without changing the accepted Phase 7B visual-only eddy baseline.
 
 ## Historical Change Log
 
+- 2026-05-31 feature-folder migration consolidated wake/eddy-line-specific state from the general changelog, latest handoff, and relevant roadmap sections into spec-driven docs.
 - Phase 7A0 completed research and adversarial plan review without behavior changes.
 - Phase 7A1 added review-only wake/eddy mask preflight and exports.
 - Phase 7A2 narrowed raw `obstacle_features.b`, bumped river bakes to signature `17`, and kept final flow/WaterSystem unchanged.
@@ -92,16 +99,16 @@ Then do this next:
 
 Implementation status:
 
-- Existing Phase 7B visual implementation is accepted; no code changed in this docs conversion.
+- Existing Phase 7B visual implementation is accepted; no code changed in this docs style refresh.
 
 Spec/plan status:
 
-- Research: Current recommendation, Phase 7 findings, and deferred Phase 7C options captured.
-- Spec: Drafted with feature definitions, review layers, acceptance criteria, and non-goals.
-- Plan: Drafted with preservation-first architecture and Phase 7B/7C/7D boundaries.
-- Tasks: Open checklist created for future work.
-- Validation: Matrix, human-assisted request, generalization checks, and historical probes recorded.
-- Review: Current risks and migration summary recorded.
+- Research: Current recommendation, Phase 7 findings, deferred Phase 7C options, and shared citations guidance captured.
+- Spec: Feature definitions, review layers, acceptance criteria, non-goals, and current dashboard are aligned with the newer template style.
+- Plan: Preservation-first architecture and Phase 7B/7C/7D boundaries are retained; documentation plan and branch-safety notes are refreshed.
+- Tasks: Open checklist remains canonical; setup now includes the shared citations reminder for research-driven changes.
+- Validation: Matrix, human-assisted request, generalization checks, historical probes, and exact Godot launch instructions are recorded.
+- Review: Current risks, 2026-06-04 style alignment decision, and deferred flow requirements are recorded.
 
 Validation status:
 
@@ -125,6 +132,7 @@ Validation status:
 ## Important Context
 
 - Phase 7B is visual-only.
+- Shared works-cited index: `addons\waterways\docs\research\river-research-citations.md`. Future sessions should use it as the project-level list of river-reading, hydrology, flow-map, shader-water, and production-example sources, and update it when new external references influence this feature.
 - Current accepted baseline: `Eddy-Line Visual Mask` uses raw-G wake-edge candidate plus nearby wake/obstruction context at `wake_edge_sample_tiles = 0.024`.
 - Raw B was plausible but too far from the close-behind-rock shoulders; it remains diagnostic, not the accepted visual source.
 - Bigger sampling alone was rejected. `0.024` became accepted only with the source change to raw G.
@@ -139,7 +147,7 @@ Validation status:
 
 ## Artifact Hygiene
 
-- Scratch folders or temporary projects created: None in this docs conversion.
+- Scratch folders or temporary projects created: None in this docs style refresh.
 - Generated bakes/resources created: None.
 - Active files mirrored into scratch validation: Not applicable.
 - Files/folders that must be excluded from packaging:
@@ -186,16 +194,18 @@ Relevant audit sections:
 ## Commands or Checks Used
 
 ```powershell
-Get-Content -LiteralPath 'addons\waterways\docs\history\CHANGELOG.md' -Raw
-Get-Content -LiteralPath 'addons\waterways\docs\handoffs\handoff-latest.md' -Raw
-Get-Content -LiteralPath 'addons\waterways\docs\roadmaps\river-feature-detection-roadmap.md' -Raw
-Get-Content -LiteralPath 'addons\waterways\docs\roadmaps\river-improvements-roadmap.md' -Raw
+git status --short --branch
+rg --files "addons/waterways/docs/spec-driven/features/river-eddies"
+rg --files "addons/waterways/docs/spec-driven/templates"
+Get-Content -Raw "addons/waterways/docs/spec-driven/templates/feature-folder/*.md"
+Get-Content -Raw "addons/waterways/docs/spec-driven/features/river-eddies/*.md"
 ```
 
 Result summary:
 
-- The changelog, shared handoff, and roadmaps identify Phase 7B as accepted visual-only and Phase 7C/7D as deferred flow/physics work.
-- No Godot runtime validation was run during this docs conversion.
+- Current branch was `eddy` and the worktree was clean before the docs refresh.
+- The eddy feature docs already preserved the accepted Phase 7B baseline; this pass aligned them with newer template organization and handoff style.
+- No Godot runtime validation was run during this docs-only refresh.
 
 ## Next Tasks
 
@@ -220,3 +230,36 @@ Result summary:
 ## Notes for the Next Agent
 
 The important thing to preserve is not just a set of parameter values. It is the review lesson: raw B looked plausible, but it was spatially wrong for the accepted close-behind-rock eddy-line. Raw G gave the paired wake-edge margins the user accepted. Keep that distinction alive, and do not let visual eddy-line polish drift into unvalidated reverse-flow or WaterSystem behavior.
+
+## Godot Launch Instructions
+
+Use these exact Windows paths for this project unless the user gives newer ones.
+
+- Project root:
+  - `C:\Users\pc\Documents\GitHub\Godot 4 Waterways Demo`
+- Godot 4.6.3 console executable:
+  - `C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64_console.exe`
+- Godot 4.6.3 windowed editor executable:
+  - `C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64.exe`
+
+Use the console executable for scripted probes and diagnostics because it prints stable output markers such as `*_OK`. Always redirect `APPDATA` and `LOCALAPPDATA` to a repo-local `.codex-research` folder for probe runs so Codex does not alter the user's normal Godot editor profile.
+
+Console probe pattern:
+
+```powershell
+$root = "C:\Users\pc\Documents\GitHub\Godot 4 Waterways Demo"
+$godotConsole = "C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64_console.exe"
+$godotUser = Join-Path $root ".codex-research\godot-user"
+New-Item -ItemType Directory -Force -Path (Join-Path $godotUser "roaming"), (Join-Path $godotUser "local") | Out-Null
+$env:APPDATA = Join-Path $godotUser "roaming"
+$env:LOCALAPPDATA = Join-Path $godotUser "local"
+& $godotConsole --path $root --script "res://path/to/probe.gd"
+```
+
+Use the windowed executable only when a human-visible editor/runtime review is needed:
+
+```powershell
+$root = "C:\Users\pc\Documents\GitHub\Godot 4 Waterways Demo"
+$godotEditor = "C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64.exe"
+& $godotEditor --path $root
+```

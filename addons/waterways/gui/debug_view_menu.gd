@@ -19,9 +19,26 @@ const DEBUG_VIEW_GROUPS := [
 		"name": "General",
 		"items": [
 			["Normal", 0],
-			["Foam Mix", 9],
 			["Surface Steepness / Grade Proxy", 11],
 			["Phase Noise (flow_foam_noise A)", 3],
+		]
+	},
+	{
+		"name": "Foam",
+		"items": [
+			["Foam Mask (flow_foam_noise B)", 2],
+			["Foam Mix", 9],
+			["Bank Friction / Drag (bank_response_features R)", 22],
+			["Bank Foam Contribution", 59],
+			["Pillow Direct Terrain Anchor Search", 49],
+			["Pillow Anchor Foam Contribution", 60],
+			["Pillow Visual Mask (Black Zero)", 58],
+			["Pillow Visual Foam Contribution", 61],
+			["Surface Steepness / Grade Proxy", 11],
+			["Grade / Energy Channel (dist_pressure B)", 12],
+			["Pillow Material Response Mask", 54],
+			["Wake Visual Mask", 30],
+			["Eddy-Line Visual Mask", 31],
 		]
 	},
 	{
@@ -117,6 +134,9 @@ const DEBUG_VIEW_ITEMS := [
 	["Final Flow Strength", 8],
 	["Foam Mask (flow_foam_noise B)", 2],
 	["Foam Mix", 9],
+	["Bank Foam Contribution", 59],
+	["Pillow Anchor Foam Contribution", 60],
+	["Pillow Visual Foam Contribution", 61],
 	["Phase Noise (flow_foam_noise A)", 3],
 	["Distance / Bank Influence (dist_pressure R)", 4],
 	["Pressure / Support (dist_pressure G)", 5],
