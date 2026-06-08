@@ -5,6 +5,7 @@ const RippleGizmoGeometry = preload("res://addons/waterways/ripple_gizmo_geometr
 const RippleGizmoHandleModel = preload("res://addons/waterways/ripple_gizmo_handle_model.gd")
 const FIELD_BOUNDS_MATERIAL := "ripple_field_bounds"
 const FIELD_FOOTPRINT_MATERIAL := "ripple_field_footprint"
+const FIELD_BOUNDARY_PREVIEW_MATERIAL := "ripple_field_boundary_preview"
 const FIELD_ROUTE_MATERIAL := "ripple_field_route"
 const EMITTER_RADIUS_MATERIAL := "ripple_emitter_radius"
 const EMITTER_MOVING_MATERIAL := "ripple_emitter_moving"
@@ -20,6 +21,7 @@ func _init() -> void:
 	create_handle_material(HANDLE_MATERIAL)
 	create_material(FIELD_BOUNDS_MATERIAL, Color(0.2, 0.72, 1.0, 0.85), false, true)
 	create_material(FIELD_FOOTPRINT_MATERIAL, Color(0.34, 1.0, 0.74, 0.7), false, true)
+	create_material(FIELD_BOUNDARY_PREVIEW_MATERIAL, Color(0.98, 0.4, 1.0, 0.72), false, true)
 	create_material(FIELD_ROUTE_MATERIAL, Color(0.48, 0.82, 1.0, 0.45), false, true)
 	create_material(EMITTER_RADIUS_MATERIAL, Color(1.0, 0.58, 0.18, 0.95), false, true)
 	create_material(EMITTER_MOVING_MATERIAL, Color(1.0, 0.9, 0.2, 0.75), false, true)
@@ -46,6 +48,7 @@ func _redraw(gizmo: EditorNode3DGizmo) -> void:
 	var segments := RippleGizmoGeometry.build_segments_for_node(node)
 	_add_lines(gizmo, segments.get("field_bounds", PackedVector3Array()), FIELD_BOUNDS_MATERIAL, true)
 	_add_lines(gizmo, segments.get("field_footprint", PackedVector3Array()), FIELD_FOOTPRINT_MATERIAL, false)
+	_add_lines(gizmo, segments.get("field_boundary_preview", PackedVector3Array()), FIELD_BOUNDARY_PREVIEW_MATERIAL, false)
 	_add_lines(gizmo, segments.get("field_routes", PackedVector3Array()), FIELD_ROUTE_MATERIAL, false)
 	_add_lines(gizmo, segments.get("emitter_radius", PackedVector3Array()), EMITTER_RADIUS_MATERIAL, true)
 	_add_lines(gizmo, segments.get("emitter_moving", PackedVector3Array()), EMITTER_MOVING_MATERIAL, false)

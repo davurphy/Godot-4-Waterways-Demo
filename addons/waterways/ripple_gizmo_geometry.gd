@@ -8,6 +8,8 @@ const RippleGizmoHandleModel = preload("res://addons/waterways/ripple_gizmo_hand
 const CIRCLE_SEGMENTS := 64
 const MODE_MOVING := 3
 const MIN_RADIUS := 0.001
+const MAX_BOUNDARY_PREVIEW_LINE_PAIRS := 512
+const BOUNDARY_PREVIEW_Y_OFFSET := 0.03
 
 
 static func can_build_for_node(node: Object) -> bool:
@@ -39,6 +41,7 @@ static func build_field_segments(field: Node3D) -> Dictionary:
 	var result := {
 		"field_bounds": PackedVector3Array(),
 		"field_footprint": PackedVector3Array(),
+		"field_boundary_preview": PackedVector3Array(),
 		"field_routes": PackedVector3Array(),
 	}
 	if bounds.size.x <= 0.0 or bounds.size.z <= 0.0:
@@ -46,6 +49,7 @@ static func build_field_segments(field: Node3D) -> Dictionary:
 
 	result["field_bounds"] = _build_bounds_lines(field, bounds)
 	result["field_footprint"] = _build_footprint_lines(field, bounds)
+	result["field_boundary_preview"] = _build_boundary_preview_lines(field, bounds)
 	result["field_routes"] = _build_field_route_lines(field, bounds)
 	return result
 
@@ -160,6 +164,33 @@ static func _build_field_route_lines(field: Node3D, bounds: AABB) -> PackedVecto
 	return lines
 
 
+static func _build_boundary_preview_lines(field: Node3D, bounds: AABB) -> PackedVector3Array:
+	if field.get("boundary_mask_texture") != null or not bool(field.get("auto_generate_boundary_mask")):
+		return PackedVector3Array()
+
+	var meshes := _get_boundary_preview_meshes(field)
+	if meshes.is_empty():
+		return PackedVector3Array()
+
+	var edge_counts := {}
+	var edge_points := {}
+	for mesh_instance in meshes:
+		_collect_boundary_edges(mesh_instance, bounds, edge_counts, edge_points)
+
+	var lines := PackedVector3Array()
+	for edge_key in edge_points.keys():
+		if int(edge_counts.get(edge_key, 0)) != 1:
+			continue
+		var points: PackedVector3Array = edge_points[edge_key]
+		if points.size() < 2:
+			continue
+		lines.append(_world_to_node_local(field, points[0]))
+		lines.append(_world_to_node_local(field, points[1]))
+		if lines.size() / 2 >= MAX_BOUNDARY_PREVIEW_LINE_PAIRS:
+			break
+	return lines
+
+
 static func _build_emitter_route_lines(emitter: Node3D, origin_world: Vector3) -> PackedVector3Array:
 	var target := _find_emitter_route_target(emitter)
 	var lines := PackedVector3Array()
@@ -168,6 +199,154 @@ static func _build_emitter_route_lines(emitter: Node3D, origin_world: Vector3) -
 	lines.append(_world_to_node_local(emitter, origin_world))
 	lines.append(_world_to_node_local(emitter, _field_anchor_world(target)))
 	return lines
+
+
+static func _get_boundary_preview_meshes(field: Node3D) -> Array[MeshInstance3D]:
+	var meshes: Array[MeshInstance3D] = []
+	_append_boundary_preview_meshes_from_paths(field, field.get("boundary_source_paths"), meshes)
+	_append_boundary_preview_meshes_from_paths(field, field.get("target_river_paths"), meshes)
+
+	var group_name := String(field.get("target_group_name"))
+	if not group_name.is_empty() and field.is_inside_tree():
+		for candidate in field.get_tree().get_nodes_in_group(group_name):
+			var mesh := _get_boundary_preview_mesh(candidate)
+			if mesh != null and not meshes.has(mesh):
+				meshes.append(mesh)
+	return meshes
+
+
+static func _append_boundary_preview_meshes_from_paths(field: Node3D, paths: Array, meshes: Array[MeshInstance3D]) -> void:
+	for path_value in paths:
+		var path := NodePath(path_value)
+		if path == NodePath(""):
+			continue
+		var source := field.get_node_or_null(path)
+		var mesh := _get_boundary_preview_mesh(source)
+		if mesh != null and not meshes.has(mesh):
+			meshes.append(mesh)
+
+
+static func _get_boundary_preview_mesh(source: Object) -> MeshInstance3D:
+	if source is MeshInstance3D:
+		var direct_mesh := source as MeshInstance3D
+		return direct_mesh if direct_mesh.mesh != null and direct_mesh.mesh.get_surface_count() > 0 else null
+	if source == null:
+		return null
+
+	var mesh_value = source.get("mesh_instance")
+	if mesh_value is MeshInstance3D:
+		var mesh_instance := mesh_value as MeshInstance3D
+		if mesh_instance.mesh != null and mesh_instance.mesh.get_surface_count() > 0:
+			return mesh_instance
+	return null
+
+
+static func _collect_boundary_edges(
+		mesh_instance: MeshInstance3D,
+		bounds: AABB,
+		edge_counts: Dictionary,
+		edge_points: Dictionary) -> void:
+	if mesh_instance == null or mesh_instance.mesh == null:
+		return
+	var source_transform := mesh_instance.global_transform if mesh_instance.is_inside_tree() else mesh_instance.transform
+	for surface_index in range(mesh_instance.mesh.get_surface_count()):
+		var primitive: Mesh.PrimitiveType = mesh_instance.mesh.surface_get_primitive_type(surface_index)
+		var arrays := mesh_instance.mesh.surface_get_arrays(surface_index)
+		var vertices := arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array
+		if vertices.is_empty():
+			continue
+		var indices := PackedInt32Array()
+		if arrays[Mesh.ARRAY_INDEX] is PackedInt32Array:
+			indices = arrays[Mesh.ARRAY_INDEX] as PackedInt32Array
+		match primitive:
+			Mesh.PRIMITIVE_TRIANGLES:
+				_collect_triangle_edges(vertices, indices, source_transform, bounds, edge_counts, edge_points)
+			Mesh.PRIMITIVE_TRIANGLE_STRIP:
+				_collect_triangle_strip_edges(vertices, indices, source_transform, bounds, edge_counts, edge_points)
+			Mesh.PRIMITIVE_LINES:
+				_append_line_edges(vertices, indices, source_transform, bounds, edge_counts, edge_points, false)
+			Mesh.PRIMITIVE_LINE_STRIP:
+				_append_line_edges(vertices, indices, source_transform, bounds, edge_counts, edge_points, true)
+
+
+static func _collect_triangle_edges(
+		vertices: PackedVector3Array,
+		indices: PackedInt32Array,
+		source_transform: Transform3D,
+		bounds: AABB,
+		edge_counts: Dictionary,
+		edge_points: Dictionary) -> void:
+	var vertex_count := indices.size() if not indices.is_empty() else vertices.size()
+	for start in range(0, vertex_count - 2, 3):
+		var a := _project_boundary_vertex(vertices, indices, start, source_transform, bounds)
+		var b := _project_boundary_vertex(vertices, indices, start + 1, source_transform, bounds)
+		var c := _project_boundary_vertex(vertices, indices, start + 2, source_transform, bounds)
+		_count_boundary_edge(edge_counts, edge_points, a, b)
+		_count_boundary_edge(edge_counts, edge_points, b, c)
+		_count_boundary_edge(edge_counts, edge_points, c, a)
+
+
+static func _collect_triangle_strip_edges(
+		vertices: PackedVector3Array,
+		indices: PackedInt32Array,
+		source_transform: Transform3D,
+		bounds: AABB,
+		edge_counts: Dictionary,
+		edge_points: Dictionary) -> void:
+	var vertex_count := indices.size() if not indices.is_empty() else vertices.size()
+	for start in range(max(0, vertex_count - 2)):
+		var a := _project_boundary_vertex(vertices, indices, start, source_transform, bounds)
+		var b := _project_boundary_vertex(vertices, indices, start + 1, source_transform, bounds)
+		var c := _project_boundary_vertex(vertices, indices, start + 2, source_transform, bounds)
+		_count_boundary_edge(edge_counts, edge_points, a, b)
+		_count_boundary_edge(edge_counts, edge_points, b, c)
+		_count_boundary_edge(edge_counts, edge_points, c, a)
+
+
+static func _append_line_edges(
+		vertices: PackedVector3Array,
+		indices: PackedInt32Array,
+		source_transform: Transform3D,
+		bounds: AABB,
+		edge_counts: Dictionary,
+		edge_points: Dictionary,
+		is_strip: bool) -> void:
+	var vertex_count := indices.size() if not indices.is_empty() else vertices.size()
+	var step := 1 if is_strip else 2
+	for start in range(0, max(0, vertex_count - 1), step):
+		var a := _project_boundary_vertex(vertices, indices, start, source_transform, bounds)
+		var b := _project_boundary_vertex(vertices, indices, start + 1, source_transform, bounds)
+		_count_boundary_edge(edge_counts, edge_points, a, b)
+
+
+static func _project_boundary_vertex(
+		vertices: PackedVector3Array,
+		indices: PackedInt32Array,
+		vertex_index: int,
+		source_transform: Transform3D,
+		bounds: AABB) -> Vector3:
+	var source_index := int(indices[vertex_index]) if not indices.is_empty() else vertex_index
+	source_index = clampi(source_index, 0, vertices.size() - 1)
+	var world_vertex := source_transform * vertices[source_index]
+	return Vector3(world_vertex.x, bounds.position.y + bounds.size.y * 0.5 + BOUNDARY_PREVIEW_Y_OFFSET, world_vertex.z)
+
+
+static func _count_boundary_edge(edge_counts: Dictionary, edge_points: Dictionary, point_a: Vector3, point_b: Vector3) -> void:
+	if point_a.is_equal_approx(point_b):
+		return
+	var key_a := _boundary_point_key(point_a)
+	var key_b := _boundary_point_key(point_b)
+	var edge_key := key_a + "|" + key_b if key_a < key_b else key_b + "|" + key_a
+	edge_counts[edge_key] = int(edge_counts.get(edge_key, 0)) + 1
+	if not edge_points.has(edge_key):
+		var points := PackedVector3Array()
+		points.append(point_a)
+		points.append(point_b)
+		edge_points[edge_key] = points
+
+
+static func _boundary_point_key(point: Vector3) -> String:
+	return "%d,%d" % [int(round(point.x * 1000.0)), int(round(point.z * 1000.0))]
 
 
 static func _build_world_circle_lines(owner: Node3D, origin_world: Vector3, radius: float, dashed: bool) -> PackedVector3Array:

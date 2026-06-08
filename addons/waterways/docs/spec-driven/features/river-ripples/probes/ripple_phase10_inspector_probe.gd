@@ -101,6 +101,7 @@ func _validate_static_boundaries() -> void:
 	_expect(gizmo_source.contains("func _has_gizmo"), "Ripple gizmo should declare handled nodes.")
 	_expect(gizmo_source.contains("func _redraw"), "Ripple gizmo should draw helper overlays through _redraw.")
 	_expect(gizmo_source.contains("add_collision_segments"), "Ripple gizmo should add simple picking collision for visual helper segments.")
+	_expect(gizmo_source.contains("FIELD_BOUNDARY_PREVIEW_MATERIAL"), "Ripple gizmo should draw the field boundary preview with a dedicated material.")
 	_expect(gizmo_source.contains("create_handle_material"), "Ripple gizmo should create a visible editor handle material.")
 	_expect(gizmo_source.contains("const HANDLE_MATERIAL := \"handles\""), "Ripple gizmo should use Godot's registered handle material name.")
 	_expect(gizmo_source.contains("add_handles"), "Ripple gizmo should add undo-backed emitter handles.")
@@ -111,6 +112,8 @@ func _validate_static_boundaries() -> void:
 	_expect(gizmo_source.contains("add_do_property"), "Ripple gizmo should use per-property do operations for handles.")
 	_expect(gizmo_source.contains("add_undo_property"), "Ripple gizmo should use per-property undo operations for handles.")
 	_expect(gizmo_geometry_source.contains("build_field_segments"), "Ripple gizmo geometry helper should expose probeable field segments.")
+	_expect(gizmo_geometry_source.contains("field_boundary_preview"), "Ripple gizmo geometry should expose an editor-only boundary preview segment set.")
+	_expect(gizmo_geometry_source.contains("_build_boundary_preview_lines"), "Ripple gizmo geometry should build boundary preview lines without runtime boundary generation.")
 	_expect(gizmo_geometry_source.contains("build_emitter_segments"), "Ripple gizmo geometry helper should expose probeable emitter segments.")
 	_expect(gizmo_geometry_source.contains("build_handle_points_for_node"), "Ripple gizmo geometry helper should expose probeable handle positions.")
 	_expect(gizmo_geometry_source.contains("emitter_handle_guides"), "Ripple gizmo geometry should expose a pickability guide for tiny moving-threshold handles.")
@@ -353,8 +356,9 @@ func _validate_gizmo_geometry(gizmo_geometry_script: Script, field_script: Scrip
 	root_node.name = "Phase10GizmoProbeRoot"
 	root.add_child(root_node)
 
-	var target := Node3D.new()
+	var target := MeshInstance3D.new()
 	target.name = "ProbeTargetRiverLikeNode"
+	target.mesh = _make_boundary_preview_quad_mesh()
 	target.position = Vector3(18.0, 0.0, 32.0)
 	root_node.add_child(target)
 
@@ -386,6 +390,7 @@ func _validate_gizmo_geometry(gizmo_geometry_script: Script, field_script: Scrip
 	var emitter_segments: Dictionary = geometry.call("build_segments_for_node", emitter)
 	var field_bounds: PackedVector3Array = field_segments.get("field_bounds", PackedVector3Array())
 	var field_footprint: PackedVector3Array = field_segments.get("field_footprint", PackedVector3Array())
+	var field_boundary_preview: PackedVector3Array = field_segments.get("field_boundary_preview", PackedVector3Array())
 	var field_routes: PackedVector3Array = field_segments.get("field_routes", PackedVector3Array())
 	var emitter_radius: PackedVector3Array = emitter_segments.get("emitter_radius", PackedVector3Array())
 	var emitter_moving: PackedVector3Array = emitter_segments.get("emitter_moving", PackedVector3Array())
@@ -425,6 +430,7 @@ func _validate_gizmo_geometry(gizmo_geometry_script: Script, field_script: Scrip
 
 	_expect(field_bounds.size() == 24, "Field bounds gizmo should draw twelve AABB edges.")
 	_expect(field_footprint.size() == 12, "Field footprint gizmo should draw the X/Z rectangle plus center cross.")
+	_expect(field_boundary_preview.size() == 8, "Field boundary preview should draw the projected mesh footprint outline.")
 	_expect(field_routes.size() == 2, "Field gizmo should draw explicit target path route lines without resolving private caches.")
 	_expect(emitter_radius.size() == 128, "Emitter radius gizmo should draw a 64-segment radius ring.")
 	_expect(emitter_moving.size() == 64, "Moving emitter gizmo should draw a dashed movement-threshold ring.")
@@ -439,6 +445,8 @@ func _validate_gizmo_geometry(gizmo_geometry_script: Script, field_script: Scrip
 	_expect(pulse_handle_positions.size() == 1, "Non-moving emitter gizmo should expose only a radius handle.")
 	_expect(pulse_handle_ids.size() == 1 and pulse_handle_ids[0] == 1001, "Non-moving emitter handle should use the radius ID.")
 	_expect(_approximately(field_bounds[0].x, 10.0) and _approximately(field_bounds[0].z, 20.0), "Field bounds should use world_bounds as the helper source.")
+	_expect(_boundary_preview_contains_point(field_boundary_preview, Vector3(18.0, 0.03, 32.0)), "Field boundary preview should include the target mesh min corner.")
+	_expect(_boundary_preview_contains_point(field_boundary_preview, Vector3(22.0, 0.03, 38.0)), "Field boundary preview should include the target mesh max corner.")
 	_expect(field_handle_positions.size() >= 6 and _approximately(field_handle_positions[0].x, 10.0) and _approximately(field_handle_positions[0].z, 29.0), "Field min-X handle should sit at the min-X face center.")
 	_expect(field_handle_positions.size() >= 6 and _approximately(field_handle_positions[1].x, 22.0) and _approximately(field_handle_positions[1].z, 29.0), "Field max-X handle should sit at the max-X face center.")
 	_expect(field_handle_positions.size() >= 6 and _approximately(field_handle_positions[2].y, -1.0) and _approximately(field_handle_positions[3].y, 1.0), "Field Y handles should sit at the min/max Y face centers.")
@@ -457,6 +465,7 @@ func _validate_gizmo_geometry(gizmo_geometry_script: Script, field_script: Scrip
 	_results["field_gizmo_segments"] = {
 		"bounds": field_bounds.size(),
 		"footprint": field_footprint.size(),
+		"boundary_preview": field_boundary_preview.size(),
 		"routes": field_routes.size(),
 	}
 	_results["emitter_gizmo_segments"] = {
@@ -476,6 +485,28 @@ func _validate_gizmo_geometry(gizmo_geometry_script: Script, field_script: Scrip
 		"last_id": field_handle_ids[field_handle_ids.size() - 1] if field_handle_ids.size() > 0 else -1,
 	}
 	root_node.free()
+
+
+func _make_boundary_preview_quad_mesh() -> ArrayMesh:
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([
+		Vector3(0.0, 0.0, 0.0),
+		Vector3(4.0, 0.0, 0.0),
+		Vector3(4.0, 0.0, 6.0),
+		Vector3(0.0, 0.0, 6.0),
+	])
+	arrays[Mesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 2, 0, 2, 3])
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
+
+
+func _boundary_preview_contains_point(lines: PackedVector3Array, point: Vector3) -> bool:
+	for line_point in lines:
+		if line_point.is_equal_approx(point):
+			return true
+	return false
 
 
 func _validate_gizmo_handle_model(handle_model_script: Script, field_script: Script, emitter_script: Script) -> void:
