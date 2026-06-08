@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_river_shader_visible_normal_review.gd" id="1"]
+[ext_resource type="PackedScene" path="res://Demo.tscn" id="2"]
+
+[node name="RippleRiverShaderVisibleNormalReview" type="Node3D"]
+script = ExtResource("1")
+
+[node name="World" parent="." instance=ExtResource("2")]

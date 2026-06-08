@@ -67,6 +67,10 @@ const int PILLOW_VISUAL_MASK_BLACK_ZERO = 58;
 const int BANK_FOAM_CONTRIBUTION = 59;
 const int PILLOW_ANCHOR_FOAM_CONTRIBUTION = 60;
 const int PILLOW_VISUAL_FOAM_CONTRIBUTION = 61;
+const int RIPPLE_RAW_HEIGHT = 62;
+const int RIPPLE_IMPULSE_CONTACT = 63;
+const int RIPPLE_BOUNDARY_MASK = 64;
+const int RIPPLE_VISIBLE_INFLUENCE = 65;
 
 const float PILLOW_BAKE_CONTACT_SEARCH_TILES = 0.07;
 const float PILLOW_BAKE_CONTACT_GATE_START = 0.08;
@@ -171,6 +175,17 @@ uniform sampler2D i_terrain_contact_features : hint_default_black, repeat_disabl
 uniform sampler2D i_bank_response_features : hint_default_black, repeat_disable, filter_linear;
 uniform bool i_valid_flowmap = false;
 uniform int i_uv2_sides = 2;
+uniform bool i_ripple_enabled = false;
+uniform sampler2D i_ripple_simulation_texture : hint_default_black, repeat_disable, filter_linear;
+uniform sampler2D i_ripple_impulse_texture : hint_default_black, repeat_disable, filter_linear;
+uniform mat4 i_ripple_world_to_uv = mat4(1.0);
+uniform sampler2D i_ripple_boundary_mask : hint_default_black, repeat_disable, filter_linear;
+uniform vec2 i_ripple_texel_size = vec2(0.0);
+uniform float i_ripple_normal_strength : hint_range(0.0, 4.0) = 0.0;
+uniform float i_ripple_refraction_strength : hint_range(0.0, 1.0) = 0.0;
+uniform float i_ripple_displacement_strength : hint_range(0.0, 1.0) = 0.0;
+uniform float i_ripple_height_fade_distance : hint_range(0.0, 200.0) = 0.0;
+uniform float i_ripple_boundary_fade : hint_range(0.0, 0.25) = 0.0;
 
 const float EPSILON = 0.0001;
 const float EDDY_CONTEXT_CANDIDATE_GATE_START = 0.015;
@@ -829,6 +844,123 @@ float pillow_material_tile_seam_fade_mask(vec2 source_uv, vec2 mesh_uv, float sa
 	return pillow_tile_seam_fade_mask(pillow_material_tile_seam_fade, source_uv, mesh_uv, safe_uv2_sides);
 }
 
+bool ripple_debug_mode_selected() {
+	return mode == RIPPLE_RAW_HEIGHT
+		|| mode == RIPPLE_IMPULSE_CONTACT
+		|| mode == RIPPLE_BOUNDARY_MASK
+		|| mode == RIPPLE_VISIBLE_INFLUENCE;
+}
+
+vec3 ripple_fragment_world_position(mat4 inv_view_matrix, vec3 view_position) {
+	return (inv_view_matrix * vec4(view_position, 1.0)).xyz;
+}
+
+vec2 ripple_world_to_uv(vec3 world_position) {
+	vec4 mapped = i_ripple_world_to_uv * vec4(world_position, 1.0);
+	float safe_w = abs(mapped.w) > EPSILON ? mapped.w : 1.0;
+	return mapped.xz / safe_w;
+}
+
+bool ripple_simulation_texture_ready() {
+	ivec2 simulation_size = textureSize(i_ripple_simulation_texture, 0);
+	return simulation_size.x > 1 && simulation_size.y > 1;
+}
+
+bool ripple_impulse_texture_ready() {
+	ivec2 impulse_size = textureSize(i_ripple_impulse_texture, 0);
+	return impulse_size.x > 1 && impulse_size.y > 1;
+}
+
+bool ripple_boundary_texture_ready() {
+	ivec2 boundary_size = textureSize(i_ripple_boundary_mask, 0);
+	return boundary_size.x > 1 && boundary_size.y > 1;
+}
+
+bool ripple_sampling_ready() {
+	return i_ripple_enabled
+		&& i_ripple_texel_size.x > EPSILON
+		&& i_ripple_texel_size.y > EPSILON
+		&& ripple_simulation_texture_ready()
+		&& ripple_boundary_texture_ready();
+}
+
+float ripple_uv_bounds_mask(vec2 uv) {
+	if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+		return 0.0;
+	}
+	float fade_width = max(i_ripple_boundary_fade, 0.0);
+	if (fade_width <= EPSILON) {
+		return 1.0;
+	}
+	float edge_distance = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+	return smoothstep(0.0, fade_width, edge_distance);
+}
+
+float ripple_boundary_mask_unchecked(vec2 uv) {
+	if (!ripple_boundary_texture_ready()) {
+		return 0.0;
+	}
+	float bounds_mask = ripple_uv_bounds_mask(uv);
+	if (bounds_mask <= EPSILON) {
+		return 0.0;
+	}
+	float boundary = textureLod(i_ripple_boundary_mask, clamp(uv, vec2(0.0), vec2(1.0)), 0.0).r;
+	return clamp(boundary * bounds_mask, 0.0, 1.0);
+}
+
+float ripple_decode_height(float encoded_height) {
+	return encoded_height * 2.0 - 1.0;
+}
+
+float ripple_distance_fade(vec3 camera_position_world, vec3 world_position) {
+	float fade_distance = max(i_ripple_height_fade_distance, 0.0);
+	if (fade_distance <= EPSILON) {
+		return 1.0;
+	}
+	float camera_distance = distance(camera_position_world, world_position);
+	return 1.0 - smoothstep(fade_distance * 0.75, fade_distance, camera_distance);
+}
+
+vec2 ripple_normal_offset_at_uv(vec2 uv) {
+	if (!ripple_sampling_ready() || i_ripple_normal_strength <= EPSILON) {
+		return vec2(0.0);
+	}
+	float center_mask = ripple_boundary_mask_unchecked(uv);
+	if (center_mask <= EPSILON) {
+		return vec2(0.0);
+	}
+	vec2 safe_uv = clamp(uv, vec2(0.0), vec2(1.0));
+	vec2 right_uv = clamp(uv + vec2(i_ripple_texel_size.x, 0.0), vec2(0.0), vec2(1.0));
+	vec2 up_uv = clamp(uv + vec2(0.0, i_ripple_texel_size.y), vec2(0.0), vec2(1.0));
+	float center_height = ripple_decode_height(textureLod(i_ripple_simulation_texture, safe_uv, 0.0).r) * center_mask;
+	float right_height = ripple_decode_height(textureLod(i_ripple_simulation_texture, right_uv, 0.0).r) * center_mask;
+	float up_height = ripple_decode_height(textureLod(i_ripple_simulation_texture, up_uv, 0.0).r) * center_mask;
+	vec2 slope = vec2(right_height - center_height, up_height - center_height);
+	return clamp(-slope * i_ripple_normal_strength, vec2(-1.0), vec2(1.0));
+}
+
+vec3 ripple_debug_color(vec3 world_position, vec3 camera_position_world) {
+	vec2 ripple_uv = ripple_world_to_uv(world_position);
+	if (mode == RIPPLE_RAW_HEIGHT) {
+		if (!ripple_simulation_texture_ready() || ripple_uv_bounds_mask(ripple_uv) <= EPSILON) {
+			return vec3(0.02);
+		}
+		float encoded_height = textureLod(i_ripple_simulation_texture, clamp(ripple_uv, vec2(0.0), vec2(1.0)), 0.0).r;
+		return signed_channel_to_gradient(encoded_height);
+	}
+	if (mode == RIPPLE_IMPULSE_CONTACT) {
+		if (!ripple_impulse_texture_ready() || ripple_uv_bounds_mask(ripple_uv) <= EPSILON) {
+			return vec3(0.0);
+		}
+		return black_zero_to_heat(textureLod(i_ripple_impulse_texture, clamp(ripple_uv, vec2(0.0), vec2(1.0)), 0.0).r);
+	}
+	if (mode == RIPPLE_BOUNDARY_MASK) {
+		return black_zero_to_heat(ripple_boundary_mask_unchecked(ripple_uv));
+	}
+	vec2 normal_offset = ripple_normal_offset_at_uv(ripple_uv) * ripple_distance_fade(camera_position_world, world_position);
+	return black_zero_to_heat(clamp(length(normal_offset) * 2.0, 0.0, 1.0));
+}
+
 void vertex() {
 	if (i_valid_flowmap && (pillow_terrain_height > EPSILON || pillow_obstruction_height > EPSILON)) {
 		float safe_uv2_sides = max(float(i_uv2_sides), 1.0);
@@ -868,6 +1000,10 @@ void vertex() {
 }
 
 void fragment() {
+	if (ripple_debug_mode_selected()) {
+		ALBEDO = ripple_debug_color(ripple_fragment_world_position(INV_VIEW_MATRIX, VERTEX), CAMERA_POSITION_WORLD);
+	} else {
+
 	float safe_uv2_sides = max(float(i_uv2_sides), 1.0);
 	vec2 atlas_size = max(vec2(textureSize(i_flowmap, 0)), vec2(1.0));
 	vec2 source_size = max(round(atlas_size * safe_uv2_sides / (safe_uv2_sides + 2.0)), vec2(1.0));
@@ -1266,6 +1402,7 @@ if (i_valid_flowmap) {
 		
 	} else {
 		ALBEDO = vec3(1.0, 0.0, 1.0);
+	}
 	}
 	}
 	ALPHA = 1.0;

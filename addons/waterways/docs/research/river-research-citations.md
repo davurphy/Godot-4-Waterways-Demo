@@ -10,7 +10,7 @@ Update rules:
 - Re-check version-sensitive engine documentation before using it for implementation details.
 - Keep speculative or later-phase material in "Future Research Leads" until it is needed.
 
-Last major research pass: 2026-05-31.
+Last major research pass: 2026-05-31 for broad river-feature research; 2026-06-07 for runtime ripple shader/material, field lifecycle, viewport texture ownership, resource ownership, and editor/runtime boundary documentation checks; 2026-06-08 for Phase 9 ripple authoring/API planning, presets, deformers, foam separation, Godot editor/export/resource boundaries, the Phase 9/Phase 10 split, Phase 10 adversarial editor-polish API review, and Phase 10 emitter gizmo handle callbacks/undo behavior.
 
 ## Current Waterways Context
 
@@ -96,6 +96,31 @@ Last major research pass: 2026-05-31.
 - [CBerry22, "Godot-Water-Ripple-Simulation-Shader"](https://github.com/CBerry22/Godot-Water-Ripple-Simulation-Shader)
   - Waterways use: Godot 4 viewport-feedback ripple simulation reference. Useful as algorithmic inspiration for an optional runtime visual ripple layer that samples transient height/normal data without replacing Waterways' baked river flow or WaterSystem maps.
 
+## Runtime Ripples, Rain, Foam, And Authoring Controls
+
+- [Natalya Tatarchuk, ATI Research, "Artist-Directable Real-Time Rain Rendering in City Environments", SIGGRAPH 2006 PDF](https://advances.realtimerendering.com/s2006/Chapter3-Artist-Directable_Real-Time_Rain_Rendering_in_City_Environments.pdf)
+  - Waterways use: Foundational GPU rain/ripple reference for stochastic raindrop seeding, shared ripple normal sampling, world-space sampling variation, artist-controlled ripple influence, and orthographic object-outline wake seeding. Supports rain as a capped local emitter pattern instead of real droplet collisions.
+- [Unity Manual, "Presets"](https://docs.unity.cn/Manual/Presets.html)
+  - Waterways use: Reference for saving and applying reusable property settings across components/assets and for editor default settings. Supports the Waterways choice to make presets explicit value starters, while keeping Phase 9 in-memory and leaving editor save/default workflows to Phase 10 or later tooling.
+- [Unity HDRP documentation, "Deform a water surface"](https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4015.0/manual/WaterSystem-waterdeformer.html)
+  - Waterways use: Authoring pattern for water deformers, region bounds, deformer caps, common parameters, and predefined sphere/box/bow-wave/shore-wave/texture shapes. Use the vocabulary for future emitter/deformer presets, not the HDRP implementation.
+- [Unity HDRP documentation, "Decals and masking in the Water System"](https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4015.0/manual/WaterSystem-decals-masking.html)
+  - Waterways use: Reference for separating water masks and water decals from the base surface. Supports keeping boundary masks, ripple influence, and future decal-like stamps as explicit authoring layers.
+- [Unity HDRP documentation, "Foam in the water system"](https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4016.0/manual/WaterSystem-foam.html)
+  - Waterways use: Reference for foam as its own water-surface data and tuning surface, with limitations and simple artist-facing parameters. Supports deferring Waterways foam into a separate future layer instead of overloading ripple normals.
+- [Crest Water, "Dynamic Waves"](https://docs.crest.waveharmonic.com/Manual/Simulation/Ripples.html)
+  - Waterways use: Open-source/production-quality reference for dynamic waves layered on animated waves, proxy sphere interactions, multi-sphere approximations for non-spherical bodies, damping, Courant/stability controls, and custom force inputs. Good guide for emitter presets and advanced labels.
+- [Crest Water, "Foam"](https://docs.crest.waveharmonic.com/Manual/Appearance/Foam.html)
+  - Waterways use: Reference for foam generation, fade/dissipation, whitecaps, shoreline foam, and user inputs. Supports designing future `foam_influence` as separate data with its own debug view.
+- [Epic Developer Community, "Simulating Waves Using The Water Waves Asset in Unreal Engine"](https://dev.epicgames.com/documentation/unreal-engine/simulating-waves-using-the-water-waves-asset-in-unreal-engine)
+  - Waterways use: Reference for artist-facing wave parameter ranges such as wavelength, amplitude, direction, steepness, seed, randomness, and separation between macro mesh waves and material normal detail.
+- [Epic Developer Community, "Water Debugging and Scalability Options in Unreal Engine"](https://dev.epicgames.com/documentation/unreal-engine/water-debugging-and-scalability-options-in-unreal-engine)
+  - Waterways use: Reference for water-specific stats, tile bounds, LOD visualization, debug commands, and scalability controls. Supports keeping ripple debug views and performance probes first-class during Phase 9.
+- [Epic Developer Community, "Data Assets in Unreal Engine"](https://dev.epicgames.com/documentation/en-us/unreal-engine/data-assets-in-unreal-engine)
+  - Waterways use: Contrast point for designer-editable settings assets and asset-manager ownership. Useful for future settings-asset thinking, but not a direct reason to expose Phase 9 ripple preset resources as live exported node slots.
+- [Epic Developer Community, "Details Panel Customizations in Unreal Engine"](https://dev.epicgames.com/documentation/en-us/unreal-engine/details-panel-customizations-in-unreal-engine)
+  - Waterways use: External editor-tooling comparison for custom inspector rows, buttons, and property widgets. Supports keeping Waterways inspector buttons, undo-aware actions, and save dialogs in Phase 10 rather than casual Phase 9 exports.
+
 ## Production Water Systems, Baked Data, And Engine Examples
 
 - [Epic Developer Community, "Baked River Simulations - Overview and Quick Start"](https://dev.epicgames.com/community/learning/tutorials/Y5J6/unreal-engine-baked-river-simulations-overview-and-quick-start)
@@ -114,8 +139,16 @@ Last major research pass: 2026-05-31.
   - Waterways use: Production framing for unifying water rendering, simulation, buoyancy, and large-world constraints.
 - [LIGHTSPEED STUDIOS, "Open-World Water Rendering and Real-Time Simulation" slides, GDC 2023 PDF](https://media.gdcvault.com/gdc2023/Slides/Open-World%2BWater%2BRendering%2Band%2BReal-Time%2BSimulation_Mao_Zhenyu%26Wu_Kui.pdf)
   - Waterways use: Slide-level technical detail for large-scale water systems and simulation/rendering separation.
+- [Advances in Real-Time Rendering, "The Challenges of Rendering an Open World in Far Cry 5" PDF](https://advances.realtimerendering.com/s2018/The%20Challenges%20of%20Rendering%20an%20Open%20World%20in%20Far%20Cry%205%20%28With%20Notes%29.pdf)
+  - Waterways use: Production reference for open-world water/rendering integration, transparent water constraints, specialized water passes, and scalable compositing. Use for later rendering-pipeline caution, not immediate Phase 9 implementation.
+- [GDC Vault, "Advanced Graphics Techniques Tutorial: Water Rendering in Far Cry 5"](https://gdcvault.com/play/1025555/Advanced-Graphics-Techniques-Tutorial-Water)
+  - Waterways use: Production reference for compositing multiple water systems, scalable water cost by water pixels, tessellation, and optimized single-pass water lighting. Useful as a high-level warning against treating one runtime ripple field as the whole water system.
 - [Advances in Real-Time Rendering, SIGGRAPH 2016 course index](https://advances.realtimerendering.com/s2016/)
   - Waterways use: Entry point for "Rendering Rapids in Uncharted 4" and related production material on layering flow maps with wave particles for obstacle-driven rapids.
+- [ResearchGate, "Rendering Rapids in Uncharted 4"](https://www.researchgate.net/publication/333915560_Rendering_Rapids_in_Uncharted_4)
+  - Waterways use: Production reference for deconstructing river rapids into offline-informed geometric and visual components that are cheap and controllable at runtime. Supports deferring rapids/whitewater from the local ripple API.
+- [Hugh Malan, Guerrilla, "Rendering Water in Horizon Forbidden West", SIGGRAPH 2022 PDF](https://advances.realtimerendering.com/s2022/SIGGRAPH2022-Advances-Water-Malan.pdf)
+  - Waterways use: Production reference for baked/localized wave deformations, artist-authored wavefront control, variation textures, and river/lake deformation volumes. Supports future baked/procedural water-region work separate from Phase 9 ripple presets.
 - [80 Level, "River Editor: Water Simulation in Real-Time"](https://80.lv/articles/river-editor-water-simulation-in-real-time)
   - Waterways use: Production-facing reference for decoupling river authoring tools, simulation output, and artist review when considering future rapids or local wave layers.
 - [RealtimeVFX, "VFX of Ghost of Tsushima - a recent blog"](https://realtimevfx.com/t/vfx-of-ghost-of-tsushima-a-recent-blog/15815)
@@ -149,8 +182,40 @@ Last major research pass: 2026-05-31.
 
 ## Godot Constraints, Tooling, And Readbacks
 
+- [Godot documentation, "Node" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_node.html)
+  - Waterways use: Authoritative lifecycle reference for `_enter_tree()`, `_ready()`, `_exit_tree()`, scene ownership, and cleanup timing used by prototype `WaterRippleField` and `WaterRippleEmitter`.
+- [Godot documentation, "GDScript exported properties" 4.6](https://docs.godotengine.org/en/4.6/tutorials/scripting/gdscript/gdscript_exports.html)
+  - Waterways use: Authoritative reference for `@export_group`, `@export_subgroup`, resource export dependencies, `@export_storage`, and `@export_tool_button`. Supports ordinary Phase 9 grouping, hidden stored reservations such as `debug_visible`, and deferring richer editor actions to Phase 10.
+- [Godot documentation, "EditorPlugin" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_editorplugin.html)
+  - Waterways use: `add_custom_type()` behavior and limits for plugin-created helper types; compare against named script-class registration when Add Node visibility matters.
+- [Godot documentation, "EditorInspectorPlugin" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_editorinspectorplugin.html)
+  - Waterways use: Phase 10 reference for native-feeling inspector controls, custom property editors, preset buttons, and editor-only helper UI that should not be simulated with runtime node exports.
+- [Godot documentation, "EditorResourcePicker" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_editorresourcepicker.html)
+  - Waterways use: Phase 10 reference for optional transient preset selector controls. Use only as editor UI state, not as a serialized ripple-node preset slot or live profile link.
+- [Godot documentation, "EditorUndoRedoManager" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_editorundoredomanager.html)
+  - Waterways use: Phase 10 reference for undo-aware editor actions that mutate node/resource properties, such as applying a preset through the inspector.
+- [Godot documentation, "EditorInterface" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_editorinterface.html)
+  - Waterways use: Editor-only service reference for Phase 10 scene/resource dirty-state handling, editor selection/context, and save workflow integration.
+- [Godot documentation, "EditorFileDialog" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_editorfiledialog.html)
+  - Waterways use: Phase 10 reference for explicit preset save/open dialogs, keeping resource persistence out of Phase 9 runtime apply/capture methods.
+- [Godot documentation, "FileDialog" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_filedialog.html)
+  - Waterways use: Base dialog behavior for Phase 10 editor-owned preset save workflows, including access modes, file modes, current path handling, filters, and overwrite behavior.
+- [Godot documentation, "EditorNode3DGizmoPlugin" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_editornode3dgizmoplugin.html)
+  - Waterways use: Phase 10 reference for optional field-bounds or emitter-radius gizmos, handle callbacks, and lifecycle cleanup through `EditorPlugin` registration with no runtime material, bake, or simulation mutation.
+- [Godot documentation, "EditorNode3DGizmo" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_editornode3dgizmo.html)
+  - Waterways use: Phase 10 reference for drawing helper line segments, optional picking collision, and adding editable handles only after an undo-backed handle contract is implemented.
+- [Godot documentation, "Node3D" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_node3d.html)
+  - Waterways use: Phase 10 reference for local/global point conversion and future `update_gizmos()` refresh hooks if helper-visible exported properties become editable.
+- [Godot documentation, "Making plugins" custom node tutorial 4.6](https://docs.godotengine.org/en/4.6/tutorials/plugins/editor/making_plugins.html)
+  - Waterways use: Documents `@icon(...)` plus `class_name` as the direct custom-node path for Create/Add Node exposure, used for `WaterRippleField` and `WaterRippleEmitter` after plugin-only registration was not visible in the editor.
 - [Godot documentation, "Spatial shaders" 4.6](https://docs.godotengine.org/en/4.6/tutorials/shaders/shader_reference/spatial_shader.html)
-  - Waterways use: Authoritative shader-reference constraints for `river.gdshader` and `river_debug.gdshader`.
+  - Waterways use: Authoritative shader-reference constraints for `river.gdshader` and `river_debug.gdshader`, including fragment-space world-position reconstruction and built-ins used by the ripple debug parity path.
+- [Godot documentation, "Shading language" 4.6](https://docs.godotengine.org/en/4.6/tutorials/shaders/shader_reference/shading_language.html)
+  - Waterways use: Uniform defaults, sampler hints, GDScript-to-shader uniform type mapping, and per-instance uniform limitations for `i_ripple_*` river shader parameters.
+- [Godot documentation, "Built-in functions" 4.6](https://docs.godotengine.org/en/4.6/tutorials/shaders/shader_reference/shader_functions.html)
+  - Waterways use: Authoritative texture sampling and `textureSize()` reference for guarded runtime-ripple height/normal helper sample budgets.
+- [Godot documentation, "ShaderMaterial" 4.6](https://docs.godotengine.org/en/4.6/classes/class_shadermaterial.html)
+  - Waterways use: `set_shader_parameter()`/`get_shader_parameter()` name matching and material-sharing behavior; supports the RiverManager duplicate-before-runtime-write path for visible/debug ripple textures.
 - [Godot documentation, "Screen-reading shaders" 4.6](https://docs.godotengine.org/en/4.6/tutorials/shaders/screen-reading_shaders.html)
   - Waterways use: Screen/depth texture constraints for any future depth/contact or refraction work.
 - [Godot documentation, "3D rendering limitations"](https://docs.godotengine.org/en/latest/tutorials/3d/3d_rendering_limitations.html)
@@ -159,6 +224,30 @@ Last major research pass: 2026-05-31.
   - Waterways use: CPU-side pixel and region reads for raw numeric probes, mask coverage stats, and user-marked expected/forbidden regions.
 - [Godot documentation, "Viewport" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_viewport.html)
   - Waterways use: Capture/export workflow for rendered debug views. Remember to wait for `RenderingServer.frame_post_draw` before readback.
+- [Godot documentation, "ViewportTexture" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_viewporttexture.html)
+  - Waterways use: Dynamic scene-local texture reference for runtime `SubViewport` outputs used by the ripple field without saving or mutating bake resources.
+- [Godot documentation, "SubViewport" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_subviewport.html)
+  - Waterways use: Runtime and validation render-target update and clear-mode semantics for ripple feedback passes. `UPDATE_ONCE` renders the next frame and then returns to disabled.
+- [Godot documentation, "Resource" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_resource.html)
+  - Waterways use: Resource duplication and scene-local ownership reference for avoiding accidental edits to shared river materials or saved resources.
+- [Godot documentation, "ResourceSaver" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_resourcesaver.html)
+  - Waterways use: Phase 10 reference for deliberate editor-side `.tres` preset saving. Do not use it to imply runtime preset persistence in Phase 9.
+- [Godot documentation, "ResourceLoader" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_resourceloader.html)
+  - Waterways use: Reference for explicit resource loading in future editor/user save workflows; Phase 9 should accept resource instances directly and avoid hidden loading/saving side effects.
+- [Godot documentation, "Running code in the editor" 4.6](https://docs.godotengine.org/en/4.6/tutorials/plugins/running_code_in_the_editor.html)
+  - Waterways use: `@tool` and editor/runtime boundary reference; prototype ripple nodes warn in editor but keep runtime simulation/emission disabled while `Engine.is_editor_hint()` is true.
+- [Godot documentation, "RenderingServer" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_renderingserver.html)
+  - Waterways use: Per-viewport CPU/GPU render-time measurement, draw-call counters, current rendering method/driver/device reporting, and `frame_post_draw` synchronization for shader-cost probes.
+- [Godot documentation, "Time" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_time.html)
+  - Waterways use: Monotonic `get_ticks_usec()` timing reference for secondary wall-clock measurements in validation probes.
+- [Godot documentation, "CanvasItem shaders" 4.6](https://docs.godotengine.org/en/4.6/tutorials/shaders/shader_reference/canvas_item_shader.html)
+  - Waterways use: Authoritative `UV`, `FRAGCOORD`, `SCREEN_PIXEL_SIZE`, and CanvasItem shader coordinate behavior for offscreen ripple simulation and impulse passes.
+- [Godot documentation, "Using compute shaders"](https://docs.godotengine.org/en/stable/tutorials/shaders/compute_shaders.html)
+  - Waterways use: Future architecture reference for compute-based ripple fields. Re-check renderer/platform support before considering a move away from the currently validated `SubViewport` feedback path.
+- [Godot documentation, "Texture2DRD" class](https://docs.godotengine.org/en/stable/classes/class_texture2drd.html)
+  - Waterways use: Future low-level texture bridge from `RenderingDevice` textures into material shaders. Relevant to a possible compute rewrite, but not required for Phase 9 authoring.
+- [Godot Asset Library, "Compute Texture Demo"](https://godotengine.org/asset-library/asset/2764)
+  - Waterways use: Official Godot example for compute-populated height textures used by a material shader for water ripples, including RID cycling and normal generation. Treat as future implementation evidence, not a reason to abandon the current cross-renderer path.
 - [Godot documentation, "Command line tutorial" 4.6](https://docs.godotengine.org/en/4.6/tutorials/editor/command_line_tutorial.html)
   - Waterways use: Source for scripted probe/export runs via `--script`.
 - [Godot documentation, "ShaderInclude" 4.6](https://docs.godotengine.org/en/stable/classes/class_shaderinclude.html)
@@ -170,6 +259,14 @@ Last major research pass: 2026-05-31.
 
 ## Open-Source And Practical Code References
 
+- [GitHub, Arnklit/Waterways](https://github.com/Arnklit/Waterways)
+  - Waterways use: Upstream Waterways add-on reference for spline river mesh generation, Bezier-driven flow/foam maps, material inspector grouping, and current limitations around real-time reflection/displacement. Useful for preserving the add-on's original authoring philosophy.
+- [GitHub, Tshmofen/waterways-net](https://github.com/Tshmofen/waterways-net)
+  - Waterways use: Godot 4/.NET Waterways port reference for editor-facing river controls, flow/foam parameter grouping, and simple runtime water height/flow query surfaces. Good comparison for public API naming and C#-friendly authoring patterns.
+- [Godot Asset Library, "Waterways .NET (River Generation Tool)"](https://godotengine.org/asset-library/asset/2607)
+  - Waterways use: Asset-library summary of the Godot 4/.NET port features, including Bezier river mesh generation, flow settings, subdivision/smoothing, editor tools, floating setup, and advanced water shaders.
+- [Alfred Reinold Baudisch, "Godot Engine In-game Splat Map Texture Painting"](https://alfredbaudisch.com/godot-engine/godot-engine-in-game-splat-map-texture-painting-dirt-removal-effect/)
+  - Waterways use: Practical Godot runtime texture painting reference for world-to-UV mapping, dynamic `ViewportTexture` painting, brush/stamp workflows, and low-poly collider performance notes. Useful for future texture-stamp emitters or editor/runtime paint tools.
 - [GitHub, Arnklit/WaterGenGodot](https://github.com/Arnklit/WaterGenGodot)
   - Waterways use: Upstream/original project lineage. Use for historical comparison and MIT-friendly reference value.
 - [GitHub, Unity-Technologies/WaterScenes](https://github.com/Unity-Technologies/WaterScenes)

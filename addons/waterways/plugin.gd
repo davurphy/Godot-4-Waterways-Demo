@@ -7,12 +7,16 @@ const WaterHelperMethods = preload("./water_helper_methods.gd")
 const WaterSystem = preload("./water_system_manager.gd")
 const RiverManager = preload("./river_manager.gd")
 const RiverGizmo = preload("./river_gizmo.gd")
+const RippleGizmo = preload("./ripple_gizmo.gd")
 const GradientInspector = preload("./inspector_plugin.gd")
+const RippleInspector = preload("./ripple_inspector_plugin.gd")
 const ProgressWindow = preload("./progress_window.tscn")
 const RiverControls = preload("./gui/river_controls.gd")
 
 var river_gizmo = RiverGizmo.new()
+var ripple_gizmo = RippleGizmo.new()
 var gradient_inspector = GradientInspector.new()
+var ripple_inspector = RippleInspector.new()
 
 var _river_controls = null
 var _water_system_controls = null
@@ -32,7 +36,11 @@ func _enter_tree() -> void:
 	add_custom_type("WaterSystem", "Node3D", preload("./water_system_manager.gd"), preload("./icons/system.svg"))
 	add_custom_type("Buoyant", "Node3D", preload("./buoyant_manager.gd"), preload("./icons/buoyant.svg"))
 	add_node_3d_gizmo_plugin(river_gizmo)
+	add_node_3d_gizmo_plugin(ripple_gizmo)
 	add_inspector_plugin(gradient_inspector)
+	ripple_gizmo.set_undo_redo_manager(get_undo_redo())
+	ripple_inspector.set_undo_redo_manager(get_undo_redo())
+	add_inspector_plugin(ripple_inspector)
 	river_gizmo.editor_plugin = self
 	_connect_once(_river_controls, "mode", Callable(self, "_on_mode_change"))
 	_connect_once(_river_controls, "options", Callable(self, "_on_option_change"))
@@ -104,7 +112,12 @@ func _exit_tree() -> void:
 	remove_custom_type("WaterSystem")
 	remove_custom_type("Buoyant")
 	remove_node_3d_gizmo_plugin(river_gizmo)
+	remove_node_3d_gizmo_plugin(ripple_gizmo)
 	remove_inspector_plugin(gradient_inspector)
+	remove_inspector_plugin(ripple_inspector)
+	ripple_gizmo.set_undo_redo_manager(null)
+	ripple_inspector.clear_transient_state()
+	ripple_inspector.set_undo_redo_manager(null)
 	_free_control_instances()
 	_editor_selection = null
 
@@ -441,6 +454,7 @@ func _clear_editing_state() -> void:
 	_edited_node = null
 	_set_progress_source(null)
 	river_gizmo.reset()
+	ripple_inspector.clear_transient_state()
 	_hide_river_control_panel()
 	_hide_water_system_control_panel()
 

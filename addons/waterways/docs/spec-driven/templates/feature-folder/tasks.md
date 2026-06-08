@@ -26,6 +26,7 @@ Use this section as the canonical checklist for unfinished work. When items clos
 - [ ] Confirm the current workspace state.
 - [ ] Read `spec.md`, `plan.md`, and `validation.md`.
 - [ ] Check `docs/research/river-research-citations.md` before research-driven changes; it is the shared works-cited list for river-reading, flow-map, shader-water, and production-reference sources, and should be updated when new cited sources affect this feature.
+- [ ] For Godot-specific implementation work, search current official Godot documentation and API references online before patching; record sources that affect the implementation in `research.md` or the shared citations index.
 - [ ] Check `audit/code-audit.md` for relevant known risks.
 - [ ] Confirm whether the task affects active code in `addons/waterways`, generated resources, demo scenes, docs, or validation tooling.
 - [ ] If running Godot, use the exact console/windowed launch instructions from `validation.md` or `session-handoff.md`; console probes should use repo-local `.codex-research` user-data folders.

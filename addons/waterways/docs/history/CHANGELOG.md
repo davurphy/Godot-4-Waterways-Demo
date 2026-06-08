@@ -2,6 +2,38 @@
 
 ## Unreleased - 2026-05-26
 
+### River Ripples Runtime Visual Layer
+
+- Added the visual-only runtime ripple architecture documented under `docs/spec-driven/features/river-ripples/`. The feature introduces localized water-surface disturbances while preserving the rule that first-pass ripples do not change river bakes, WaterSystem bakes, source signatures, final flow, `system_flow.gdshader`, buoyancy, or saved bake resources.
+- Added `WaterRippleField` and `WaterRippleEmitter` as named `Node3D` script classes with ripple icons so they can be added directly from Godot's Add Node workflow. Fields own bounded ripple simulation domains; emitters create pulse, continuous, one-shot, and moving impulses.
+- Added no-readback runtime ripple simulation shaders and transient texture ownership:
+  - `shaders/runtime/ripple_simulation.gdshader`
+  - `shaders/runtime/ripple_impulse.gdshader`
+  - `shaders/runtime/ripple_impulse_additive.gdshader`
+  - `shaders/runtime/ripple_boundary_mask.gdshader`
+- Added one shared `world_to_ripple_uv` mapping path for emitters, simulation, boundary masks, debug views, and river shader sampling.
+- Added target river mesh-footprint boundary masking so localized ripples can be restricted to configured water coverage instead of spreading through dry areas or disconnected channels.
+- Added RiverManager-facing owner-scoped runtime material state for planned `i_ripple_*` uniforms. Runtime fields apply ripple state only to intended river targets through duplicated materials and restore original visible/debug material state on clear, disable, owner exit, or river tree exit.
+- Added guarded `i_ripple_*` uniform declarations and minimal visible normal blending to `river.gdshader`. Disabled or missing ripple textures remain neutral, and the first accepted visible path affects normal response only; response tuning, refraction tuning, displacement tuning, final flow, WaterSystem, and physics behavior remain separate follow-ups.
+- Added ripple debug parity in `river_debug.gdshader` and the Debug View menu for raw ripple height, impulse/contact, boundary mask, and visible ripple influence.
+- Added demo/review scenes and validation coverage for feedback spread/decay, mapping, boundary masking, material ownership, shader neutrality, shader sampling budget, visible-normal review, debug parity, field/emitter lifecycle, emitter caps/priority, cleanup, renderer coverage, and shader cost.
+
+### River Ripples Authoring And Editor Polish
+
+- Added separate `WaterRippleFieldPreset` and `WaterRippleEmitterPreset` resources plus script-callable `apply_preset()`, `capture_preset()`, and built-in starter presets. Presets copy approved authoring values into ordinary properties; they are not live profile links, exported node slots, runtime asset saves, target-routing stores, or bake/WaterSystem/source-signature data.
+- Organized the field and emitter authoring surfaces with ordinary Godot export groups, warnings, and storage-only reserved fields. `debug_visible`, `refraction_strength`, and `displacement_strength` stay hidden/reserved until real behavior is separately implemented and validated.
+- Added Phase 10 editor tooling through editor/plugin scripts:
+  - read-only inspector status rows for fields and emitters
+  - transient built-in and resource preset Apply controls
+  - per-property editor undo/redo for Apply
+  - capture/save controls that write presets only through explicit editor-selected `.tres` paths
+  - visual field/emitter gizmo helpers
+  - undo-backed emitter radius and moving-threshold handles
+  - undo-backed field `world_bounds` face handles
+  - editor-only projected boundary preview outlines
+- Kept editor tooling out of exported runtime scripts. Static scans and probes verify runtime field/emitter scripts and preset resources do not gain editor-only class references, `ResourceSaver`, `.tres` write paths, runtime preview leakage, forbidden runtime calls from read-only/selector/capture/preview paths, or bake/WaterSystem/source-signature mutations.
+- Current accepted follow-ups are `debug_visible` re-exposure design, live-scene bridge planning, or a separate response/refraction/displacement tuning plan. Live-scene runtime commands such as reset feedback, rebuild runtime, emit once, and runtime texture previews remain disabled until a bridge is designed and validated.
+
 ### Foam Debugging And Shader Contributions
 
 - Added a dedicated `Foam` editor debug submenu so foam-related views can be reviewed together. The group now includes baked foam, final foam mix, bank friction, bank foam contribution, pillow direct terrain anchor search, pillow anchor foam contribution, pillow visual mask, pillow visual foam contribution, grade/energy, pillow material response, wake visual, and eddy-line visual diagnostics.

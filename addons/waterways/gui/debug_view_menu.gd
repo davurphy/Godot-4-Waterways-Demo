@@ -24,6 +24,15 @@ const DEBUG_VIEW_GROUPS := [
 		]
 	},
 	{
+		"name": "Ripples",
+		"items": [
+			["Ripple Raw Height", 62],
+			["Ripple Impulse / Contact", 63],
+			["Ripple Boundary Mask", 64],
+			["Ripple Visible Influence", 65],
+		]
+	},
+	{
 		"name": "Foam",
 		"items": [
 			["Foam Mask (flow_foam_noise B)", 2],
@@ -137,6 +146,10 @@ const DEBUG_VIEW_ITEMS := [
 	["Bank Foam Contribution", 59],
 	["Pillow Anchor Foam Contribution", 60],
 	["Pillow Visual Foam Contribution", 61],
+	["Ripple Raw Height", 62],
+	["Ripple Impulse / Contact", 63],
+	["Ripple Boundary Mask", 64],
+	["Ripple Visible Influence", 65],
 	["Phase Noise (flow_foam_noise A)", 3],
 	["Distance / Bank Influence (dist_pressure R)", 4],
 	["Pressure / Support (dist_pressure G)", 5],

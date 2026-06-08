@@ -83,6 +83,8 @@ Research output goes in `research.md`.
 Shared citations and source provenance should link to `addons\waterways\docs\research\river-research-citations.md` when relevant.
 Do not turn research directly into code. Turn it into a spec first.
 
+For Godot-specific implementation work, agents can and should search current official Godot documentation and API references online before coding, especially for shaders, rendering, editor APIs, resources, physics, and version-specific behavior. Prefer official Godot docs first, use community examples only as secondary context, and record any sources that affected the implementation in the relevant `research.md` or shared citations index.
+
 The legacy Godot 3 add-on is a reference implementation, not a design mandate.
 Preserve useful behavior, but do not preserve obsolete APIs or fragile architecture unless the plan explicitly justifies it.
 
