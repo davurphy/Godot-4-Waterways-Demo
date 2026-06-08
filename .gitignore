@@ -33,3 +33,5 @@ debugger/
 # Codex / local assistant workspace files, if ever created in-project
 .codex/
 .codex-research/
+water_ripple_field_preset.tres
+water_ripple_emitter_preset.tres

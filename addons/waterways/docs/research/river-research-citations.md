@@ -10,7 +10,7 @@ Update rules:
 - Re-check version-sensitive engine documentation before using it for implementation details.
 - Keep speculative or later-phase material in "Future Research Leads" until it is needed.
 
-Last major research pass: 2026-05-31 for broad river-feature research; 2026-06-07 for runtime ripple shader/material, field lifecycle, viewport texture ownership, resource ownership, and editor/runtime boundary documentation checks; 2026-06-08 for Phase 9 ripple authoring/API planning, presets, deformers, foam separation, Godot editor/export/resource boundaries, the Phase 9/Phase 10 split, and Phase 10 adversarial editor-polish API review.
+Last major research pass: 2026-05-31 for broad river-feature research; 2026-06-07 for runtime ripple shader/material, field lifecycle, viewport texture ownership, resource ownership, and editor/runtime boundary documentation checks; 2026-06-08 for Phase 9 ripple authoring/API planning, presets, deformers, foam separation, Godot editor/export/resource boundaries, the Phase 9/Phase 10 split, Phase 10 adversarial editor-polish API review, and Phase 10 emitter gizmo handle callbacks/undo behavior.
 
 ## Current Waterways Context
 
@@ -201,7 +201,11 @@ Last major research pass: 2026-05-31 for broad river-feature research; 2026-06-0
 - [Godot documentation, "FileDialog" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_filedialog.html)
   - Waterways use: Base dialog behavior for Phase 10 editor-owned preset save workflows, including access modes, file modes, current path handling, filters, and overwrite behavior.
 - [Godot documentation, "EditorNode3DGizmoPlugin" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_editornode3dgizmoplugin.html)
-  - Waterways use: Phase 10 reference for optional field-bounds or emitter-radius gizmos, with lifecycle cleanup through `EditorPlugin` registration and no runtime material, bake, or simulation mutation.
+  - Waterways use: Phase 10 reference for optional field-bounds or emitter-radius gizmos, handle callbacks, and lifecycle cleanup through `EditorPlugin` registration with no runtime material, bake, or simulation mutation.
+- [Godot documentation, "EditorNode3DGizmo" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_editornode3dgizmo.html)
+  - Waterways use: Phase 10 reference for drawing helper line segments, optional picking collision, and adding editable handles only after an undo-backed handle contract is implemented.
+- [Godot documentation, "Node3D" class 4.6](https://docs.godotengine.org/en/4.6/classes/class_node3d.html)
+  - Waterways use: Phase 10 reference for local/global point conversion and future `update_gizmos()` refresh hooks if helper-visible exported properties become editable.
 - [Godot documentation, "Making plugins" custom node tutorial 4.6](https://docs.godotengine.org/en/4.6/tutorials/plugins/editor/making_plugins.html)
   - Waterways use: Documents `@icon(...)` plus `class_name` as the direct custom-node path for Create/Add Node exposure, used for `WaterRippleField` and `WaterRippleEmitter` after plugin-only registration was not visible in the editor.
 - [Godot documentation, "Spatial shaders" 4.6](https://docs.godotengine.org/en/4.6/tutorials/shaders/shader_reference/spatial_shader.html)

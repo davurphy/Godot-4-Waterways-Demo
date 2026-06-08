@@ -29,8 +29,8 @@ In scope:
 - Undo-aware editor preset application.
 - Editor save/capture workflow for `WaterRippleFieldPreset` and `WaterRippleEmitterPreset`.
 - Optional editor preset asset slots or selector controls, only if they are action inputs and never live auto-applying profiles.
-- Modest editor visualization for field bounds, target coverage, and boundary/influence review.
-- Re-exposing or renaming the hidden Phase 9 `debug_visible` reservation once real helper behavior exists.
+- Modest editor visualization for field bounds, target/routing coverage, and boundary/influence review.
+- Re-exposing or renaming the hidden Phase 9 `debug_visible` reservation once real helper behavior exists and the toggle semantics are validated.
 - Validation that editor-only tooling does not leak into exported runtime scenes.
 
 Out of scope:
@@ -133,6 +133,41 @@ Every editor action needs an explicit mutation contract before implementation. T
 | Re-expose or rename `debug_visible` | Only if backed by visible/helper behavior and documented semantics. | Undoable if it is an exported saved toggle. | Marks scene dirty only when the saved toggle changes. |
 
 Actions not listed here should be treated as out of scope until their mutation, undo, and dirty-state behavior are added to this matrix.
+
+## Gizmo Handle Contract
+
+Editable ripple gizmo handles may be added only for ordinary exported authoring values. They must not call runtime simulation, material, target registration, boundary bake, source-signature, bake, `WaterSystem`, buoyancy, or live-scene bridge paths.
+
+Initial handle set:
+
+- `WaterRippleEmitter.radius`: one horizontal radius handle on the orange radius ring. Dragging edits only `radius`, clamped to the existing exported range `0.001..64.0`.
+- `WaterRippleEmitter.moving_emit_distance`: one horizontal threshold handle, visible only when `emitter_mode == Moving`. For ordinary values the handle sits on the dashed moving-threshold ring. For tiny dense-trail values, the real dashed ring remains at the true value and a short yellow guide points to a minimum-distance pickable grip; drag math subtracts that visual offset so clicking the grip does not jump the property. Dragging edits only `moving_emit_distance`, clamped to `0.001..64.0`.
+- `WaterRippleField.world_bounds`: six axis-aligned AABB face handles. Dragging a face edits only `world_bounds`; it keeps the opposite face fixed, clamps to a minimum non-flipped size, and preserves the axis-aligned X/Z mapping contract. This slice is automated-proven and still needs human-visible editor review.
+
+Handle behavior:
+
+- Viewing, selecting, hovering, or rebuilding gizmos must remain non-mutating and non-dirty.
+- `_get_handle_value()` returns the exact restore value used for cancel/no-op checks.
+- `_set_handle()` may live-update the edited property while dragging so the gizmo follows the cursor, but it may only touch the whitelisted exported property for the active handle.
+- `_commit_handle(..., cancel=true)` restores the value directly and creates no undo action.
+- `_commit_handle(..., cancel=false)` compares the restored value with the final value. If they match after sanitization, it restores the exact original value and creates no undo action. If they differ, it creates one editor undo action through `EditorUndoRedoManager` with the edited node as context, adds one `add_do_property()` and one `add_undo_property()` for the edited property, and adds only editor refresh calls such as warnings/gizmo refresh after the property operations.
+- If editor undo is unavailable, the handle must restore the previous value instead of committing a non-undoable scene mutation.
+- Undo and redo must restore the same exported property values visible in the ordinary inspector. They must not call runtime `apply_preset()`, runtime rebuild/reset, emitter dispatch, boundary generation, RiverManager material APIs, or private resolver/cache methods.
+
+Lifecycle behavior:
+
+- Plugin disable/removal unregisters the gizmo plugin and drops handles with no helper nodes or saved helper state.
+- Scene close/reopen persists only user-saved exported property edits. Unsaved handle edits should behave like ordinary scene property changes.
+- Node deletion, inspector reselection, and play/stop must leave no stale handles, preview children, scratch resources, runtime material state, or Output errors.
+- Ordinary handle edits target the edited scene node, not the running scene instance. Live-scene reset/rebuild/emit/texture controls remain deferred.
+
+Handle validation checklist before each implementation slice:
+
+- Update this contract and the action matrix before code if a new property or handle type is introduced.
+- Add probe/static coverage for handle IDs, handle positions, tiny moving-threshold pickability guides, whitelisted property names, clamping, no-op diff skipping, cancel restore behavior, editor undo wiring, forbidden-call boundaries, and runtime editor-class leakage.
+- Run parser checks for the gizmo scripts, plugin script, and updated Phase 10 probe.
+- Run `RIPPLE_PHASE10_INSPECTOR_PROBE_OK` plus the Phase 9 and field/emitter regressions listed in `validation.md`.
+- Request a human-visible editor review for drag, undo, redo, no-op, cancel, dirty-state, plugin disable, scene close/reopen, and play/stop behavior.
 
 ## Forbidden Editor Calls
 
@@ -292,12 +327,15 @@ Recommended order:
 1. Completed 2026-06-08: Inspector plugin skeleton plus read-only status rows for field/emitter nodes. This retired the editor-load and read-only status-boundary risks first. It shows warnings, routing/target summaries, and safe snapshots, but does not mutate scene/runtime state or expose preset/save/preview buttons yet.
 2. Completed 2026-06-08: Plugin lifecycle validation. User confirmed enable/disable, inspector reselection, scene close/reopen, play/stop, Add Node visibility, no Output errors, no stale duplicated UI, and no dirty-scene prompts from simple read-only inspection.
 3. Completed 2026-06-08: Undo-aware apply-preset buttons and selector actions for already-defined Phase 9 resources. This retired the copied-value risk by console/static proof and visible editor review. It uses transient selector state, no live profile link, no serialized preset slot, per-property undo operations, no-op apply skipping, active preset status/selector restoration, and no runtime `apply_preset()` undo do-method.
-4. Implemented 2026-06-08; human-visible review pending: Capture/save preset buttons with explicit editor-only resource save behavior. This retires the `ResourceSaver` leakage risk by automated proof: capture stores unsaved scratch resources, save uses an editor-owned `EditorFileDialog` and explicit `.tres` path, saved scratch presets reload, and runtime field/emitter scripts plus preset resources still have no editor-only save references. It must still pass visible editor save-dialog, dirty-state, restart/reload, and no-live-link review.
-5. Next implementation slice after capture/save review: Optional bounds/radius gizmos only if they use editor undo/redo and do not touch runtime materials, bakes, `WaterSystem` data, source signatures, or buoyancy.
-6. Re-expose or rename `debug_visible` only after helper visualization for bounds/radius/routing exists and does not run the simulation in editor mode. `refraction_strength` and `displacement_strength` remain hidden.
-7. Optional boundary preview helpers only after a separate editor-safe preview path is proven and added to the action matrix.
-8. Optional live-scene texture/runtime buttons only after a separate bridge to the running scene is designed, validated, and added to this plan.
-9. Human-visible editor workflow review and renderer/runtime regression sweep.
+4. Completed 2026-06-08: Capture/save preset buttons with explicit editor-only resource save behavior. This retired the `ResourceSaver` leakage risk by automated proof and visible editor review: capture stores unsaved scratch resources, save uses an editor-owned `EditorFileDialog` and explicit `.tres` path, saved scratch presets reload, runtime field/emitter scripts plus preset resources still have no editor-only save references, capture alone does not dirty the scene, and saved presets do not create node preset slots, paths, live links, or auto-apply behavior.
+5. Completed 2026-06-08: Visual-only field/emitter gizmo helpers. `ripple_gizmo.gd` registers an `EditorNode3DGizmoPlugin` from `plugin.gd`, while `ripple_gizmo_geometry.gd` keeps segment generation probeable without editor-only classes. The slice draws field bounds, field X/Z footprint, explicit target route lines, emitter radius rings, moving-emitter threshold rings, and emitter-to-field route lines. It adds no handles, exported flags, runtime calls, material changes, bakes, `WaterSystem` changes, source-signature changes, or buoyancy behavior.
+6. Completed 2026-06-08: Human-visible editor gizmo workflow review for readability, plugin enable/disable cleanup, selection switching, scene close/reopen, play/stop, and dirty-state behavior. User confirmed field and emitter helpers were readable, viewing only did not dirty the scene, and Output showed no errors.
+7. Completed 2026-06-08: Undo-backed emitter radius and moving-threshold handles. The handle-specific edit/undo/dirty-state contract and validation checklist are in place. `ripple_gizmo_handle_model.gd` keeps handle IDs, property mapping, clamping, and no-op diffs probeable; `ripple_gizmo.gd` commits changed emitter handle values through `EditorUndoRedoManager`; user-confirmed practical review passed for radius/moving-threshold property isolation, undo/redo, plugin disable/re-enable, close/reopen, delete/undo-delete, run/stop cleanup, and no Output errors. No-op/cancel was not exposed/checked and dirty-prompt reporting was unclear, neither blocking the slice.
+8. Automated 2026-06-08, human review pending: Undo-backed field `world_bounds` face handles. `ripple_gizmo_handle_model.gd` exposes stable face IDs `2001..2006`, maps them only to `world_bounds`, clamps AABB faces before flipping below `0.001`, preserves the opposite face, and skips no-op diffs. `ripple_gizmo_geometry.gd` places six handles at the AABB face centers. `ripple_gizmo.gd` projects drags along world X/Y/Z axes and commits one editor undo action for `world_bounds`.
+9. Re-expose or rename `debug_visible` only after helper visualization for bounds/radius/routing exists, a saved toggle behavior is accepted, and the toggle does not run the simulation in editor mode. `refraction_strength` and `displacement_strength` remain hidden.
+10. Optional boundary preview helpers only after a separate editor-safe preview path is proven and added to the action matrix.
+11. Optional live-scene texture/runtime buttons only after a separate bridge to the running scene is designed, validated, and added to this plan.
+12. Human-visible editor workflow review and renderer/runtime regression sweep.
 
 ## Decision Log
 
@@ -312,4 +350,9 @@ Recommended order:
 - 2026-06-08: Integrated both adversarial reviews into non-negotiable contracts, forbidden editor calls, live-scene deferral, validation gates, and risk-retiring implementation slices while preserving the original Phase 10 scope.
 - 2026-06-08: Implemented and user-validated the read-only inspector skeleton and lifecycle/dirty-state gate; next Phase 10 code should start with transient, undo-aware preset Apply controls.
 - 2026-06-08: Implemented transient built-in/resource preset Apply controls through the inspector plugin. Apply uses probeable whitelisted value diffs and per-property `EditorUndoRedoManager` operations, skips no-op diffs, does not serialize selector state, restores matching built-in selector/status display from copied node values after inspector rebuild, and keeps runtime `apply_preset()` out of the editor undo do-method. Human-visible review accepted selector non-dirty behavior, Apply undo/redo, same-actual-preset no-op dirty-state skipping, target/material/bake/reserved-value boundaries, neutral placeholder disabling, lifecycle cleanup, and no Output errors.
-- 2026-06-08: Implemented capture/save controls through the inspector plugin. Capture uses the existing in-memory preset capture path, stores only transient scratch resources with empty `resource_path`, and Save opens an editor-owned `EditorFileDialog` before calling `ResourceSaver.save()` on an explicit `.tres` path. `RIPPLE_PHASE10_INSPECTOR_PROBE_OK` now covers saved scratch preset reload, target/reserved exclusion, and editor/runtime save-boundary scans; visible editor save-dialog/dirty-state/restart review remains pending.
+- 2026-06-08: Implemented capture/save controls through the inspector plugin. Capture uses the existing in-memory preset capture path, stores only transient scratch resources with empty `resource_path`, and Save opens an editor-owned `EditorFileDialog` before calling `ResourceSaver.save()` on an explicit `.tres` path. `RIPPLE_PHASE10_INSPECTOR_PROBE_OK` covers saved scratch preset reload, target/reserved exclusion, and editor/runtime save-boundary scans. User completed the visible editor save-dialog/dirty-state/restart review with no Output errors and confirmed saved field/emitter presets reload with correct types/values without adding node preset slots, paths, live links, or auto-apply behavior.
+- 2026-06-08: Implemented visual-only field/emitter gizmo helpers through `ripple_gizmo.gd` and `ripple_gizmo_geometry.gd`. That slice drew non-mutating helper segments only and deliberately omitted `add_handles()` until a handle undo contract existed. `RIPPLE_PHASE10_INSPECTOR_PROBE_OK` validated gizmo registration/removal, field bounds/footprint/route segment counts, emitter radius/moving-threshold/route segment counts, no preview children, no exported-value mutation, no forbidden runtime calls, and no runtime editor/save leakage. User confirmed the visible editor gizmo review: field box/footprint/route helpers and emitter radius/moving/route helpers were readable, viewing only did not prompt for unsaved scene changes, and Output showed no errors.
+- 2026-06-08: Added the handle-specific contract and validation checklist, then implemented the first undo-backed handle slice for `WaterRippleEmitter.radius` and `WaterRippleEmitter.moving_emit_distance`. The slice adds `ripple_gizmo_handle_model.gd` for probeable handle IDs/property mapping/clamping/no-op diffs, places one radius handle on non-moving emitters and radius plus moving-threshold handles on moving emitters, commits changed values through per-property editor undo, restores if undo is unavailable, and deliberately left field `world_bounds` handles for a later slice. `RIPPLE_PHASE10_INSPECTOR_PROBE_OK` validated emitter handle counts, stable IDs, clamping, no-op diffs, forbidden-call boundaries, and runtime editor/save leakage at that time. Human-visible review passed for the radius handle; the moving-threshold handle needed a pickability fix for the review scene's tiny `0.08` dense-trail value.
+- 2026-06-08: Fixed the first visible handle-review error, `node_3d_editor_gizmos.cpp:1020 - Condition "!materials.has(p_name)" is true`, by changing the ripple handle material name to Godot's registered `"handles"` material name, matching the existing river gizmo. Added a Phase 10 probe guard for this material name. Profile-isolated parser check for `ripple_gizmo.gd` and `RIPPLE_PHASE10_INSPECTOR_PROBE_OK` passed after the fix. Human-visible handle review should be retried.
+- 2026-06-08: Fixed the second visible handle-review issue: `MovingEmitter_TestTrail` uses `moving_emit_distance = 0.08`, so the dashed threshold ring and handle were buried near the emitter origin and hard to select. Tiny moving-threshold values now keep the real dashed ring at the true value, add a short guide to a pickable grip at the minimum visible handle distance, and store a drag visual offset so selecting/dragging the grip preserves no-jump/no-op behavior. Parser checks for `ripple_gizmo_handle_model.gd`, `ripple_gizmo_geometry.gd`, and `ripple_gizmo.gd` passed; `RIPPLE_PHASE10_INSPECTOR_PROBE_OK` now validates the tiny-threshold guide and grip.
+- 2026-06-08: Implemented the undo-backed field `world_bounds` face-handle slice. The handle model now exposes six stable field IDs `2001..2006`, maps them only to `world_bounds`, preserves opposite faces, clamps to a minimum non-flipped size, and skips no-op diffs. The geometry helper exposes six face-center points, while the editor gizmo projects drags along world axes and commits one `world_bounds` undo action. Parser checks and `RIPPLE_PHASE10_INSPECTOR_PROBE_OK` passed; human-visible field-handle review remains pending.
