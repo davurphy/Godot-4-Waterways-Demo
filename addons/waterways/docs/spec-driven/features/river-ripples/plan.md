@@ -23,10 +23,10 @@ The first accepted implementation must not touch river bakes, WaterSystem bakes,
 
 Keep this section short and update it whenever the plan changes.
 
-- Implementation status: Standalone Phase 1 feedback spike, standalone Phase 2 mapping probe, standalone Phase 2 mesh-footprint boundary-mask probe, RiverManager-facing material ownership/restore API/probe, minimal river shader disabled/missing-texture neutral path, guarded river shader height/normal sampling helpers, minimal visible normal blending, revised demo-backed visible review scene, debug parity path, shader-cost probe, `WaterRippleField`/`WaterRippleEmitter` workflow, field/emitter dispatch-performance probe, post-clear-fix demo-backed field/emitter authoring scene/probe/diagnostic, named Add Node registration, and Phase 9 script/resource authoring are added; human-visible field/emitter visual/debug/control/stop-reload review and Phase 9 editor authoring review passed for the current Forward+ gate; Mobile and Compatibility renderer coverage passed by console/render probes.
-- Open architectural decisions: Revised Phase 9 authoring/API planning is documented in `phase9-authoring-api-plan.md`; native editor polish is split into `phase10-editor-polish-plan.md`. Phase 9 script/resource implementation is console-proven and human-visible accepted through grouping, warnings, built-in starters, hidden reserved fields, in-memory apply/capture, Add Node visibility, and scratch save/reload; later production visual tuning is still unproven. First-spike decisions are locked. Emitter targeting uses explicit field path first, then ancestor/group fallback.
-- Last validation that proves the plan still works: `--check-only --script` for `plugin.gd`, `water_ripple_field.gd`, and `water_ripple_emitter.gd`; repo-local headless editor scan plus global-class probe for `WaterRippleField` and `WaterRippleEmitter`; `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_DIAGNOSTIC_OK`, `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_PROBE_OK`, `RIPPLE_FIELD_EMITTER_PERFORMANCE_PROBE_OK`, `RIPPLE_FIELD_EMITTER_PROBE_OK`, `RIPPLE_SHADER_COST_PROBE_OK`, `RIPPLE_DEBUG_PARITY_PROBE_OK`, `RIPPLE_MATERIAL_OWNERSHIP_PROBE_OK`, `RIPPLE_RIVER_SHADER_NEUTRAL_PROBE_OK`, `RIPPLE_RIVER_SHADER_SAMPLING_PROBE_OK`, `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_PROBE_OK`, `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_REVIEW_PROBE_OK`, `RIPPLE_RIVER_SHADER_VISIBLE_NORMAL_REVIEW_DIAGNOSTIC_OK`, `RIPPLE_BOUNDARY_MASK_PROBE_OK`, `RIPPLE_MAPPING_PROBE_OK`, `RIPPLE_FEEDBACK_PROBE_OK`, `RIPPLE_FEEDBACK_ANALYSIS_OK`, static runtime-readback review, and forbidden-file diff on 2026-06-07.
-- Next planned slice: Choose between Phase 10 native editor polish and a separate response/refraction/displacement tuning plan. Leave exported preset asset slots, live profile links, runtime preset saving, dedicated editor inspector buttons, undo-aware UI actions, editor-time previews, response tuning, refraction tuning, displacement tuning, final flow, WaterSystem, bakes, source signatures, and buoyancy out unless the next slice explicitly plans them.
+- Implementation status: Standalone Phase 1 feedback spike, standalone Phase 2 mapping probe, standalone Phase 2 mesh-footprint boundary-mask probe, RiverManager-facing material ownership/restore API/probe, minimal river shader disabled/missing-texture neutral path, guarded river shader height/normal sampling helpers, minimal visible normal blending, revised demo-backed visible review scene, debug parity path, shader-cost probe, `WaterRippleField`/`WaterRippleEmitter` workflow, field/emitter dispatch-performance probe, post-clear-fix demo-backed field/emitter authoring scene/probe/diagnostic, named Add Node registration, Phase 9 script/resource authoring, Phase 10 read-only inspector skeleton, Phase 10 transient preset Apply controls, and Phase 10 capture/save controls are added; human-visible field/emitter visual/debug/control/stop-reload review, Phase 9 editor authoring review, Phase 10 read-only inspector lifecycle/dirty-state review, and Phase 10 Apply review passed for the current Forward+ gate; Mobile and Compatibility renderer coverage passed by console/render probes.
+- Open architectural decisions: Revised Phase 9 authoring/API planning is documented in `phase9-authoring-api-plan.md`; native editor polish is governed by `phase10-editor-polish-plan.md`. Phase 9 script/resource implementation is console-proven and human-visible accepted through grouping, warnings, built-in starters, hidden reserved fields, in-memory apply/capture, Add Node visibility, and scratch save/reload. Phase 10 read-only inspector rows and Apply controls are automated- and human-visible-proven. Phase 10 capture/save is automated-proven through transient scratch capture, explicit `.tres` save/reload, and editor/runtime save-boundary scans; human-visible save-dialog, dirty-state, restart/reload, and no-live-link review is still open. Gizmos, previews, and live-scene commands remain open. Later production visual tuning is still unproven. First-spike decisions are locked. Emitter targeting uses explicit field path first, then ancestor/group fallback.
+- Last validation that proves the plan still works: Godot 4.6.3 Forward+ `RIPPLE_PHASE10_INSPECTOR_PROBE_OK`, regression `RIPPLE_PHASE9_PRESET_API_PROBE_OK`, regression `RIPPLE_FIELD_EMITTER_PROBE_OK`, regression `RIPPLE_MATERIAL_OWNERSHIP_PROBE_OK`, and regression `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_PROBE_OK`; parser checks for the preset apply model, inspector, status, plugin, and probe scripts; static `git diff --check`; forbidden-call scan; runtime editor-class/save-path scan; plus the earlier parser/editor-cache, renderer coverage, and full Forward+ ripple probe set recorded in `validation.md`.
+- Next planned slice: Human-review Phase 10 capture/save in the visible editor, then choose optional Phase 10 helpers/gizmos or a separate response/refraction/displacement tuning plan. Leave exported preset asset slots, live profile links, runtime preset saving, live-scene reset/rebuild/emit buttons, runtime texture previews, response tuning, refraction tuning, displacement tuning, final flow, WaterSystem, bakes, source signatures, and buoyancy out unless the next slice explicitly plans and validates them.
 - Branch safety before implementation: Satisfied on user-created branch `ripples`.
 - Sections below that are historical or superseded: None yet.
 
@@ -55,6 +55,7 @@ Editor authoring layer:
 - Named Add Node registration for `WaterRippleField` and `WaterRippleEmitter`.
 - Inspector controls for resolution, bounds/transform, strengths, damping, propagation, update rate, target rivers, and a hidden/reserved debug diagnostic flag.
 - Phase 9 authoring contract in `phase9-authoring-api-plan.md` for inspector grouping, one-click presets, advanced settings, and in-memory preset capture/apply.
+- Phase 10 editor polish contract in `phase10-editor-polish-plan.md` for editor-only inspector/plugin tooling, transient preset selectors, read-only status rows, per-property undo-aware preset apply, explicit capture/save workflows, optional helper visualization, and live-scene bridge deferral.
 - Human-assisted scene review in demo scenes.
 
 Bake/data layer:
@@ -102,8 +103,9 @@ Legacy reference layer:
   - Internal `i_ripple_*` declarations, including neutral `i_ripple_impulse_texture` plumbing, guarded height/normal helpers, and minimal visible normal blending are now present in `addons/waterways/shaders/river.gdshader`; future work should keep response tuning behind human-visible review and performance checks.
   - Debug parity modes for raw height, impulse/contact, boundary mask, and visible influence are now present in `addons/waterways/shaders/river_debug.gdshader`.
 - Editor tools:
-  - Named script-class registration if nodes are public.
-  - Optional icons if registered.
+  - Named script-class registration and icons for the public field/emitter nodes.
+  - Phase 10 ripple inspector scripts: `addons/waterways/ripple_inspector_plugin.gd` registered from `addons/waterways/plugin.gd`, `addons/waterways/ripple_inspector_status.gd` for probeable exported-value/configuration-warning/routing summaries isolated from the editor-only class, and `addons/waterways/ripple_inspector_preset_apply_model.gd` for probeable Apply value diffs.
+  - Transient built-in selectors and `EditorResourcePicker` controls are action inputs only; they are not bound node properties, serialized preset paths, or live profile links.
 - Importers:
   - None expected for first pass.
 - Autoloads:
@@ -124,6 +126,7 @@ Legacy reference layer:
   - Automated field/emitter lifecycle probe at `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_probe.gd`.
   - Automated field/emitter dispatch-performance probe at `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_performance_probe.gd`.
   - Automated demo-backed field/emitter authoring probe at `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_demo_review_probe.gd`.
+  - Automated Phase 10 inspector/apply contract probe at `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_phase10_inspector_probe.gd`.
 
 ## Data Model
 
@@ -156,7 +159,7 @@ Roadmap detail carried into implementation:
 - Emitter configuration should cover radius, intensity, falloff, pulse rate, one-shot behavior, enabled state, priority, and optional target-field routing.
 - River shader integration should use `i_ripple_enabled`, `i_ripple_simulation_texture`, `i_ripple_impulse_texture`, `i_ripple_world_to_uv`, `i_ripple_boundary_mask`, `i_ripple_texel_size`, `i_ripple_normal_strength`, `i_ripple_refraction_strength`, `i_ripple_displacement_strength`, `i_ripple_height_fade_distance`, and `i_ripple_boundary_fade` unless the plan is revised. The visible shader currently declares but does not sample the impulse/contact texture; it exists for runtime/debug plumbing.
 - First visible integration adds ripple normals only; custom refraction still uses the pre-ripple normal, refraction tuning follows after normal stability, and displacement stays default off.
-- Later authoring should use clear controls and restrained presets rather than exposing unstable runtime plumbing. Phase 9 should follow `phase9-authoring-api-plan.md`, treat presets/API hardening as authoring contract work rather than visual tuning, split field and emitter presets into separate resource types, keep preset apply/capture in memory, and keep `refraction_strength`, `displacement_strength`, and `debug_visible` reserved/hidden from normal authoring until a separate tuning or editor-polish plan accepts real behavior. Phase 10 should handle optional editor preset selectors, dedicated editor buttons, undo-aware editor actions, save dialogs, and editor-time preview helpers.
+- Later authoring should use clear controls and restrained presets rather than exposing unstable runtime plumbing. Phase 9 should follow `phase9-authoring-api-plan.md`, treat presets/API hardening as authoring contract work rather than visual tuning, split field and emitter presets into separate resource types, keep preset apply/capture in memory, and keep `refraction_strength`, `displacement_strength`, and `debug_visible` reserved/hidden from normal authoring until a separate tuning or editor-polish plan accepts real behavior. Phase 10 now has a read-only inspector skeleton plus transient Apply controls; selector/resource-picker state is an action input only, Apply uses per-property `EditorUndoRedoManager` operations and skips no-ops, capture must create scratch resources without mutating nodes, save must write only an explicitly user-chosen preset asset path, and ordinary editor UI must not call runtime rebuild/reset/emission/material/boundary paths.
 
 ## Phase 9 Authoring Planning Direction
 
@@ -172,10 +175,23 @@ Roadmap detail carried into implementation:
 - Do not save transient runtime textures, target material state, generated river bakes, `WaterSystem` data, or source signatures as part of a preset.
 - Keep dedicated editor inspector buttons, undo-aware actions, editor save dialogs, and editor-time preview helpers in Phase 10.
 
+## Phase 10 Editor Polish Direction
+
+`phase10-editor-polish-plan.md` is the current source of truth for native-feeling editor workflow after the Phase 9 script/API and preset-resource contract.
+
+- The dedicated editor/plugin inspector now shows read-only status for `WaterRippleField` and `WaterRippleEmitter` without mutating scene, runtime, target, material, boundary, source-signature, or emitter state. It reports exported values, configuration warnings, and conservative target/routing summaries, and it reports unresolved state rather than calling private resolvers or runtime methods.
+- Add mutation categories one at a time only after their action, undo/redo, and dirty-state behavior is documented in the Phase 10 matrix.
+- Keep preset selectors or resource pickers as transient UI state for explicit commands. Do not add `field_preset`, `emitter_preset`, generic preset slots, serialized resource paths, live profile links, or auto-apply flags to ripple nodes.
+- Apply field/emitter presets in the editor by copying the Phase 9 whitelist through one grouped per-property `EditorUndoRedoManager` action. The current implementation uses transient built-in/resource selectors and `ripple_inspector_preset_apply_model.gd` diffs; it does not use runtime `apply_preset()` as the editor undo do-method.
+- Capture field/emitter presets as scratch in-memory resources only. Save captured presets through an editor-owned save dialog and the user-selected `.tres`/resource path; runtime scripts and preset resources must not gain `ResourceSaver` save helpers.
+- Keep read-only status rows, selector focus, capture-only paths, preview toggles, and disabled runtime commands non-dirty.
+- Keep `Reset Feedback`, `Rebuild Runtime`, `Emit Once`, and runtime texture previews absent, disabled, or guidance-only until a future live-scene bridge proves how it maps an edited-scene node to the running-scene instance and cleans up across play/stop/reload.
+- Re-expose or rename `debug_visible` only after real helper visualization exists and cleanup, undo/dirty-state, export-boundary, and human-visible validation are in place. `refraction_strength` and `displacement_strength` stay out of Phase 10.
+
 ## Editor/Runtime Boundary
 
 - Editor-only code:
-  - Custom type registration, icons, debug menu integration, editor-only preview tooling, validation helpers, and future Phase 10 ripple inspector controls.
+  - Custom type registration, icons, debug menu integration, Phase 10 read-only ripple inspector controls, editor-only preview tooling, validation helpers, and future Phase 10 mutating editor controls.
 - Runtime-safe code:
   - Ripple field lifecycle, emitter gathering, viewport stepping, shader uniforms, material cleanup.
 - Shared data/resources:
@@ -188,6 +204,9 @@ Roadmap detail carried into implementation:
   - Editor debug material state must not be required for runtime behavior.
   - Hidden editor-only nodes must not be required for exported runtime scenes.
   - Runtime visual state must not dirty generated bake resources.
+  - Ordinary inspector UI must not treat the edited `@tool` instance as the running scene instance.
+  - Editor-only classes such as `EditorInspectorPlugin`, `EditorUndoRedoManager`, `EditorFileDialog`, or `EditorResourcePicker` must not be referenced from exported runtime field/emitter scripts or preset resources.
+  - Editor read-only/status/selector/capture/preview paths must not call runtime methods such as `initialize_runtime()`, `rebuild_runtime()`, `reset_feedback()`, `emit_once()`, `queue_impulse*()`, target registration, RiverManager material APIs, boundary-mask bake paths, or private resolver/cache methods.
 
 ## Runtime Flow
 
@@ -262,7 +281,7 @@ Scene reload or runtime boundary:
 - `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_demo_review.gd`: Review-scene controller for camera, markers, toggles, emitter movement, and validation hooks is added.
 - `addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_demo_review_probe.gd`: Console validation for demo authoring setup, emitter positions, disable baseline, and reload cleanup is added.
 - `addons/waterways/docs/spec-driven/features/river-ripples/phase9-authoring-api-plan.md`: Phase 9 authoring/API plan is added and should guide deeper presets/API hardening.
-- `addons/waterways/docs/spec-driven/features/river-ripples/phase10-editor-polish-plan.md`: Phase 10 native editor polish plan is added for inspector buttons, undo-aware editor actions, save dialogs, and editor preview helpers.
+- `addons/waterways/docs/spec-driven/features/river-ripples/phase10-editor-polish-plan.md`: Phase 10 native editor polish plan is added for editor-only inspector tooling, transient preset selectors, undo-aware editor actions, explicit save dialogs, helper visualization, cleanup, forbidden editor calls, and live-scene bridge deferral.
 - `addons/waterways/river_manager.gd`: Runtime uniform application/clear API is added, including the internal impulse/contact texture key.
 - `addons/waterways/shaders/river.gdshader`: Neutral `i_ripple_*` declarations, guarded height/normal helpers, X/Z `world_to_ripple_uv` sampling, and minimal visible ripple normal overlay are added.
 - `addons/waterways/shaders/river_debug.gdshader`: Debug parity modes for raw height, impulse/contact, boundary mask, and visible influence are added.
@@ -281,6 +300,7 @@ Scene reload or runtime boundary:
 - Feature docs to update:
   - This folder after every decision, spike result, implementation slice, and validation run.
   - `phase9-authoring-api-plan.md` when authoring/API decisions change before implementation.
+  - `phase10-editor-polish-plan.md` and the dashboard docs when editor action, undo/redo, dirty-state, preview, save, or live-scene bridge behavior changes.
 - Architecture or data-flow docs to update:
   - Roadmaps and architecture docs only after an implementation direction is accepted.
 - Validation docs to update:
@@ -311,6 +331,8 @@ Scene reload or runtime boundary:
   - Demo-backed field/emitter diagnostic `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_DIAGNOSTIC_OK`; this reproduced the no-visible-ripples debug symptoms, caught nonzero offscreen clear color in the impulse texture, and now proves transparent-zero canvas viewport clearing restores localized blue/green/orange impulse stamps.
   - Parser/headless checks for new scripts and shaders when Godot tooling is available.
   - Probe for target material uniform application and clear behavior.
+  - Phase 10 static scans that editor plugin scripts do not call forbidden runtime methods from read-only/status/selector/capture-only paths, and runtime field/emitter scripts do not gain editor-only class references, `ResourceSaver`, or `.tres` save paths.
+  - Phase 10 editor-load checks for plugin enable/disable, inspector reselection, scene close/reopen, node deletion, play/stop, Add Node visibility, no stale UI/overlays, no Output errors, undo/redo preset apply, no-op apply skipping, capture/save explicit path behavior, and correct dirty-state boundaries.
 - Validation matrix location:
   - `validation.md` "Validation Matrix".
 - Human-assisted:
@@ -343,7 +365,9 @@ Scene reload or runtime boundary:
 | Shader sampling cost is too high | Regresses already heavy river material | Current shader-cost gate is covered by `RIPPLE_SHADER_COST_PROBE_OK`; preserve the disabled-path guard, three-sample normal helper budget, and one-draw-call profile in future shader edits. |
 | Users infer physics from visuals | Buoyancy and visible rings appear inconsistent | Keep docs, UI, and validation explicit that first pass is visual-only. |
 | Presets hide or override editable values | Users cannot understand or safely customize the result | Phase 9 presets must mutate visible exported values, must not act as live profile modes, and must not be stored as exported preset asset slots on field/emitter nodes. |
-| Editor polish becomes accidental runtime dependency | Exported projects break or runtime behavior requires editor-only nodes/classes | Keep Phase 9 script/resource-first; isolate buttons, save dialogs, undo, and preview helpers in Phase 10 editor tooling. |
+| Editor polish becomes accidental runtime dependency | Exported projects break or runtime behavior requires editor-only nodes/classes | Keep Phase 9 script/resource-first; isolate buttons, save dialogs, undo, and preview helpers in Phase 10 editor tooling. Runtime scripts and preset resources must not reference editor-only classes or save resources. |
+| Phase 10 inspector mutates the wrong scene instance | Edited scenes become dirty or diverge from the running scene; runtime previews appear unreliable | Treat ordinary inspector UI as edited-scene UI only, keep runtime reset/rebuild/emit/texture preview commands disabled until a live-scene bridge is separately designed, and validate cleanup across play/stop/reload. |
+| Preset selector becomes a hidden live profile slot | Scenes gain persistent dependencies and user edits are silently overwritten | Keep selectors as transient editor UI action inputs only; apply copies values and does not serialize a preset path or auto-apply flag. |
 
 ## Adversarial Plan Review
 

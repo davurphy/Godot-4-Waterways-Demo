@@ -11,9 +11,9 @@ Use `addons/waterways/docs/research/river-research-citations.md` as the shared w
 Keep this short once research has produced a direction.
 
 - Status: In progress; standalone feedback ownership, spread/decay, 128/256/512 analysis, axis-aligned `world_to_ripple_uv` marker mapping, mesh-footprint boundary masking, RiverManager-facing material ownership/restore, built-in river shader neutral-path behavior, helper-level shader sampling budget, minimal visible normal blending, revised demo review-scene diagnostic/performance-fixture behavior, debug parity, current shader-cost behavior, reusable field/emitter lifecycle, current field/emitter dispatch performance, Mobile/Compatibility renderer coverage, named Add Node parser/editor-cache behavior, human-visible Add Node visibility, Phase 9 authoring/API research plan, Phase 9 script/resource authoring implementation, and human-visible Phase 9 editor authoring workflow are validated or documented.
-- Recommendation: Keep the visual-only GPU feedback path and registered `WaterRippleField`/`WaterRippleEmitter` workflow. Treat Phase 9 as accepted script/resource-first authoring: ordinary export grouping, warning cleanup, type-specific value-mutating presets, built-in starter factories, separate field/emitter preset resources, hidden reserved controls, Add Node visibility, and scratch reload checks are now console-proven and human-visible accepted. Use `phase10-editor-polish-plan.md` for dedicated inspector buttons, undo-aware editor actions, save dialogs, and editor preview helpers. Do not treat either plan as visual tuning; keep `refraction_strength` and `displacement_strength` reserved/hidden from normal authoring until a separate tuning pass is accepted.
-- Confidence: Medium-high for the architecture; medium-high for Godot 4.6.3 Forward+/Mobile/Compatibility standalone feedback, mesh-footprint boundary masking, RiverManager-facing material ownership, built-in shader neutral path, helper-level shader sample budget, minimal visible normal render behavior, revised review-scene diagnostic/performance-fixture behavior, human-visible base-flow/ring-motion acceptance, debug parity, current shader-cost behavior, field/emitter lifecycle, current field/emitter dispatch performance, human-visible field/emitter demo workflow/stop-reload cleanup, named Add Node parser/editor-cache behavior, human-visible Add Node visibility, Phase 9 script/resource authoring implementation, and Phase 9 visible editor authoring workflow; medium for future native editor tooling details.
-- Biggest unknown that remains: Future native editor polish details and response/refraction/displacement tuning. Undo-aware buttons and editor previews are now Phase 10 unknowns.
+- Recommendation: Keep the visual-only GPU feedback path and registered `WaterRippleField`/`WaterRippleEmitter` workflow. Treat Phase 9 as accepted script/resource-first authoring: ordinary export grouping, warning cleanup, type-specific value-mutating presets, built-in starter factories, separate field/emitter preset resources, hidden reserved controls, Add Node visibility, and scratch reload checks are now console-proven and human-visible accepted. Use `phase10-editor-polish-plan.md` for editor-only inspector tooling, starting with read-only non-mutating status rows and lifecycle cleanup before undo-aware Apply, capture/save dialogs, helper visualization, or live-scene bridge work. Do not treat either plan as visual tuning; keep `refraction_strength` and `displacement_strength` reserved/hidden from normal authoring until a separate tuning pass is accepted.
+- Confidence: Medium-high for the architecture; medium-high for Godot 4.6.3 Forward+/Mobile/Compatibility standalone feedback, mesh-footprint boundary masking, RiverManager-facing material ownership, built-in shader neutral path, helper-level shader sample budget, minimal visible normal render behavior, revised review-scene diagnostic/performance-fixture behavior, human-visible base-flow/ring-motion acceptance, debug parity, current shader-cost behavior, field/emitter lifecycle, current field/emitter dispatch performance, human-visible field/emitter demo workflow/stop-reload cleanup, named Add Node parser/editor-cache behavior, human-visible Add Node visibility, Phase 9 script/resource authoring implementation, and Phase 9 visible editor authoring workflow; medium-high for the Phase 10 editor-polish plan as a contract; medium for future Phase 10 implementation details.
+- Biggest unknown that remains: Phase 10 implementation behavior and response/refraction/displacement tuning. Undo-aware buttons, save dialogs, editor helpers, and previews are now planned but unimplemented Phase 10 work.
 - Decision or plan section this research unlocked: `plan.md` "Phase 9 Authoring Planning Direction", `phase9-authoring-api-plan.md`, and `phase10-editor-polish-plan.md`.
 
 ## Questions
@@ -34,7 +34,7 @@ Keep this short once research has produced a direction.
   - `SubViewport` update mode, clear mode, texture precision, texture feedback hazards, shader uniform support, and renderer-specific behavior.
 - Which parts are editor-only, runtime-only, or shared?
   - Runtime-only: simulation, impulse rendering, texture feedback, emitter impulses, target uniforms.
-  - Editor-only: custom type icons, editor preview, validation UI.
+  - Editor-only: custom type icons, editor inspector/plugin UI, transient preset selectors, editor undo/redo integration, editor save dialogs, editor helper previews, validation UI.
   - Shared: saved field configuration if nodes become public scene nodes.
 - What legacy Waterways behavior should be preserved, changed, or removed?
   - Preserve baked flow and WaterSystem behavior.
@@ -56,6 +56,23 @@ Key outcome:
 - Keep `refraction_strength` and `displacement_strength` reserved/hidden from normal authoring until a separate visual tuning plan.
 
 The detailed contract is in `phase9-authoring-api-plan.md`.
+
+## Phase 10 Editor Polish Research Outcome
+
+The Phase 10 planning pass keeps the industry authoring goal from Unity/Unreal-style water tools but adapts it to Godot's edited-scene/runtime split.
+
+Key outcome:
+
+- Use editor/plugin code for native inspector polish, not runtime field/emitter scripts or preset resources.
+- Start with read-only status UI that inspects exported values, configuration warnings, or safe snapshots only.
+- Treat preset resource pickers as transient action inputs. They must not become exported node slots, serialized resource paths, live profile links, or auto-apply flags.
+- Apply presets in editor UI through one grouped per-property undo action using the Phase 9 whitelist; skip no-op applies and do not call runtime `apply_preset()` as the editor undo do-method.
+- Keep capture non-mutating and scratch-only until the user chooses an explicit editor save path.
+- Keep `ResourceSaver` use in editor/plugin code only; runtime scripts and preset resources must not gain save helpers or `.tres` write paths.
+- Defer `Reset Feedback`, `Rebuild Runtime`, `Emit Once`, runtime texture previews, and any command that depends on runtime `SubViewport` state until a live-scene bridge is separately designed.
+- Re-expose or rename `debug_visible` only when there is real visible helper behavior plus cleanup, undo/dirty-state, and export-boundary validation.
+
+The detailed contract is in `phase10-editor-polish-plan.md`.
 
 ## Flow-Map and Water Tool Patterns
 
@@ -117,7 +134,7 @@ Current local findings from the roadmap:
 Items still needing verification:
 
 - Pause/resume behavior beyond the current fixed update-rate prototype.
-- Phase 10 native editor polish details after the accepted Phase 9 contract.
+- Phase 10 native editor polish implementation after the accepted Phase 9 contract and Phase 10 plan.
 - Human-visible editor scene reload/authoring behavior after any future authoring API changes.
 - Future response/refraction/displacement tuning behavior.
 
@@ -202,6 +219,7 @@ Do not implement physics-facing behavior, flow changes, or saved ripple data unt
 - Debug material switching can hide runtime ripple uniforms.
 - Shader sample cost can regress an already complex river material.
 - Public node registration can imply API stability before the design is proven.
+- Editor inspector polish can accidentally mutate runtime state, dirty edited scenes, or serialize hidden preset dependencies if it is implemented as ordinary runtime methods instead of editor-owned actions.
 
 ## Context Challenge Notes
 

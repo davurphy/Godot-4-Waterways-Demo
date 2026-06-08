@@ -10,7 +10,7 @@ This plan turns the validated `WaterRippleField` and `WaterRippleEmitter` spike 
 
 The goal is practical authoring, scriptable reuse, and reusable preset design data. Phase 9 should make the existing visual-only ripple workflow easier to set up, inspect, reuse, and call from scripts without changing river bakes, final flow, `WaterSystem`, source signatures, buoyancy, production response/refraction/displacement tuning, foam, or runtime asset persistence.
 
-Phase 9 is not the native-feeling editor polish milestone. Dedicated inspector buttons, undo-integrated editor actions, editor-time boundary previews, and richer debug overlays are valuable, but they require explicit Godot editor-plugin work. That work is split into Phase 10.
+Phase 9 is not the native-feeling editor polish milestone. Dedicated inspector buttons, undo-integrated editor actions, editor-time boundary previews, and richer debug overlays are valuable, but they require explicit Godot editor-plugin work. That work is split into Phase 10, whose current plan starts with read-only non-mutating inspector lifecycle validation before any mutating buttons, save dialogs, gizmos, previews, or live-scene commands are enabled.
 
 ## Current Scope
 
@@ -108,7 +108,7 @@ Recommended grouping for `WaterRippleField` should use ordinary Godot export gro
 - `world_bounds`
 - `simulation_update_rate`
 
-No setup action buttons are required in Phase 9. `Rebuild Runtime`, `Reset Feedback`, `Apply Field Preset`, `Capture Field Preset`, and boundary preview buttons move to Phase 10 editor tooling unless implemented as script-callable methods without custom UI.
+No setup action buttons are required in Phase 9. `Apply Field Preset`, `Capture Field Preset`, save dialogs, and boundary preview buttons move to Phase 10 editor tooling unless implemented as script-callable methods without custom UI. `Rebuild Runtime` and `Reset Feedback` remain ordinary runtime methods only; Phase 10 keeps them absent, disabled, or guidance-only in normal editor inspection until a live-scene bridge is separately designed.
 
 ### Targets
 
@@ -126,7 +126,7 @@ Phase 9 should improve configuration warnings for no target, invalid target, dup
 - `boundary_mask_texture`
 - `boundary_fade`
 
-Boundary preview is not a Phase 9 promise. The current runtime boundary generation uses runtime `SubViewport` state, and editor-time preview requires Phase 10 editor-safe preview design.
+Boundary preview is not a Phase 9 promise. The current runtime boundary generation uses runtime `SubViewport` state, and editor-time preview requires Phase 10 editor-safe preview design that does not call runtime boundary rebuild/material paths, dirty scenes, or leave scratch preview state behind.
 
 ### Simulation
 
@@ -150,7 +150,7 @@ Keep these visible because they are part of the accepted normal-only first path.
 
 - Hidden stored `debug_visible` reservation, if compatibility requires keeping the property.
 
-`debug_visible` should be hidden in Phase 9 rather than renamed or exposed as an inert inspector promise. If the saved property must remain for compatibility, store it without normal inspector visibility, such as with `@export_storage`. Real bounds, routing, mask, texture, or influence visualization moves to Phase 10.
+`debug_visible` should be hidden in Phase 9 rather than renamed or exposed as an inert inspector promise. If the saved property must remain for compatibility, store it without normal inspector visibility, such as with `@export_storage`. Real bounds, routing, mask, texture, or influence visualization moves to Phase 10 only after helper behavior, cleanup, undo/dirty-state semantics, and export-boundary validation exist.
 
 ### Advanced / Reserved
 
@@ -211,16 +211,16 @@ Presets must be value starters, not live profiles.
 - Applying a preset does not change river targets, generated bakes, `WaterSystem`, source signatures, or runtime material ownership.
 - Applying a preset does not save runtime textures.
 - Applying a preset may rebuild transient runtime textures if the game is running and values such as `resolution`, `world_bounds`, `max_emitters`, `auto_generate_boundary_mask`, `require_boundary_mask`, or boundary-fade policy change. Runtime application should batch property mutations, rebuild boundary/runtime state once, and reapply material state once when practical.
-- Applying a preset through Phase 10 editor UI should be undoable. Phase 9 script-callable methods do not themselves guarantee editor undo integration.
+- Applying a preset through Phase 10 editor UI should be undoable through one grouped per-property editor undo action that copies the Phase 9 whitelist and skips no-op applies. Phase 9 script-callable methods do not themselves guarantee editor undo integration and should not be used as the editor undo do-method.
 
 ### Editor And Runtime Split
 
 - Built-in presets are available as static data or helper methods for script tests and runtime use.
-- Editor application copies values and should eventually use undo through Phase 10 editor tooling.
+- Editor application copies values and should use per-property undo through Phase 10 editor tooling.
 - Runtime application is allowed for gameplay scripts that want to swap ripple behavior, but it must never write back to preset assets automatically.
 - Runtime capture is allowed only as an in-memory value object for scripts, tests, or diagnostics.
 - Runtime saving of preset resources to disk is out of scope for Phase 9.
-- Save/capture from the editor creates or updates explicit resource assets only through Phase 10 editor tooling or a later deliberate save workflow with an explicit path.
+- Save/capture from the editor creates scratch resources first and writes explicit resource assets only through Phase 10 editor tooling or a later deliberate save workflow with a user-selected path.
 - `capture_*_preset()` returns an in-memory resource. It does not save an asset, assign an exported preset slot, or mutate the source preset.
 
 ### Field Presets
@@ -360,17 +360,18 @@ Recommended order:
 4. Type-specific apply/capture methods: mutate exported values on field/emitter, batch runtime rebuild/reapply work, return in-memory captures, and prove no saved bake/resource/source-signature churn.
 5. Type-specific saveable resources: `WaterRippleFieldPreset` and `WaterRippleEmitterPreset` with explicit exported authoring fields.
 6. Human-visible authoring scene update and renderer regression sweep.
-7. Phase 10 handoff: dedicated inspector buttons, undo/save helpers, and editor preview helpers.
+7. Phase 10 handoff: editor-only inspector plugin skeleton first, then transient preset selectors, undo-aware apply, explicit capture/save helpers, and optional editor preview helpers under the Phase 10 action matrix.
 
 ## Deferred To Phase 10
 
-- Native inspector buttons for apply/capture/reset/preview.
-- Undo-aware editor actions for preset application.
-- Editor save dialogs for captured preset resources.
-- Editor-time boundary mask preview.
-- Editor/runtime debug overlay, including any visible `debug_visible` field-bounds/helper display.
-- Re-exposing or renaming `debug_visible` as real helper visualization.
-- Toolbar or dock UI for ripple authoring.
+- Read-only `EditorInspectorPlugin` or equivalent Waterways editor panel for `WaterRippleField` and `WaterRippleEmitter`, with lifecycle cleanup before mutation exists.
+- Transient preset selectors or resource pickers for explicit Apply/Capture/Save commands only; no saved `field_preset`, `emitter_preset`, generic preset slot, resource path, live profile link, or auto-apply flag on ripple nodes.
+- Undo-aware editor actions for preset application using per-property `EditorUndoRedoManager` operations, no-op apply skipping, and the Phase 9 copy whitelist.
+- Editor capture/save dialogs for captured preset resources, with `ResourceSaver` use isolated to editor/plugin code and only after the user chooses a save path.
+- Editor-safe helper visualization for bounds/routing/boundary review only if it avoids runtime simulation/material/bake/source-signature paths and cleans up scratch resources.
+- Re-exposing or renaming `debug_visible` only as real helper visualization with documented semantics and validation.
+- Toolbar, dock, gizmo, or preview UI for ripple authoring only after the action/undo/dirty-state matrix accepts the behavior.
+- Live-scene `Reset Feedback`, `Rebuild Runtime`, `Emit Once`, and runtime texture previews only after a separate live-scene bridge plan proves edited-scene/runtime-scene mapping and cleanup.
 
 ## Decision Log
 
@@ -385,4 +386,5 @@ Recommended order:
 - 2026-06-08: Keep refraction and displacement reserved/hidden from normal authoring until a separate visual tuning plan accepts them.
 - 2026-06-08: Hide the `debug_visible` reservation in Phase 9; real or renamed debug helper visualization moves to Phase 10.
 - 2026-06-08: Defer dedicated editor inspector buttons, undo-aware editor actions, and editor-time preview helpers to Phase 10.
+- 2026-06-08: Tighten the Phase 10 handoff around read-only inspector lifecycle first, transient selectors, per-property editor undo, editor-only saving, forbidden runtime calls from ordinary inspector paths, scratch cleanup, and live-scene bridge deferral.
 - 2026-06-08: Defer foam, flow-aware ripples, moving fields, physics sampling, and baked rapid/wavefront systems.
