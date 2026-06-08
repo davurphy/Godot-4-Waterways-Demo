@@ -1,4 +1,6 @@
 @tool
+@icon("res://addons/waterways/icons/ripple_emitter.svg")
+class_name WaterRippleEmitter
 extends Node3D
 
 const MODE_PULSE := 0
@@ -6,7 +8,9 @@ const MODE_CONTINUOUS := 1
 const MODE_ONE_SHOT := 2
 const MODE_MOVING := 3
 const DEFAULT_FIELD_GROUP := "water_ripple_fields"
+const WaterRippleEmitterPresetResource := preload("res://addons/waterways/resources/water_ripple_emitter_preset.gd")
 
+@export_group("Routing")
 @export var enabled := true:
 	set(value):
 		enabled = value
@@ -19,14 +23,35 @@ const DEFAULT_FIELD_GROUP := "water_ripple_fields"
 		_cached_field = null
 		if is_inside_tree():
 			update_configuration_warnings()
-@export var field_group_name := DEFAULT_FIELD_GROUP
-@export_enum("Pulse", "Continuous", "One Shot", "Moving") var emitter_mode := MODE_PULSE
+@export var field_group_name := DEFAULT_FIELD_GROUP:
+	set(value):
+		field_group_name = String(value)
+		_cached_field = null
+		if is_inside_tree():
+			update_configuration_warnings()
+
+@export_group("Shape")
 @export_range(0.001, 64.0, 0.001) var radius := 1.75
-@export_range(0.0, 1.0, 0.001) var intensity := 0.8
 @export_range(0.01, 8.0, 0.01) var falloff := 2.0
+
+@export_group("Emission")
+@export_enum("Pulse", "Continuous", "One Shot", "Moving") var emitter_mode := MODE_PULSE:
+	set(value):
+		var sanitized: int = clamp(int(value), MODE_PULSE, MODE_MOVING)
+		if emitter_mode == sanitized:
+			return
+		emitter_mode = sanitized
+		_pulse_accumulator = 0.0
+		_one_shot_emitted = false
+		if is_inside_tree():
+			_sync_processing()
+			update_configuration_warnings()
+@export_range(0.0, 1.0, 0.001) var intensity := 0.8
 @export_range(0.01, 60.0, 0.01) var pulse_rate := 2.0
 @export var emit_on_ready := false
 @export_range(0.001, 64.0, 0.001) var moving_emit_distance := 0.75
+
+@export_group("Priority And Caps")
 @export_range(-1024, 1024, 1) var priority := 0
 
 var _cached_field: Node
@@ -61,8 +86,18 @@ func _process(delta: float) -> void:
 
 func _get_configuration_warnings() -> PackedStringArray:
 	var warnings := PackedStringArray()
-	if enabled and target_field_path == NodePath("") and field_group_name.is_empty():
-		warnings.append("Emitter has no target field path or field group; it will only find a WaterRippleField ancestor.")
+	if enabled and target_field_path == NodePath("") and field_group_name.is_empty() and _get_ancestor_field() == null:
+		warnings.append("Set a target field path, use a field group, or parent this emitter under a WaterRippleField.")
+	if target_field_path != NodePath("") and not _is_valid_field(get_node_or_null(target_field_path)):
+		warnings.append("Target field path '" + String(target_field_path) + "' does not resolve to a compatible WaterRippleField.")
+	if not field_group_name.is_empty() and is_inside_tree():
+		var has_group_field := false
+		for candidate in get_tree().get_nodes_in_group(field_group_name):
+			if _is_valid_field(candidate):
+				has_group_field = true
+				break
+		if not has_group_field and target_field_path == NodePath("") and _get_ancestor_field() == null:
+			warnings.append("Field group '" + field_group_name + "' currently has no compatible WaterRippleField nodes.")
 	if radius <= 0.0:
 		warnings.append("Emitter radius must be greater than zero.")
 	if pulse_rate <= 0.0 and emitter_mode != MODE_ONE_SHOT:
@@ -70,6 +105,54 @@ func _get_configuration_warnings() -> PackedStringArray:
 	if Engine.is_editor_hint() and enabled:
 		warnings.append("Runtime ripple emitters queue impulses only while the scene runs; editor-time emission is intentionally disabled for this prototype.")
 	return warnings
+
+
+static func get_builtin_preset_names() -> PackedStringArray:
+	return WaterRippleEmitterPresetResource.get_builtin_preset_names()
+
+
+static func create_builtin_preset(preset_name: String) -> WaterRippleEmitterPresetResource:
+	return WaterRippleEmitterPresetResource.create_builtin_preset(preset_name)
+
+
+func apply_builtin_preset(preset_name: String) -> bool:
+	var preset := create_builtin_preset(preset_name)
+	if preset == null:
+		return false
+	return apply_preset(preset)
+
+
+func apply_preset(preset: Resource) -> bool:
+	if preset == null or not (preset is WaterRippleEmitterPresetResource):
+		return false
+
+	emitter_mode = clamp(int(preset.emitter_mode), MODE_PULSE, MODE_MOVING)
+	radius = max(0.001, float(preset.radius))
+	intensity = clamp(float(preset.intensity), 0.0, 1.0)
+	falloff = max(0.01, float(preset.falloff))
+	pulse_rate = max(0.01, float(preset.pulse_rate))
+	emit_on_ready = bool(preset.emit_on_ready)
+	moving_emit_distance = max(0.001, float(preset.moving_emit_distance))
+	priority = int(preset.priority)
+
+	if is_inside_tree():
+		_sync_processing()
+		update_configuration_warnings()
+	return true
+
+
+func capture_preset() -> WaterRippleEmitterPresetResource:
+	var preset := WaterRippleEmitterPresetResource.new()
+	preset.resource_name = "Captured Water Ripple Emitter Preset"
+	preset.emitter_mode = emitter_mode
+	preset.radius = radius
+	preset.intensity = intensity
+	preset.falloff = falloff
+	preset.pulse_rate = pulse_rate
+	preset.emit_on_ready = emit_on_ready
+	preset.moving_emit_distance = moving_emit_distance
+	preset.priority = priority
+	return preset
 
 
 func emit_once() -> bool:
@@ -135,12 +218,10 @@ func _resolve_field() -> Node:
 			_cached_field = by_path
 			return _cached_field
 
-	var ancestor := get_parent()
-	while ancestor != null:
-		if _is_valid_field(ancestor):
-			_cached_field = ancestor
-			return _cached_field
-		ancestor = ancestor.get_parent()
+	var ancestor := _get_ancestor_field()
+	if ancestor != null:
+		_cached_field = ancestor
+		return _cached_field
 
 	if not field_group_name.is_empty() and is_inside_tree():
 		for candidate in get_tree().get_nodes_in_group(field_group_name):
@@ -152,6 +233,15 @@ func _resolve_field() -> Node:
 
 func _is_valid_field(candidate: Variant) -> bool:
 	return candidate is Node and candidate.has_method("queue_impulse_world")
+
+
+func _get_ancestor_field() -> Node:
+	var ancestor := get_parent()
+	while ancestor != null:
+		if _is_valid_field(ancestor):
+			return ancestor
+		ancestor = ancestor.get_parent()
+	return null
 
 
 func _sync_processing() -> void:

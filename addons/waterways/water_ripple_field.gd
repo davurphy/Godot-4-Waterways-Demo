@@ -1,4 +1,6 @@
 @tool
+@icon("res://addons/waterways/icons/ripple_field.svg")
+class_name WaterRippleField
 extends Node3D
 
 const SIMULATION_SHADER_PATH := "res://addons/waterways/shaders/runtime/ripple_simulation.gdshader"
@@ -6,7 +8,9 @@ const IMPULSE_SHADER_PATH := "res://addons/waterways/shaders/runtime/ripple_impu
 const BOUNDARY_SHADER_PATH := "res://addons/waterways/shaders/runtime/ripple_boundary_mask.gdshader"
 const DEFAULT_FIELD_GROUP := "water_ripple_fields"
 const NEUTRAL_HEIGHT_COLOR := Color(0.5, 0.5, 0.0, 1.0)
+const WaterRippleFieldPresetResource := preload("res://addons/waterways/resources/water_ripple_field_preset.gd")
 
+@export_group("Setup")
 @export var enabled := true:
 	set(value):
 		if enabled == value:
@@ -27,7 +31,7 @@ const NEUTRAL_HEIGHT_COLOR := Color(0.5, 0.5, 0.0, 1.0)
 		if resolution == sanitized:
 			return
 		resolution = sanitized
-		if _runtime_initialized:
+		if _runtime_initialized and not _is_applying_preset:
 			rebuild_runtime()
 		if is_inside_tree():
 			update_configuration_warnings()
@@ -43,6 +47,16 @@ const NEUTRAL_HEIGHT_COLOR := Color(0.5, 0.5, 0.0, 1.0)
 		if is_inside_tree():
 			update_configuration_warnings()
 
+@export_range(1.0, 120.0, 1.0) var simulation_update_rate := 60.0:
+	set(value):
+		var sanitized: float = max(1.0, float(value))
+		if is_equal_approx(simulation_update_rate, sanitized):
+			return
+		simulation_update_rate = sanitized
+		if is_inside_tree():
+			update_configuration_warnings()
+
+@export_group("Targets")
 @export var target_river_paths: Array[NodePath] = []:
 	set(value):
 		target_river_paths = value
@@ -63,6 +77,45 @@ const NEUTRAL_HEIGHT_COLOR := Color(0.5, 0.5, 0.0, 1.0)
 		if is_inside_tree():
 			update_configuration_warnings()
 
+@export var field_group_name := DEFAULT_FIELD_GROUP:
+	set(value):
+		var next_group := String(value)
+		if field_group_name == next_group:
+			return
+		var previous_group := field_group_name
+		field_group_name = next_group
+		if is_inside_tree():
+			if not previous_group.is_empty() and is_in_group(previous_group):
+				remove_from_group(previous_group)
+			if not field_group_name.is_empty():
+				add_to_group(field_group_name)
+			update_configuration_warnings()
+
+@export_group("Boundary Mask")
+@export var auto_generate_boundary_mask := true:
+	set(value):
+		if auto_generate_boundary_mask == value:
+			return
+		auto_generate_boundary_mask = value
+		if _runtime_initialized and not _is_applying_preset:
+			rebuild_boundary_mask()
+			reset_feedback()
+			_apply_material_state_to_targets()
+		if is_inside_tree():
+			update_configuration_warnings()
+
+@export var require_boundary_mask := true:
+	set(value):
+		if require_boundary_mask == value:
+			return
+		require_boundary_mask = value
+		if _runtime_initialized and not _is_applying_preset:
+			rebuild_boundary_mask()
+			reset_feedback()
+			_apply_material_state_to_targets()
+		if is_inside_tree():
+			update_configuration_warnings()
+
 @export var boundary_source_paths: Array[NodePath] = []:
 	set(value):
 		boundary_source_paths = value
@@ -73,7 +126,6 @@ const NEUTRAL_HEIGHT_COLOR := Color(0.5, 0.5, 0.0, 1.0)
 		if is_inside_tree():
 			update_configuration_warnings()
 
-@export var field_group_name := DEFAULT_FIELD_GROUP
 @export var boundary_mask_texture: Texture2D:
 	set(value):
 		boundary_mask_texture = value
@@ -83,29 +135,30 @@ const NEUTRAL_HEIGHT_COLOR := Color(0.5, 0.5, 0.0, 1.0)
 			_apply_material_state_to_targets()
 		if is_inside_tree():
 			update_configuration_warnings()
-@export var auto_generate_boundary_mask := true
-@export var require_boundary_mask := true
-
-@export_range(0.0, 4.0, 0.001) var ripple_strength := 1.0
-@export_range(0.0, 8.0, 0.001) var normal_strength := 1.25
-@export_range(0.0, 4.0, 0.001) var refraction_strength := 0.0
-@export_range(0.0, 4.0, 0.001) var displacement_strength := 0.0
-@export_range(0.0, 200.0, 0.1) var height_fade_distance := 0.0
 @export_range(0.0, 0.25, 0.001) var boundary_fade := 0.025
+
+@export_group("Simulation")
 @export_range(0.0, 1.0, 0.001) var damping := 0.985
 @export_range(0.0, 2.0, 0.001) var propagation := 0.45
-@export_range(1.0, 120.0, 1.0) var simulation_update_rate := 60.0
 @export_range(1, 128, 1) var max_emitters := 16:
 	set(value):
 		var sanitized: int = max(1, int(value))
 		if max_emitters == sanitized:
 			return
 		max_emitters = sanitized
-		if _runtime_initialized:
+		if _runtime_initialized and not _is_applying_preset:
 			rebuild_runtime()
 		if is_inside_tree():
 			update_configuration_warnings()
-@export var debug_visible := false
+
+@export_group("Visual Response")
+@export_range(0.0, 4.0, 0.001) var ripple_strength := 1.0
+@export_range(0.0, 8.0, 0.001) var normal_strength := 1.25
+@export_range(0.0, 200.0, 0.1) var height_fade_distance := 0.0
+
+@export_storage var refraction_strength := 0.0
+@export_storage var displacement_strength := 0.0
+@export_storage var debug_visible := false
 
 var _simulation_viewports := []
 var _simulation_materials := []
@@ -135,6 +188,7 @@ var _last_rendered_impulse_count := 0
 var _last_capped_impulse_count := 0
 var _last_rejected_impulse_count := 0
 var _steps_completed := 0
+var _is_applying_preset := false
 
 
 func _enter_tree() -> void:
@@ -172,15 +226,123 @@ func _get_configuration_warnings() -> PackedStringArray:
 		warnings.append("Ripple resolution must be at least 2 pixels.")
 	if world_bounds.size.x <= 0.0 or world_bounds.size.z <= 0.0:
 		warnings.append("Ripple field world_bounds needs positive X and Z size.")
+	if transform != Transform3D.IDENTITY:
+		warnings.append("WaterRippleField currently uses axis-aligned world_bounds; the node transform is not part of ripple mapping yet.")
 	if target_river_paths.is_empty() and target_group_name.is_empty():
 		warnings.append("Add at least one target river path or target group before enabling river material output.")
+	for path in target_river_paths:
+		if path == NodePath(""):
+			continue
+		var target := get_node_or_null(path)
+		if not _is_valid_ripple_target(target):
+			warnings.append("Target river path '" + String(path) + "' does not resolve to a compatible Waterways river target.")
+	if not target_group_name.is_empty() and is_inside_tree():
+		var has_group_target := false
+		for target in get_tree().get_nodes_in_group(target_group_name):
+			if _is_valid_ripple_target(target):
+				has_group_target = true
+				break
+		if not has_group_target:
+			warnings.append("Target group '" + target_group_name + "' currently has no compatible Waterways river targets.")
+	if field_group_name.is_empty():
+		warnings.append("Field group name is empty; group-routed WaterRippleEmitter nodes cannot discover this field.")
 	if boundary_mask_texture == null and not auto_generate_boundary_mask and require_boundary_mask:
 		warnings.append("Boundary masking is required, but no boundary texture is assigned and auto generation is disabled.")
 	if boundary_mask_texture == null and auto_generate_boundary_mask and boundary_source_paths.is_empty() and target_river_paths.is_empty() and target_group_name.is_empty():
 		warnings.append("Boundary auto-generation needs target rivers or explicit boundary source mesh paths.")
+	for path in boundary_source_paths:
+		if path == NodePath(""):
+			continue
+		var source := get_node_or_null(path)
+		var source_mesh := _get_target_mesh_instance(source)
+		if source_mesh == null or source_mesh.mesh == null:
+			warnings.append("Boundary source path '" + String(path) + "' does not resolve to a MeshInstance3D or Waterways river mesh.")
 	if Engine.is_editor_hint() and enabled:
 		warnings.append("Runtime ripple textures are created only while the scene runs; editor-time preview is intentionally disabled for this prototype.")
 	return warnings
+
+
+static func get_builtin_preset_names() -> PackedStringArray:
+	return WaterRippleFieldPresetResource.get_builtin_preset_names()
+
+
+static func create_builtin_preset(preset_name: String) -> WaterRippleFieldPresetResource:
+	return WaterRippleFieldPresetResource.create_builtin_preset(preset_name)
+
+
+func apply_builtin_preset(preset_name: String) -> bool:
+	var preset := create_builtin_preset(preset_name)
+	if preset == null:
+		return false
+	return apply_preset(preset)
+
+
+func apply_preset(preset: Resource) -> bool:
+	if preset == null or not (preset is WaterRippleFieldPresetResource):
+		return false
+
+	var next_resolution: int = max(2, int(preset.resolution))
+	var next_max_emitters: int = max(1, int(preset.max_emitters))
+	var next_normal_strength: float = max(0.0, float(preset.normal_strength))
+	var next_height_fade_distance: float = max(0.0, float(preset.height_fade_distance))
+	var next_boundary_fade: float = clamp(float(preset.boundary_fade), 0.0, 0.25)
+	var runtime_rebuild_needed := _runtime_initialized and (resolution != next_resolution or max_emitters != next_max_emitters)
+	var boundary_rebuild_needed := _runtime_initialized and (
+			auto_generate_boundary_mask != bool(preset.auto_generate_boundary_mask)
+			or require_boundary_mask != bool(preset.require_boundary_mask)
+	)
+	var material_reapply_needed := _runtime_initialized and (
+			boundary_rebuild_needed
+			or not is_equal_approx(normal_strength, next_normal_strength)
+			or not is_equal_approx(height_fade_distance, next_height_fade_distance)
+			or not is_equal_approx(boundary_fade, next_boundary_fade)
+	)
+
+	_is_applying_preset = true
+	resolution = next_resolution
+	simulation_update_rate = max(1.0, float(preset.simulation_update_rate))
+	damping = clamp(float(preset.damping), 0.0, 1.0)
+	propagation = clamp(float(preset.propagation), 0.0, 2.0)
+	max_emitters = next_max_emitters
+	ripple_strength = max(0.0, float(preset.ripple_strength))
+	normal_strength = next_normal_strength
+	height_fade_distance = next_height_fade_distance
+	boundary_fade = next_boundary_fade
+	auto_generate_boundary_mask = bool(preset.auto_generate_boundary_mask)
+	require_boundary_mask = bool(preset.require_boundary_mask)
+	_is_applying_preset = false
+
+	if runtime_rebuild_needed:
+		rebuild_runtime()
+	elif _runtime_initialized:
+		var material_reapplied := false
+		if boundary_rebuild_needed:
+			rebuild_boundary_mask()
+			reset_feedback()
+			material_reapplied = true
+		if material_reapply_needed and not material_reapplied:
+			_apply_material_state_to_targets()
+
+	if is_inside_tree():
+		update_configuration_warnings()
+	return true
+
+
+func capture_preset() -> WaterRippleFieldPresetResource:
+	var preset := WaterRippleFieldPresetResource.new()
+	preset.resource_name = "Captured Water Ripple Field Preset"
+	preset.resolution = resolution
+	preset.simulation_update_rate = simulation_update_rate
+	preset.damping = damping
+	preset.propagation = propagation
+	preset.max_emitters = max_emitters
+	preset.ripple_strength = ripple_strength
+	preset.normal_strength = normal_strength
+	preset.height_fade_distance = height_fade_distance
+	preset.boundary_fade = boundary_fade
+	preset.auto_generate_boundary_mask = auto_generate_boundary_mask
+	preset.require_boundary_mask = require_boundary_mask
+	return preset
 
 
 func initialize_runtime() -> bool:
@@ -693,6 +855,7 @@ func _apply_material_state_to_targets() -> void:
 	if not _runtime_initialized or not enabled:
 		return
 	if require_boundary_mask and not _boundary_valid:
+		_clear_target_material_state()
 		return
 	_refresh_target_rivers()
 	var parameters := _make_material_state()

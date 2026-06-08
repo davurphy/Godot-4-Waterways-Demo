@@ -10,9 +10,9 @@ This spec is derived from `addons/waterways/docs/roadmaps/runtime-ripple-simulat
 
 Use this as the dashboard for the current ripple spec state. Move older detail into the sections below instead of letting stale open questions linger.
 
-- Status: Phase 0 decisions locked; standalone Phase 1 feedback ownership, 128/256/512 spread/decay, standalone Phase 2 mapping, standalone Phase 2 mesh-footprint boundary-mask validation, RiverManager-facing material ownership/restore validation, minimal river shader neutral-path validation, guarded river shader sampling-helper validation, minimal visible river normal-blend validation, revised demo review-scene diagnostic validation, debug parity validation, current shader-cost validation, reusable field/emitter lifecycle validation, current field/emitter dispatch-performance validation, demo-backed field/emitter authoring validation, Mobile/Compatibility renderer coverage, and Phase 9 custom type parser/editor-load validation passed automated checks.
+- Status: Phase 0 decisions locked; standalone Phase 1 feedback ownership, 128/256/512 spread/decay, standalone Phase 2 mapping, standalone Phase 2 mesh-footprint boundary-mask validation, RiverManager-facing material ownership/restore validation, minimal river shader neutral-path validation, guarded river shader sampling-helper validation, minimal visible river normal-blend validation, revised demo review-scene diagnostic validation, debug parity validation, current shader-cost validation, reusable field/emitter lifecycle validation, current field/emitter dispatch-performance validation, demo-backed field/emitter authoring validation, Mobile/Compatibility renderer coverage, Phase 9 named-class parser/editor-cache validation, and Phase 9 preset/grouping/starter/reload validation passed automated checks; human-visible Add Node visibility and Phase 9 editor authoring review passed.
 - Source of truth for open work: `tasks.md` "Open Work".
-- Last meaningful decision: First milestone is visual-only; no-readback standalone feedback, axis-aligned `world_to_ripple_uv` marker mapping, mesh-footprint boundary masking, RiverManager-facing `i_ripple_*` material ownership, built-in river shader disabled/missing-texture neutrality, helper-level sampling budget, minimal visible normal blending, revised demo review-scene diagnostic visibility, review-fixture framerate improvement, human-visible base-flow/outward-ring acceptance, debug parity, current shader-cost, field/emitter lifecycle, Forward+/Mobile/Compatibility field-emitter and shader-cost coverage, automated demo authoring integration, human-visible field/emitter demo authoring stop/reload workflow, and `WaterRippleField`/`WaterRippleEmitter` custom type registration are now proven enough for their current gates. Human-visible Add Node inspection, deeper authoring presets/API hardening, and response/refraction/displacement tuning remain unproven.
+- Last meaningful decision: First milestone is visual-only; no-readback standalone feedback, axis-aligned `world_to_ripple_uv` marker mapping, mesh-footprint boundary masking, RiverManager-facing `i_ripple_*` material ownership, built-in river shader disabled/missing-texture neutrality, helper-level sampling budget, minimal visible normal blending, revised demo review-scene diagnostic visibility, review-fixture framerate improvement, human-visible base-flow/outward-ring acceptance, debug parity, current shader-cost, field/emitter lifecycle, Forward+/Mobile/Compatibility field-emitter and shader-cost coverage, automated demo authoring integration, human-visible field/emitter demo authoring stop/reload workflow, `WaterRippleField`/`WaterRippleEmitter` named Add Node registration, revised Phase 9 authoring/API plan, Phase 9 script/resource implementation, and human-visible Phase 9 editor authoring review are now proven enough for their current gates. Native editor buttons/previews should follow `phase10-editor-polish-plan.md`; response/refraction/displacement tuning remains unproven and out of scope for both plans.
 - Known deferred items: Buoyancy, object drift, runtime flow changes, WaterSystem regeneration, saved ripple persistence, flow-aware advection, and full physics-facing shallow-water behavior.
 - Current non-goals that are easy to accidentally reopen: Do not change `flow`, `flow_force`, `i_flowmap`, final flow, source signatures, river bake resources, WaterSystem bake resources, `system_flow.gdshader`, or buoyancy behavior for the first visual ripple pass.
 
@@ -126,6 +126,7 @@ Acceptance criteria:
 - Keep missing ripple textures neutral.
 - Keep displacement default off.
 - Keep the current custom type registration documented before expanding the field/emitter public API surface.
+- Before implementing deeper public authoring controls, follow `phase9-authoring-api-plan.md`, which compares relevant Unity, Unreal Engine, Godot, Crest, Waterways lineage, and AAA water/ripple authoring systems, then defines which patterns fit Waterways.
 
 ## Roadmap Details To Preserve
 
@@ -146,7 +147,7 @@ Suggested `WaterRippleField` public properties:
 - `simulation_update_rate`
 - `max_emitters`
 - `follow_camera`, hidden or unsupported until reprojection, clear-on-shift, or tile swapping is designed
-- `debug_visible`
+- `debug_visible`, hidden or storage-only in Phase 9 unless real helper/debug behavior is implemented later
 
 Suggested `WaterRippleEmitter` public properties:
 
@@ -183,7 +184,9 @@ First-pass shader behavior:
 - Keep displacement default off and close-range only if enabled.
 - Keep the disabled path neutral and free of avoidable ripple texture samples.
 
-Authoring controls should eventually expose clear user-facing names such as Ripple Strength, Ripple Normal Strength, Ripple Refraction Strength, Ripple Displacement Strength, Damping, Propagation, Update Rate, Resolution, and Bounds. Presets should remain simple and optional, such as Duck / small object, Player footstep, Boat wake touch, Rain drop, and Heavy splash.
+Authoring controls expose clear user-facing setup, target, boundary, simulation, and visual-normal controls using ordinary exported property groups first. Phase 9 treats this as script/resource-first API contract work, not visual tuning or native editor UI. Keep `refraction_strength` and `displacement_strength` reserved/hidden from normal authoring until a separate visual tuning plan accepts real behavior.
+
+Presets remain simple and optional, using only supported field values and current point/ring emitter values. They are one-click starting points that mutate ordinary editable field/emitter values rather than live profile modes that keep overriding user edits. `WaterRippleFieldPreset` and `WaterRippleEmitterPreset` provide separate reusable custom-design resources, consumed by explicit in-memory apply/capture methods and script-callable built-in starter factories in Phase 9 rather than exported preset asset slots or runtime asset saves. Boat wakes, dense rain systems, capsule/trail/stamp shapes, foam, refraction, and displacement remain out of preset scope until separately implemented.
 
 ## Non-Functional Requirements
 
@@ -200,7 +203,7 @@ Authoring controls should eventually expose clear user-facing names such as Ripp
 Editor authoring responsibilities:
 
 - Inspector settings for ripple fields and emitters if they become built-in nodes.
-- Optional debug visibility controls.
+- Optional debug/diagnostic controls only when backed by real behavior; Phase 9 may keep node-level diagnostic flags hidden or storage-only.
 - Human-assisted visual review scenes and procedures.
 - Add-on custom type registration and icons if nodes are public.
 
@@ -232,7 +235,7 @@ Shared code must not depend on:
 Users should be able to:
 
 - Add a ripple field to a scene.
-- Configure resolution, bounds or transform, damping, propagation, strengths, update rate, and debug visibility.
+- Configure resolution, bounds or transform, damping, propagation, strengths, and update rate; visible node-level debug helpers should appear only after Phase 10 or another accepted implementation adds real behavior.
 - Register explicit target rivers or use a filtered target set.
 - Add emitters to gameplay objects without editing shader code.
 - Disable ripples and get predictable neutral material behavior.
@@ -241,6 +244,8 @@ Extension points:
 
 - `WaterRippleField` configuration.
 - `WaterRippleEmitter` presets and modes.
+- One-click authoring presets that apply editable values.
+- Saveable custom ripple designs, format to be planned.
 - Runtime RiverManager-facing uniform application API.
 - Debug/probe hooks for raw ripple, impulse, boundary, and visible influence.
 - Future flow-aware visual advection and physics sampling milestones.
@@ -314,6 +319,8 @@ Shared systems must not hard-code:
 - Is 256x256 enough for the default demo?
 - Should displacement stay completely off in the first release, or be available as a default-off control?
 - How should multiple rivers in one scene share or separate ripple fields in the public API?
+- Which Unity, Unreal Engine, Houdini, and comparable industry water/ripple authoring patterns should Waterways adopt, adapt, or reject?
+- What resource or scene workflow should save custom ripple designs without turning runtime transient textures into saved bake data?
 
 ## Resolved Questions
 
@@ -328,11 +335,13 @@ Move questions here once decided so future sessions do not keep treating them as
 | Should visible ripple influence be added to `river_debug.gdshader`, or is a separate debug/probe path enough for the first pass? | Add debug shader parity plus targeted probes. | 2026-06-07 | `river_debug.gdshader` now has raw height, impulse/contact, boundary mask, and visible influence modes; `RIPPLE_DEBUG_PARITY_PROBE_OK` proves view switching preserves runtime ripple state. |
 | Should the first field support axis-aligned X/Z bounds or full transformed fields? | Use axis-aligned X/Z `world_bounds` for the prototype; defer full transformed fields. | 2026-06-07 | `WaterRippleField` builds the same `world_to_ripple_uv` contract already proven by mapping, boundary, shader, and field/emitter probes. Unsupported transformed-field/public API behavior remains later polish. |
 | Should ripples be built-in Waterways nodes or prototype scenes first? | Prototype scenes first. | 2026-06-07 | `water_ripple_field.tscn` and `water_ripple_emitter.tscn` were added before public registration; this allowed runtime and visible workflow validation before Phase 9 promotion. |
-| Should the proven field/emitter nodes be promoted to editor custom types? | Yes, register them without `class_name` for now. | 2026-06-07 | `plugin.gd` now registers `WaterRippleField` and `WaterRippleEmitter` as `Node3D` custom types with ripple icons, matching the existing Waterways custom-type pattern. |
+| Should the proven field/emitter nodes be promoted to editor custom types? | Yes, expose them as named `Node3D` script classes with icons. | 2026-06-07 | Human-visible Add Node inspection showed plugin-only `add_custom_type()` registration was not appearing. Godot 4.6 documentation shows custom nodes can be exposed through `@icon(...)` and `class_name`, so `WaterRippleField` and `WaterRippleEmitter` now use that path, are present in the refreshed global script class cache, and user confirmed both classes/icons are searchable as child nodes in `Demo.tscn` and `ripple_field_emitter_demo_review.tscn`. |
 | Should emitter groups be global with field filtering, or should emitters explicitly reference a target field? | Prototype emitters prefer explicit field paths, with ancestor/group fallback. | 2026-06-07 | `WaterRippleEmitter` resolves `target_field_path` first, then a parent field, then `field_group_name`; `RIPPLE_FIELD_EMITTER_PROBE_OK` validates the field API path. |
 | Should the first demo use ducks, click/test emitters, rain, or fixed rock-adjacent emitters? | Use prototype test emitters in a demo-backed review scene first. | 2026-06-07 | `ripple_field_emitter_demo_review.tscn` instances `Demo.tscn` and adds inspectable pulse, one-shot, and moving emitters under an inspectable field. Ducks/rain remain later authoring presets. |
 | Should the ripple field cover the whole demo river or a smaller fixed review area? | Use the generated demo river mesh AABB for the first review field. | 2026-06-07 | The scene script snaps authored emitter UVs to the live demo mesh, generates the boundary mask from `RiverMeshInstance`, and validates reload cleanup through `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_PROBE_OK`. |
 | What should empty runtime field viewports clear to? | Transparent zero/black for canvas ripple buffers. | 2026-06-07 | Human-visible no-ripples review showed impulse/contact blue everywhere and visible influence black. `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_DIAGNOSTIC_OK` found a nonzero full-field impulse background from the project clear color; `WaterRippleField` now uses transparent zero clear and the demo probe rejects nonblack impulse backgrounds. |
+| Should Phase 9 presets be live profile modes or one-click value starters? | Use one-click presets that mutate ordinary editable values. | 2026-06-08 | Presets should give authors a useful starting point, then allow normal editing and in-memory capture instead of continuously overriding user choices. Use separate field/emitter preset resources; Phase 10 owns editor save workflows. |
+| Should Phase 9 start with implementation or planning? | Planning first. | 2026-06-08 | The next slice is a script/resource-first authoring/API contract pass. Dedicated editor polish is split into Phase 10. |
 
 ## Decision Log
 
@@ -343,3 +352,5 @@ Move questions here once decided so future sessions do not keep treating them as
 | 2026-06-07 | Keep first-pass runtime state transient. | Avoid corrupting or confusing saved river bakes, WaterSystem resources, or source signatures. |
 | 2026-06-07 | Promote proven field/emitter nodes to add-on custom types. | Runtime lifecycle, demo authoring, human-visible workflow, and Mobile/Compatibility renderer gates passed, so the nodes can be added from the editor while deeper presets/API hardening remain separate. |
 | 2026-06-07 | Keep the first boundary-mask proof standalone and mesh-footprint based. | Prove river-shaped masking and dry impulse rejection before material ownership or river shader integration. |
+| 2026-06-08 | Treat Phase 9 as script/resource-first authoring and public API contract planning before code. | The runtime path is accepted enough for the current gate; the next risk is exposing confusing controls or implying visual tuning, refraction, displacement, flow, foam, physics stability, or native editor polish before the authoring contract is designed. |
+| 2026-06-08 | Split native editor buttons, undo-aware actions, save dialogs, and editor preview helpers into Phase 10. | Godot can support this through editor plugins, but that work has separate undo/save/reload/export risks and should not block the first stable preset/API slice. |

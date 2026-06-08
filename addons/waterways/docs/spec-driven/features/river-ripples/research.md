@@ -10,11 +10,11 @@ Use `addons/waterways/docs/research/river-research-citations.md` as the shared w
 
 Keep this short once research has produced a direction.
 
-- Status: In progress; standalone feedback ownership, spread/decay, 128/256/512 analysis, axis-aligned `world_to_ripple_uv` marker mapping, mesh-footprint boundary masking, RiverManager-facing material ownership/restore, built-in river shader neutral-path behavior, helper-level shader sampling budget, minimal visible normal blending, revised demo review-scene diagnostic/performance-fixture behavior, debug parity, current shader-cost behavior, reusable field/emitter lifecycle, current field/emitter dispatch performance, Mobile/Compatibility renderer coverage, and custom type parser/editor-load behavior are validated by probes.
-- Recommendation: Keep the visual-only GPU feedback path and registered `WaterRippleField`/`WaterRippleEmitter` workflow, then human-check Add Node authoring or continue conservative presets/API hardening before tuning response/refraction/displacement.
-- Confidence: Medium-high for the architecture; medium-high for Godot 4.6.3 Forward+/Mobile/Compatibility standalone feedback, mesh-footprint boundary masking, RiverManager-facing material ownership, built-in shader neutral path, helper-level shader sample budget, minimal visible normal render behavior, revised review-scene diagnostic/performance-fixture behavior, human-visible base-flow/ring-motion acceptance, debug parity, current shader-cost behavior, field/emitter lifecycle, current field/emitter dispatch performance, human-visible field/emitter demo workflow/stop-reload cleanup, and custom type parser/editor-load behavior; medium for deeper public API polish.
-- Biggest unknown that remains: Human-visible editor Add Node inspection, deeper authoring presets/API hardening, and later production visual polish beyond the minimal normal-blend acceptance.
-- Decision or plan section this research unlocked: `plan.md` "Architecture Summary", "Runtime Flow", and "Risks".
+- Status: In progress; standalone feedback ownership, spread/decay, 128/256/512 analysis, axis-aligned `world_to_ripple_uv` marker mapping, mesh-footprint boundary masking, RiverManager-facing material ownership/restore, built-in river shader neutral-path behavior, helper-level shader sampling budget, minimal visible normal blending, revised demo review-scene diagnostic/performance-fixture behavior, debug parity, current shader-cost behavior, reusable field/emitter lifecycle, current field/emitter dispatch performance, Mobile/Compatibility renderer coverage, named Add Node parser/editor-cache behavior, human-visible Add Node visibility, Phase 9 authoring/API research plan, Phase 9 script/resource authoring implementation, and human-visible Phase 9 editor authoring workflow are validated or documented.
+- Recommendation: Keep the visual-only GPU feedback path and registered `WaterRippleField`/`WaterRippleEmitter` workflow. Treat Phase 9 as accepted script/resource-first authoring: ordinary export grouping, warning cleanup, type-specific value-mutating presets, built-in starter factories, separate field/emitter preset resources, hidden reserved controls, Add Node visibility, and scratch reload checks are now console-proven and human-visible accepted. Use `phase10-editor-polish-plan.md` for dedicated inspector buttons, undo-aware editor actions, save dialogs, and editor preview helpers. Do not treat either plan as visual tuning; keep `refraction_strength` and `displacement_strength` reserved/hidden from normal authoring until a separate tuning pass is accepted.
+- Confidence: Medium-high for the architecture; medium-high for Godot 4.6.3 Forward+/Mobile/Compatibility standalone feedback, mesh-footprint boundary masking, RiverManager-facing material ownership, built-in shader neutral path, helper-level shader sample budget, minimal visible normal render behavior, revised review-scene diagnostic/performance-fixture behavior, human-visible base-flow/ring-motion acceptance, debug parity, current shader-cost behavior, field/emitter lifecycle, current field/emitter dispatch performance, human-visible field/emitter demo workflow/stop-reload cleanup, named Add Node parser/editor-cache behavior, human-visible Add Node visibility, Phase 9 script/resource authoring implementation, and Phase 9 visible editor authoring workflow; medium for future native editor tooling details.
+- Biggest unknown that remains: Future native editor polish details and response/refraction/displacement tuning. Undo-aware buttons and editor previews are now Phase 10 unknowns.
+- Decision or plan section this research unlocked: `plan.md` "Phase 9 Authoring Planning Direction", `phase9-authoring-api-plan.md`, and `phase10-editor-polish-plan.md`.
 
 ## Questions
 
@@ -39,6 +39,23 @@ Keep this short once research has produced a direction.
 - What legacy Waterways behavior should be preserved, changed, or removed?
   - Preserve baked flow and WaterSystem behavior.
   - Do not preserve or rely on legacy Godot 3 APIs.
+
+## Phase 9 Authoring Research Outcome
+
+The Phase 9 research pass compared Unity HDRP Water, Unreal Water/Niagara Fluids, Crest dynamic waves/foam, Godot compute texture examples, Waterways lineage, and AAA baked/procedural water references.
+
+Key outcome:
+
+- Keep the current `SubViewport` field/emitter architecture for Phase 9 because it is already proven across Forward+, Mobile, and Compatibility.
+- Treat `WaterRippleField` as the simulation domain, target ownership, boundary-mask, performance, and debug surface.
+- Treat `WaterRippleEmitter` as an authorable source of point/ring impulses now and deformer-like stamps later.
+- Use `WaterRippleFieldPreset` and `WaterRippleEmitterPreset` resources for reusable type-specific values, not runtime textures; Phase 9 uses explicit in-memory apply/capture methods and script-callable starter factories, while editor asset saving belongs to Phase 10 or later editor tooling.
+- Keep foam as a later separate influence layer rather than overloading ripple strength or color.
+- Borrow the authoring vocabulary of deformers, decals, masks, generators, and settings assets, but adapt it to Godot scene nodes and Waterways' visual-only scope.
+- Define presets as one-click starting points that mutate ordinary editable values and remain inspectable/editable after application.
+- Keep `refraction_strength` and `displacement_strength` reserved/hidden from normal authoring until a separate visual tuning plan.
+
+The detailed contract is in `phase9-authoring-api-plan.md`.
 
 ## Flow-Map and Water Tool Patterns
 
@@ -66,6 +83,7 @@ Current local findings from the roadmap:
 - Existing bake paths use `SubViewport.UPDATE_ONCE`, wait frames, call `get_image()`, and store textures.
 - Runtime ripple simulation needs a different path: no CPU readback during normal runtime and no sampling from the active write target.
 - Official Godot 4.6 `SubViewport` docs say `UPDATE_ONCE` updates the render target once, then switches to disabled; manual validation and feedback passes should request the update and wait frames deliberately.
+- Official Godot 4.6 `EditorPlugin.add_custom_type()` docs say plugin custom types appear in node/resource lists as base objects with scripts, but the official custom-node tutorial shows `@icon(...)` plus `class_name` as the direct Add Node registration path. Human-visible inspection did not show the plugin-only ripple registrations, so the ripple nodes now use `class_name` and were confirmed in `.godot/global_script_class_cache.cfg` after a headless editor scan.
 - Official Godot 4.6 viewport docs confirm `SubViewport` content is accessed through the viewport texture returned by `get_texture()`.
 - Official Godot 4.6 `Node` docs define `_enter_tree()`, `_ready()`, and `_exit_tree()` lifecycle order; the field/emitter path uses runtime setup/cleanup around `_ready()`/`_exit_tree()` and avoids relying on editor-time preview side effects.
 - Official Godot 4.6 `ViewportTexture` docs describe viewport textures as scene-local dynamic textures; the field owns `SubViewport` nodes and passes their runtime textures to materials instead of saving or mutating bake resources.
@@ -99,9 +117,9 @@ Current local findings from the roadmap:
 Items still needing verification:
 
 - Pause/resume behavior beyond the current fixed update-rate prototype.
-- Human-visible editor scene reload/authoring behavior.
-- Forward+, Mobile, and Compatibility renderer differences.
-- Human-visible demo scene integration with the reusable field/emitter prototype.
+- Phase 10 native editor polish details after the accepted Phase 9 contract.
+- Human-visible editor scene reload/authoring behavior after any future authoring API changes.
+- Future response/refraction/displacement tuning behavior.
 
 ## Legacy Waterways Reference
 
@@ -203,6 +221,8 @@ Record any evidence that the reported issue may be expected behavior, stale data
 ## Sources
 
 - `addons/waterways/docs/roadmaps/runtime-ripple-simulation-roadmap.md`: primary roadmap for this feature folder.
+- `addons/waterways/docs/spec-driven/features/river-ripples/phase9-authoring-api-plan.md`: Phase 9 script/resource-first authoring/API contract produced from the industry research pass and adversarial review.
+- `addons/waterways/docs/spec-driven/features/river-ripples/phase10-editor-polish-plan.md`: Deferred native editor polish plan for inspector buttons, undo-aware actions, save dialogs, and editor-safe preview helpers.
 - `addons/waterways/docs/research/river-research-citations.md`: shared works-cited index for Waterways river behavior, hydrology, flow-map, shader-water, and production-reference sources.
 - `addons/waterways/docs/spec-driven/00-constitution.md`: project-level development constraints.
 - `addons/waterways/docs/spec-driven/01-workflow.md`: feature-folder workflow and handoff naming convention.
