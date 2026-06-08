@@ -4,6 +4,8 @@ Waterways is a Godot 4 add-on for authoring spline-based rivers, baking flow-rel
 
 The current architecture is built around one key idea: the bake stores stable data fields, while the visible water shader turns those fields into animated water. A "flow map" in this project is therefore more than a single direction texture. It is a small data package containing flow, support, terrain contact, bank response, obstacle, foam, grade, and bend information.
 
+Runtime ripples follow the same separation rule. They are transient visual surface detail owned by runtime nodes and editor tooling, not new bake data, WaterSystem data, source signatures, or buoyancy input.
+
 ## High-Level Flow
 
 ```text
@@ -21,6 +23,16 @@ Per-river RiverBakeData textures
                     |
                     v
              WaterSystemBakeData for runtime flow, height, and coverage
+```
+
+```text
+WaterRippleEmitter nodes
+        |
+        v
+WaterRippleField transient simulation, impulse, and boundary textures
+        |
+        +--> visible river shader ripple-normal overlay
+        +--> ripple debug views and editor gizmos
 ```
 
 ## Main Components
@@ -68,9 +80,23 @@ This resource is what makes the river bake reproducible and stale-data-aware. If
 
 This shader is where most visual tuning lives.
 
+### Runtime Ripple Layer
+
+`water_ripple_field.gd` and `water_ripple_emitter.gd` add optional localized surface disturbance without changing authored river flow. A `WaterRippleField` is a bounded simulation domain. It owns transient ping-pong ripple textures, an impulse texture, a mesh-footprint boundary mask, emitter caps, target ownership, and cleanup. A `WaterRippleEmitter` is an authorable disturbance source. It can emit pulse, continuous, one-shot, or moving impulses into a field through an explicit field path, ancestor lookup, or group routing.
+
+The ripple field uses one production mapping contract: `world_to_ripple_uv`. Emitters, simulation passes, boundary masks, debug views, and river shader sampling all use that same transform, so world-space impulses land at the same texture positions the shader samples. The first implementation supports axis-aligned world bounds; broader transformed or camera-following fields remain future work.
+
+Runtime ripple simulation is GPU-owned through transient viewport textures. Normal gameplay does not read those textures back to the CPU. Boundary masks are generated from intended target river mesh footprints so ripples fade or reject outside the configured water shape instead of flowing through dry gaps, banks, or disconnected channels.
+
+`river_manager.gd` owns the material boundary. Runtime fields apply only planned `i_ripple_*` shader uniforms to intended generated river targets, using owner-scoped material duplication and restore behavior. Clearing, disabling, owner exit, or river tree exit restores the original visible/debug material state and avoids cross-talk between unrelated rivers.
+
+`river.gdshader` treats ripples as a guarded overlay. Disabled or missing textures are neutral, and the accepted first visible path adds ripple-derived normal response without replacing flow animation, pillows, wakes, eddy-line visuals, WaterSystem flow, or buoyancy. Refraction and displacement ripple controls remain reserved until separately tuned and validated.
+
 ### River Debug Shader And Debug Views
 
 `shaders/river_debug.gdshader` and `gui/debug_view_menu.gd` expose the internal data and derived masks as editor views. These are important because many baked channels are not meant to be read directly as final visuals. Debug views make it possible to inspect raw source masks, shader gates, and final visual masks separately.
+
+The ripple debug path adds views for raw ripple height, impulse/contact, boundary mask, and visible ripple influence. These views inspect runtime ripple state without making it part of the river bake or WaterSystem map.
 
 ### WaterSystem
 
@@ -217,8 +243,20 @@ The visible river shader computes the final surface behavior every frame from ba
 - wake albedo breakup
 - depth color
 - transparency, refraction, and edge fade
+- optional runtime ripple normal overlay from transient field textures
 
 Changing only these visual/material controls usually does not require a river rebake or WaterSystem regeneration.
+
+## Runtime Ripple State
+
+Runtime ripples are intentionally not baked. Their state is rebuilt from scene nodes and runtime textures:
+
+- `WaterRippleField` stores editable scene settings such as `enabled`, `resolution`, `world_bounds`, target river paths or groups, boundary policy, damping, propagation, emitter cap, ripple strength, normal strength, height fade, and boundary fade.
+- `WaterRippleEmitter` stores editable scene settings such as target field routing, emitter mode, radius, intensity, falloff, pulse rate, moving emission distance, emit-on-ready behavior, enabled state, and priority.
+- `WaterRippleFieldPreset` and `WaterRippleEmitterPreset` are type-specific value resources. Applying a preset copies approved authoring values into ordinary editable properties. Capturing creates a fresh in-memory resource. Presets are not live profile links and do not store runtime textures, target material state, river bakes, WaterSystem data, source signatures, refraction/displacement tuning, or buoyancy behavior.
+- Phase 10 editor tooling adds non-runtime helpers: read-only inspector status rows, transient preset selectors, undo-aware Apply actions, capture/save controls with explicit editor-owned `.tres` paths, visual field/emitter gizmos, emitter radius and moving-threshold handles, field `world_bounds` face handles, and an editor-only projected boundary preview.
+
+The editor/runtime boundary is strict. Ordinary inspector status, selector, capture, preview, and gizmo-viewing paths must not call runtime rebuild, reset, emission, RiverManager material, boundary generation, source-signature, bake, WaterSystem, or buoyancy paths. Live-scene runtime buttons remain deferred until a separate bridge proves how edited-scene nodes map to running-scene instances.
 
 ## WaterSystem Bake
 
@@ -279,6 +317,7 @@ The WaterSystem flow shader samples the per-river flow, distance/pressure, terra
 - eddy-line visual accents
 - roughness/specular/normal response for turbulent features
 - optional pillow height displacement
+- optional runtime ripple normal detail from transient fields
 
 ### Debugging And Review
 
@@ -292,7 +331,20 @@ The WaterSystem flow shader samples the per-river flow, distance/pressure, terra
 - pillow source and visual masks
 - wake/eddy source and visual masks
 - gate-level wake/eddy diagnostics
+- ripple raw height, impulse/contact, boundary mask, and visible influence
+- editor gizmos for ripple field bounds, target routing, emitter radius/moving thresholds, field bounds handles, and projected boundary previews
 - system-map validation paths
+
+### Runtime Ripples And Authoring
+
+- `WaterRippleField` and `WaterRippleEmitter` Add Node script classes with icons
+- no-readback GPU feedback simulation through transient runtime textures
+- mesh-footprint boundary masks in ripple-field space
+- owner-scoped `i_ripple_*` material application and restore through `RiverManager`
+- type-specific field and emitter preset resources
+- built-in value-starter presets for common local ripple setups
+- in-memory preset apply/capture API
+- editor-only inspector status, transient Apply controls, capture/save workflow, gizmos, handles, and boundary preview
 
 ### Runtime System Integration
 
@@ -314,5 +366,6 @@ Use these boundaries when planning changes:
 - Resource layout changes: update `RiverBakeData`, shader uniforms, debug views, validation, and saved bakes together.
 - Final/physics flow changes: update visible river flow, debug flow, `system_flow.gdshader`, WaterSystem generation, saved WaterSystem bakes, and runtime validation together.
 - Visual wake/eddy accents: keep separate from real reverse/circulating flow unless a final-flow milestone explicitly scopes WaterSystem and runtime behavior too.
+- Runtime ripple changes: keep transient textures, editor helpers, `i_ripple_*` uniforms, and field/emitter presets separate from river bakes, WaterSystem bakes, source signatures, final flow, and buoyancy unless a later physics-facing plan explicitly scopes those systems.
 
 This separation keeps visuals, baked data, and runtime physics from drifting accidentally.
