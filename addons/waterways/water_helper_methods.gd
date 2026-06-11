@@ -427,6 +427,59 @@ static func neutralize_unused_uv2_atlas_flow_rg(image: Image, uv2_sides: int, oc
 				image.set_pixelv(pixel_position, color)
 
 
+static func synchronize_uv2_logical_edge_bands(image: Image, uv2_sides: int, occupied_steps: int, content_rect: Rect2i = Rect2i(), band_depth: int = 1) -> void:
+	if image == null or image.is_empty():
+		return
+	var source_rect := _clamp_image_rect(image, content_rect)
+	if source_rect.size.x <= 0 or source_rect.size.y <= 0:
+		return
+	var side: int = maxi(1, uv2_sides)
+	if side <= 1 and occupied_steps > 1:
+		side = calculate_side(occupied_steps)
+	var total_tiles := side * side
+	var safe_occupied_steps: int = clampi(occupied_steps, 0, total_tiles)
+	var safe_band_depth := maxi(0, band_depth)
+	if safe_occupied_steps <= 1 or safe_band_depth <= 0:
+		return
+	for step_index in range(safe_occupied_steps - 1):
+		var from_tile := get_uv2_atlas_tile_rect(step_index, side, source_rect)
+		var to_tile := get_uv2_atlas_tile_rect(step_index + 1, side, source_rect)
+		_synchronize_uv2_longitudinal_edge_band(image, from_tile, to_tile, safe_band_depth)
+
+
+static func _synchronize_uv2_longitudinal_edge_band(image: Image, from_tile: Rect2i, to_tile: Rect2i, band_depth: int) -> void:
+	if from_tile.size.x <= 0 or from_tile.size.y <= 0 or to_tile.size.x <= 0 or to_tile.size.y <= 0:
+		return
+	var max_depth := mini(band_depth, mini(from_tile.size.y, to_tile.size.y))
+	var sample_count := maxi(from_tile.size.x, to_tile.size.x)
+	for depth in max_depth:
+		var from_y := from_tile.position.y + from_tile.size.y - 1 - depth
+		var to_y := to_tile.position.y + depth
+		for sample_index in sample_count:
+			var t := _edge_sample_t(sample_index, sample_count)
+			var from_x := _edge_lerp_pixel(from_tile.position.x, from_tile.size.x, t)
+			var to_x := _edge_lerp_pixel(to_tile.position.x, to_tile.size.x, t)
+			var from_pixel := Vector2i(from_x, from_y)
+			var to_pixel := Vector2i(to_x, to_y)
+			var average := _average_color(image.get_pixelv(from_pixel), image.get_pixelv(to_pixel))
+			image.set_pixelv(from_pixel, average)
+			image.set_pixelv(to_pixel, average)
+
+
+static func _edge_sample_t(sample_index: int, sample_count: int) -> float:
+	if sample_count <= 1:
+		return 0.5
+	return (float(sample_index) + 0.5) / float(sample_count)
+
+
+static func _edge_lerp_pixel(position: int, size: int, t: float) -> int:
+	return position + clampi(int(floor(t * float(size))), 0, maxi(size - 1, 0))
+
+
+static func _average_color(a: Color, b: Color) -> Color:
+	return Color((a.r + b.r) * 0.5, (a.g + b.g) * 0.5, (a.b + b.b) * 0.5, (a.a + b.a) * 0.5)
+
+
 static func get_decoded_flow_vector_stats(image: Image, rect: Rect2i = Rect2i(), near_neutral_threshold: float = FLOW_VECTOR_NEAR_NEUTRAL_THRESHOLD, alpha_threshold: float = -1.0) -> Dictionary:
 	var sample_rect := _clamp_image_rect(image, rect)
 	if sample_rect.size.x <= 0 or sample_rect.size.y <= 0:
@@ -1146,10 +1199,8 @@ static func _get_uv2_world_sample(context: Dictionary, image_width: int, image_h
 	var world_verts: PackedVector3Array = context.get("world_verts", PackedVector3Array())
 	if uv2.is_empty() or world_verts.is_empty():
 		return {}
-	var tile_width := float(image_width) / float(side)
-	var tile_height := float(image_height) / float(side)
-	var column: int = clamp(int(floor(float(x) / tile_width)), 0, side - 1)
-	var row: int = clamp(int(floor(float(y) / tile_height)), 0, side - 1)
+	var column := _uv2_atlas_axis_index(x, image_width, side)
+	var row := _uv2_atlas_axis_index(y, image_height, side)
 	var step_quad: int = column * side + row
 	if step_quad >= steps:
 		return {"outside_occupied_atlas": true}
@@ -1186,6 +1237,19 @@ static func _get_uv2_world_sample(context: Dictionary, image_width: int, image_h
 		"uv": uv_coordinate,
 		"step": step_quad
 	}
+
+
+static func _uv2_atlas_axis_index(pixel: int, axis_size: int, side: int) -> int:
+	var safe_axis_size := maxi(1, axis_size)
+	var safe_side := maxi(1, side)
+	var clamped_pixel := clampi(pixel, 0, safe_axis_size - 1)
+	for index in safe_side:
+		var start := int(floor(float(index) * float(safe_axis_size) / float(safe_side)))
+		var end := int(floor(float(index + 1) * float(safe_axis_size) / float(safe_side)))
+		end = mini(safe_axis_size, maxi(start + 1, end))
+		if clamped_pixel >= start and clamped_pixel < end:
+			return index
+	return safe_side - 1
 
 
 static func generate_collisionmap(image : Image, mesh_instance : MeshInstance3D, raycast_dist : float, raycast_layers : int, steps : int, step_length_divs : int, step_width_divs : int, river) -> Image:

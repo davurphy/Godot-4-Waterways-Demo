@@ -228,7 +228,8 @@ const RUNTIME_RIPPLE_MATERIAL_PARAMETER_SET = {
 const BAKE_CHANNEL_FLAT_EPSILON := 0.002
 const BAKE_CHANNEL_LOW_CONTRAST_EPSILON := 0.03
 const BAKE_CHANNEL_SATURATION_EPSILON := 0.02
-const RIVER_BAKE_SOURCE_SIGNATURE_VERSION := 20
+const RIVER_BAKE_SOURCE_SIGNATURE_VERSION := 23
+const RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS := 1
 const RIVER_FLOW_GENERATION_BEHAVIOR_DOWNSTREAM_BASELINE := "downstream_baseline_collision_support"
 const RIVER_FLOW_GENERATION_BEHAVIOR_CURVE_ONLY := "curve_only"
 const RIVER_FLOW_GENERATION_BEHAVIOR_LEGACY_COLLISION_ONLY := "legacy_collision_only"
@@ -1989,6 +1990,10 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 	if _uses_downstream_baseline_generation(generation_behavior) and not support_fallback_applied:
 		foam_support_reduced = _reduce_flat_occupied_foam_support(flow_foam_noise_result, crop_rect)
 		pressure_support_reduced = _reduce_flat_occupied_pressure_support(dist_pressure_result, crop_rect)
+	WaterHelperMethods.synchronize_uv2_logical_edge_bands(flow_foam_noise_result, _uv2_sides, _steps, crop_rect, RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS)
+	WaterHelperMethods.synchronize_uv2_logical_edge_bands(dist_pressure_result, _uv2_sides, _steps, crop_rect, RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS)
+	WaterHelperMethods.synchronize_uv2_logical_edge_bands(obstacle_features_result, _uv2_sides, _steps, crop_rect, RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS)
+	WaterHelperMethods.synchronize_uv2_logical_edge_bands(bank_response_features_result, _uv2_sides, _steps, crop_rect, RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS)
 	var grade_energy_stats := _get_occupied_channel_stats(dist_pressure_result, crop_rect, 2)
 	var bend_bias_stats := _get_occupied_channel_stats(dist_pressure_result, crop_rect, 3)
 	var obstacle_feature_stats := _get_obstacle_feature_stats(obstacle_features_result, crop_rect)
@@ -2146,12 +2151,12 @@ func _create_curve_grade_energy_source_image(resolution: int, uv2_sides: int, oc
 	var grade_energy_by_step := _calculate_curve_grade_energy_by_step(safe_occupied_steps)
 	var source_rect := Rect2i(0, 0, safe_resolution, safe_resolution)
 	for step_index in safe_occupied_steps:
-		var grade_energy := RIVER_NEUTRAL_GRADE_ENERGY_VALUE
-		if step_index < grade_energy_by_step.size():
-			grade_energy = clampf(float(grade_energy_by_step[step_index]), 0.0, 1.0)
 		var tile_rect := WaterHelperMethods.get_uv2_atlas_tile_rect(step_index, side, source_rect)
-		var color := Color(grade_energy, grade_energy, grade_energy, 1.0)
 		for y in tile_rect.size.y:
+			var local_y := _tile_axis_vertex_aligned_ratio(y, tile_rect.size.y)
+			var step_progress := float(step_index) + local_y
+			var grade_energy := clampf(_sample_step_value_linear(grade_energy_by_step, step_progress, RIVER_NEUTRAL_GRADE_ENERGY_VALUE), 0.0, 1.0)
+			var color := Color(grade_energy, grade_energy, grade_energy, 1.0)
 			for x in tile_rect.size.x:
 				image.set_pixel(tile_rect.position.x + x, tile_rect.position.y + y, color)
 	return image
@@ -2194,20 +2199,41 @@ func _create_curve_bend_bias_source_image(resolution: int, uv2_sides: int, occup
 	var bend_bias_by_step := _calculate_curve_bend_bias_by_step(safe_occupied_steps)
 	var source_rect := Rect2i(0, 0, safe_resolution, safe_resolution)
 	for step_index in safe_occupied_steps:
-		var signed_outside_side := 0.0
-		if step_index < bend_bias_by_step.size():
-			signed_outside_side = clampf(float(bend_bias_by_step[step_index]), -1.0, 1.0)
 		var tile_rect := WaterHelperMethods.get_uv2_atlas_tile_rect(step_index, side, source_rect)
-		var safe_tile_width := maxi(1, tile_rect.size.x)
 		for y in tile_rect.size.y:
+			var local_y := _tile_axis_vertex_aligned_ratio(y, tile_rect.size.y)
+			var step_progress := float(step_index) + local_y
+			var signed_outside_side := clampf(_sample_step_value_linear(bend_bias_by_step, step_progress, 0.0), -1.0, 1.0)
 			for x in tile_rect.size.x:
-				var local_x := (float(x) + 0.5) / float(safe_tile_width)
+				var local_x := _tile_axis_vertex_aligned_ratio(x, tile_rect.size.x)
 				var side_from_river_right := 1.0 - 2.0 * local_x
 				var signed_bend_bias := clampf(signed_outside_side * side_from_river_right, -1.0, 1.0)
 				var packed_bend_bias := signed_bend_bias * 0.5 + 0.5
 				var color := Color(packed_bend_bias, packed_bend_bias, packed_bend_bias, 1.0)
 				image.set_pixel(tile_rect.position.x + x, tile_rect.position.y + y, color)
 	return image
+
+
+func _tile_axis_vertex_aligned_ratio(pixel_index: int, axis_size: int) -> float:
+	if axis_size <= 1:
+		return 0.5
+	return clampf(float(pixel_index) / float(axis_size - 1), 0.0, 1.0)
+
+
+func _sample_step_value_linear(values: Array, step_progress: float, fallback: float) -> float:
+	if values.is_empty():
+		return fallback
+	if values.size() == 1:
+		return float(values[0])
+	if step_progress <= 0.0:
+		return float(values[0])
+	var last_index := values.size() - 1
+	if step_progress >= float(last_index):
+		return float(values[last_index])
+	var left_index := clampi(int(floor(step_progress)), 0, last_index - 1)
+	var right_index := left_index + 1
+	var t := clampf(step_progress - float(left_index), 0.0, 1.0)
+	return lerpf(float(values[left_index]), float(values[right_index]), t)
 
 
 func _calculate_curve_bend_bias_by_step(step_count: int) -> Array:
@@ -3047,6 +3073,7 @@ func _write_bake_data(texture_size: Vector2i, source_texture_size: Vector2i, con
 		"obstacle_features_uses_terrain_protrusion_context": true,
 		"obstacle_features_uses_grade_energy_context": true,
 		"obstacle_features_pillow_uses_contact_anchor": true,
+		"filtered_feature_edge_sync_depth_pixels": RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS,
 		"obstacle_feature_stats": obstacle_feature_stats.duplicate(true),
 		"terrain_contact_features_baked": true,
 		"terrain_contact_features_algorithm": "uv2_world_height_delta_hterrain_first_physics_fallback_debug_only",
@@ -3082,7 +3109,7 @@ func _write_bake_data(texture_size: Vector2i, source_texture_size: Vector2i, con
 		"blank_support_foam_value": RIVER_BLANK_SUPPORT_VALUE,
 		"blank_support_dist_pressure": Vector2(RIVER_BLANK_SUPPORT_VALUE, RIVER_BLANK_SUPPORT_VALUE),
 		"grade_energy_baked": true,
-		"grade_energy_algorithm": "curve_height_drop_per_uv2_tile",
+		"grade_energy_algorithm": "curve_height_drop_vertex_aligned_longitudinal_lerp",
 		"grade_energy_lookahead_tiles": RIVER_GRADE_ENERGY_LOOKAHEAD_TILES,
 		"grade_energy_smooth_radius_tiles": RIVER_GRADE_ENERGY_SMOOTH_RADIUS_TILES,
 		"grade_energy_reference_grade": RIVER_GRADE_ENERGY_REFERENCE_GRADE,
@@ -3090,7 +3117,7 @@ func _write_bake_data(texture_size: Vector2i, source_texture_size: Vector2i, con
 		"grade_energy_stats": grade_energy_stats.duplicate(true),
 		"neutral_bend_bias_feature_value": RIVER_NEUTRAL_BEND_BIAS_VALUE,
 		"bend_bias_baked": true,
-		"bend_bias_algorithm": "curve_planar_curvature_cross_river_bias",
+		"bend_bias_algorithm": "curve_planar_curvature_vertex_aligned_longitudinal_lerp_cross_river_bias",
 		"bend_bias_sign_convention": "dist_pressure.a packed signed bias; values above 0.5 mean outside bend faster, below 0.5 mean inside bend slower",
 		"bend_bias_lookahead_tiles": RIVER_BEND_BIAS_LOOKAHEAD_TILES,
 		"bend_bias_smooth_radius_tiles": RIVER_BEND_BIAS_SMOOTH_RADIUS_TILES,
@@ -3217,6 +3244,8 @@ func get_bake_source_signature() -> Dictionary:
 		"terrain_contact_hterrain_source_confidence": _signature_float(RIVER_TERRAIN_HTERRAIN_SOURCE_CONFIDENCE),
 		"terrain_contact_physics_source_confidence": _signature_float(RIVER_TERRAIN_PHYSICS_SOURCE_CONFIDENCE),
 		"terrain_contact_source_selection_epsilon": _signature_float(RIVER_TERRAIN_SOURCE_SELECTION_EPSILON),
+		"uv2_world_sample_tile_classifier": "floor_partition_match_tile_rect",
+		"filtered_feature_edge_sync_depth_pixels": RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS,
 		"bank_response_probe_tiles": _signature_float(RIVER_BANK_RESPONSE_PROBE_TILES),
 		"bank_response_friction_contact_weight": _signature_float(RIVER_BANK_RESPONSE_FRICTION_CONTACT_WEIGHT),
 		"bank_response_friction_shallow_weight": _signature_float(RIVER_BANK_RESPONSE_FRICTION_SHALLOW_WEIGHT),
@@ -3227,10 +3256,13 @@ func get_bake_source_signature() -> Dictionary:
 		"bank_response_inside_bend_full": _signature_float(RIVER_BANK_RESPONSE_INSIDE_BEND_FULL),
 		"blank_support_value": _signature_float(RIVER_BLANK_SUPPORT_VALUE),
 		"neutral_grade_energy_value": _signature_float(RIVER_NEUTRAL_GRADE_ENERGY_VALUE),
+		"grade_energy_source_sampling": "vertex_aligned_longitudinal_lerp",
 		"grade_energy_lookahead_tiles": _signature_float(RIVER_GRADE_ENERGY_LOOKAHEAD_TILES),
 		"grade_energy_smooth_radius_tiles": RIVER_GRADE_ENERGY_SMOOTH_RADIUS_TILES,
 		"grade_energy_reference_grade": _signature_float(RIVER_GRADE_ENERGY_REFERENCE_GRADE),
 		"neutral_bend_bias_value": _signature_float(RIVER_NEUTRAL_BEND_BIAS_VALUE),
+		"bend_bias_source_sampling": "vertex_aligned_longitudinal_lerp",
+		"bend_bias_lateral_sampling": "vertex_aligned_cross_river_ratio",
 		"bend_bias_lookahead_tiles": _signature_float(RIVER_BEND_BIAS_LOOKAHEAD_TILES),
 		"bend_bias_smooth_radius_tiles": RIVER_BEND_BIAS_SMOOTH_RADIUS_TILES,
 		"bend_bias_reference_radians": _signature_float(RIVER_BEND_BIAS_REFERENCE_RADIANS),
@@ -3449,6 +3481,7 @@ func _get_bake_settings(source_texture_size: Vector2i, texture_size: Vector2i, c
 		"flat_foam_support_value": RIVER_FLAT_FOAM_SUPPORT_VALUE,
 		"flat_pressure_support_value": RIVER_FLAT_PRESSURE_SUPPORT_VALUE,
 		"near_neutral_threshold": WaterHelperMethods.FLOW_VECTOR_NEAR_NEUTRAL_THRESHOLD,
+		"filtered_feature_edge_sync_depth_pixels": RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS,
 		"uv2_sides": _uv2_sides,
 		"source_texture_size": source_texture_size,
 		"texture_size": texture_size,
