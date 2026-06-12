@@ -1881,7 +1881,13 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 	var generation_behavior := _sanitize_bake_generation_behavior(bake_generation_behavior)
 	var image := Image.create(int(flowmap_resolution), int(flowmap_resolution), true, Image.FORMAT_RGB8)
 	image.fill(Color(0.0, 0.0, 0.0))
-	var collision_stats := _get_collision_map_stats(image)
+	# The image is guaranteed blank here; don't pay a full-resolution pixel scan
+	# for stats that are zero by construction.
+	var collision_stats := {
+		"hit_pixel_count": 0,
+		"total_pixel_count": int(flowmap_resolution) * int(flowmap_resolution),
+		"hit_pixel_percent": 0.0
+	}
 	var support_fallback_reason := ""
 	var collision_probe_skipped := false
 	if _is_curve_only_generation(generation_behavior):

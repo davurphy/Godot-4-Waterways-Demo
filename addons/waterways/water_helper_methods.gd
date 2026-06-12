@@ -394,9 +394,7 @@ static func create_downstream_baseline_flow_image(resolution: int, uv2_sides: in
 	var source_rect := Rect2i(0, 0, safe_resolution, safe_resolution)
 	for step_index in safe_occupied_steps:
 		var tile_rect := get_uv2_atlas_tile_rect(step_index, safe_side, source_rect)
-		for y in tile_rect.size.y:
-			for x in tile_rect.size.x:
-				image.set_pixel(tile_rect.position.x + x, tile_rect.position.y + y, downstream_color)
+		image.fill_rect(tile_rect, downstream_color)
 	return image
 
 
