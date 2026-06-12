@@ -516,6 +516,9 @@ var _selected_shader : int = SHADER_TYPES.WATER
 var _uv2_sides : int
 var _suppress_property_change_notifications := false
 var _flowmap_bake_in_progress := false
+# Tracks the live bake renderer so a mid-bake scene close can free it and
+# unstick _flowmap_bake_in_progress (the coroutine never resumes to clean up).
+var _flowmap_bake_renderer: Node = null
 var _runtime_ripple_owner_id := 0
 var _runtime_ripple_owner_node: Node = null
 var _runtime_ripple_original_material: ShaderMaterial = null
@@ -1005,6 +1008,19 @@ func _enter_tree() -> void:
 
 func _exit_tree() -> void:
 	_restore_runtime_ripple_material_state()
+	_abort_flowmap_bake_on_tree_exit()
+
+
+func _abort_flowmap_bake_on_tree_exit() -> void:
+	# A scene close mid-bake parks the bake coroutine forever, so the in-progress
+	# flag would otherwise stay set and swallow every later bake_texture() request.
+	if not _flowmap_bake_in_progress and _flowmap_bake_renderer == null:
+		return
+	_flowmap_bake_in_progress = false
+	var renderer := _flowmap_bake_renderer
+	_flowmap_bake_renderer = null
+	if renderer != null and is_instance_valid(renderer):
+		_cleanup_bake_renderer(renderer)
 
 
 func _get_configuration_warnings() -> PackedStringArray:
@@ -1960,6 +1976,7 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 		return
 
 	self.add_child(renderer_instance)
+	_flowmap_bake_renderer = renderer_instance
 
 	var flow_pressure_blur_amount = 0.04 / float(_uv2_sides) * flowmap_resolution
 	var dilate_amount = baking_dilate / float(_uv2_sides) 
@@ -2270,7 +2287,9 @@ func _filter_output_is_valid(texture: Texture2D, label: String, renderer_instanc
 
 
 func _cleanup_bake_renderer(renderer_instance: Node) -> void:
-	if renderer_instance == null:
+	if renderer_instance == _flowmap_bake_renderer:
+		_flowmap_bake_renderer = null
+	if renderer_instance == null or not is_instance_valid(renderer_instance):
 		return
 	if renderer_instance.get_parent() != null:
 		renderer_instance.get_parent().remove_child(renderer_instance)
