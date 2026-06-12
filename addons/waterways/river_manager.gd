@@ -228,7 +228,7 @@ const RUNTIME_RIPPLE_MATERIAL_PARAMETER_SET = {
 const BAKE_CHANNEL_FLAT_EPSILON := 0.002
 const BAKE_CHANNEL_LOW_CONTRAST_EPSILON := 0.03
 const BAKE_CHANNEL_SATURATION_EPSILON := 0.02
-const RIVER_BAKE_SOURCE_SIGNATURE_VERSION := 23
+const RIVER_BAKE_SOURCE_SIGNATURE_VERSION := 24
 const RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS := 1
 const RIVER_FLOW_GENERATION_BEHAVIOR_DOWNSTREAM_BASELINE := "downstream_baseline_collision_support"
 const RIVER_FLOW_GENERATION_BEHAVIOR_CURVE_ONLY := "curve_only"
@@ -282,7 +282,9 @@ const RIVER_TERRAIN_CONTACT_RAYCAST_UP_OFFSET := 0.75
 const RIVER_TERRAIN_CONTACT_RAYCAST_DOWN_DISTANCE := 1.50
 const RIVER_TERRAIN_HTERRAIN_SOURCE_CONFIDENCE := 1.0
 const RIVER_TERRAIN_PHYSICS_SOURCE_CONFIDENCE := 0.5
-const RIVER_TERRAIN_SOURCE_SELECTION_EPSILON := 0.02
+const RIVER_TERRAIN_CONTACT_SUPERSAMPLES := 2
+const RIVER_TERRAIN_CONTACT_SOURCE_BLEND_BAND := 0.15
+const RIVER_TERRAIN_CONTACT_EDGE_SMOOTH_PASSES := 1
 const RIVER_BANK_RESPONSE_PROBE_TILES := 0.20
 const RIVER_BANK_RESPONSE_FRICTION_CONTACT_WEIGHT := 0.85
 const RIVER_BANK_RESPONSE_FRICTION_SHALLOW_WEIGHT := 0.65
@@ -1742,6 +1744,10 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 	_uv2_sides = WaterHelperMethods.calculate_side(_steps)
 	
 	var margin := int(round(float(flowmap_resolution) / float(_uv2_sides)))
+	# Content columns plus one margin band each side. Filter passes clamp
+	# offset reads to the fragment's column band so atlas-adjacent (but
+	# world-distant) tiles cannot bleed into each other.
+	var bake_atlas_columns := float(_uv2_sides + 2)
 	var downstream_baseline_with_margins_texture: Texture2D = null
 	if _uses_downstream_baseline_generation(generation_behavior):
 		# River flow RG is local UV flow. Flat collision interiors have no gradient,
@@ -1765,6 +1771,7 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 		self,
 		_get_terrain_contact_feature_settings()
 	)
+	WaterHelperMethods.smooth_uv2_tile_channels(terrain_contact_source, _uv2_sides, _steps, RIVER_TERRAIN_CONTACT_EDGE_SMOOTH_PASSES)
 	var terrain_contact_with_margins := WaterHelperMethods.add_margins(terrain_contact_source, flowmap_resolution, margin, _steps)
 	var terrain_contact_with_margins_texture := ImageTexture.create_from_image(terrain_contact_with_margins)
 	var grade_energy_with_margins := WaterHelperMethods.add_margins(_create_curve_grade_energy_source_image(int(flowmap_resolution), _uv2_sides, _steps), flowmap_resolution, margin, _steps)
@@ -1823,7 +1830,8 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 			RIVER_BANK_RESPONSE_OUTSIDE_BEND_START,
 			RIVER_BANK_RESPONSE_OUTSIDE_BEND_FULL,
 			RIVER_BANK_RESPONSE_INSIDE_BEND_START,
-			RIVER_BANK_RESPONSE_INSIDE_BEND_FULL
+			RIVER_BANK_RESPONSE_INSIDE_BEND_FULL,
+			bake_atlas_columns
 		)
 		if not _filter_output_is_valid(early_bank_response_feature_mask_result, "bank response feature mask", renderer_instance):
 			return
@@ -1838,10 +1846,10 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 		blurred_flow_pressure_map = await renderer_instance.apply_vertical_blur(flow_pressure_map, flow_pressure_blur_amount, flowmap_resolution)
 		if not _filter_output_is_valid(blurred_flow_pressure_map, "blurred flow pressure", renderer_instance):
 			return
-		dilated_texture = await renderer_instance.apply_dilate(collision_with_margins, dilate_amount, 0.0, flowmap_resolution)
+		dilated_texture = await renderer_instance.apply_dilate(collision_with_margins, dilate_amount, 0.0, flowmap_resolution, null, bake_atlas_columns)
 		if not _filter_output_is_valid(dilated_texture, "dilated collision map", renderer_instance):
 			return
-		var normal_map = await renderer_instance.apply_normal(dilated_texture, flowmap_resolution)
+		var normal_map = await renderer_instance.apply_normal(dilated_texture, flowmap_resolution, bake_atlas_columns)
 		if not _filter_output_is_valid(normal_map, "normal map", renderer_instance):
 			return
 		if _uses_obstacle_avoidance_generation(generation_behavior) and downstream_baseline_with_margins_texture != null:
@@ -1849,14 +1857,14 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 			var steering_normal_map: Texture2D = normal_map
 			var steering_dilate_amount := maxf(dilate_amount, RIVER_OBSTACLE_AVOIDANCE_SDF_RADIUS_TILES / float(_uv2_sides))
 			if steering_dilate_amount > dilate_amount + SOURCE_SIGNATURE_FLOAT_STEP:
-				steering_support_map = await renderer_instance.apply_dilate(collision_with_margins, steering_dilate_amount, 0.0, flowmap_resolution)
+				steering_support_map = await renderer_instance.apply_dilate(collision_with_margins, steering_dilate_amount, 0.0, flowmap_resolution, null, bake_atlas_columns)
 				if not _filter_output_is_valid(steering_support_map, "SDF steering support map", renderer_instance):
 					return
 				var steering_blur_amount := RIVER_OBSTACLE_AVOIDANCE_SDF_BLUR_TILES / float(_uv2_sides) * flowmap_resolution
-				steering_support_map = await renderer_instance.apply_blur(steering_support_map, steering_blur_amount, flowmap_resolution)
+				steering_support_map = await renderer_instance.apply_blur(steering_support_map, steering_blur_amount, flowmap_resolution, bake_atlas_columns)
 				if not _filter_output_is_valid(steering_support_map, "blurred SDF steering support map", renderer_instance):
 					return
-				steering_normal_map = await renderer_instance.apply_normal(steering_support_map, flowmap_resolution)
+				steering_normal_map = await renderer_instance.apply_normal(steering_support_map, flowmap_resolution, bake_atlas_columns)
 				if not _filter_output_is_valid(steering_normal_map, "SDF steering normal map", renderer_instance):
 					return
 			var upstream_lookahead_uv := RIVER_OBSTACLE_AVOIDANCE_UPSTREAM_LOOKAHEAD_TILES / (float(_uv2_sides) + 2.0)
@@ -1895,7 +1903,8 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 				RIVER_OBSTACLE_FEATURE_PILLOW_SUPPORT_FULL,
 				RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_SEARCH_TILES / feature_uv_denominator,
 				RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_GATE_START,
-				RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_GATE_FULL
+				RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_GATE_FULL,
+				bake_atlas_columns
 			)
 			if not _filter_output_is_valid(obstacle_feature_mask_result, "obstacle feature mask", renderer_instance):
 				return
@@ -1912,11 +1921,12 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 				RIVER_OBSTACLE_AVOIDANCE_UPSTREAM_STRENGTH,
 				RIVER_OBSTACLE_AVOIDANCE_MIN_DOWNSTREAM_ALIGNMENT,
 				RIVER_OBSTACLE_AVOIDANCE_BANK_FRICTION_SUPPRESSION,
-				RIVER_OBSTACLE_AVOIDANCE_HARD_BOUNDARY_STEERING_GATE
+				RIVER_OBSTACLE_AVOIDANCE_HARD_BOUNDARY_STEERING_GATE,
+				bake_atlas_columns
 			)
 			if not _filter_output_is_valid(obstacle_avoidance_flow_map, "obstacle avoidance flow map", renderer_instance):
 				return
-			var blurred_obstacle_avoidance_flow_map = await renderer_instance.apply_blur(obstacle_avoidance_flow_map, flowmap_blur_amount, flowmap_resolution)
+			var blurred_obstacle_avoidance_flow_map = await renderer_instance.apply_blur(obstacle_avoidance_flow_map, flowmap_blur_amount, flowmap_resolution, bake_atlas_columns)
 			if not _filter_output_is_valid(blurred_obstacle_avoidance_flow_map, "blurred obstacle avoidance flow map", renderer_instance):
 				return
 			primary_flow_map = blurred_obstacle_avoidance_flow_map
@@ -1925,14 +1935,14 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 			var flow_map = await renderer_instance.apply_normal_to_flow(normal_map, flowmap_resolution)
 			if not _filter_output_is_valid(flow_map, "flow map", renderer_instance):
 				return
-			var blurred_flow_map = await renderer_instance.apply_blur(flow_map, flowmap_blur_amount, flowmap_resolution)
+			var blurred_flow_map = await renderer_instance.apply_blur(flow_map, flowmap_blur_amount, flowmap_resolution, bake_atlas_columns)
 			if not _filter_output_is_valid(blurred_flow_map, "blurred flow map", renderer_instance):
 				return
 			primary_flow_map = blurred_flow_map
 		var foam_map = await renderer_instance.apply_foam(dilated_texture, foam_offset_amount, baking_foam_cutoff, flowmap_resolution)
 		if not _filter_output_is_valid(foam_map, "foam map", renderer_instance):
 			return
-		blurred_foam_map = await renderer_instance.apply_blur(foam_map, foam_blur_amount, flowmap_resolution)
+		blurred_foam_map = await renderer_instance.apply_blur(foam_map, foam_blur_amount, flowmap_resolution, bake_atlas_columns)
 		if not _filter_output_is_valid(blurred_foam_map, "blurred foam map", renderer_instance):
 			return
 	if downstream_baseline_with_margins_texture != null and primary_flow_map == null:
@@ -1962,7 +1972,8 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 			RIVER_BANK_RESPONSE_OUTSIDE_BEND_START,
 			RIVER_BANK_RESPONSE_OUTSIDE_BEND_FULL,
 			RIVER_BANK_RESPONSE_INSIDE_BEND_START,
-			RIVER_BANK_RESPONSE_INSIDE_BEND_FULL
+			RIVER_BANK_RESPONSE_INSIDE_BEND_FULL,
+			bake_atlas_columns
 		)
 		if not _filter_output_is_valid(bank_response_feature_mask_result, "bank response feature mask", renderer_instance):
 			return
@@ -2114,7 +2125,8 @@ func _get_terrain_contact_feature_settings() -> Dictionary:
 		"raycast_down_distance": RIVER_TERRAIN_CONTACT_RAYCAST_DOWN_DISTANCE,
 		"hterrain_source_confidence": RIVER_TERRAIN_HTERRAIN_SOURCE_CONFIDENCE,
 		"physics_source_confidence": RIVER_TERRAIN_PHYSICS_SOURCE_CONFIDENCE,
-		"source_selection_epsilon": RIVER_TERRAIN_SOURCE_SELECTION_EPSILON
+		"contact_supersamples": RIVER_TERRAIN_CONTACT_SUPERSAMPLES,
+		"source_blend_band": RIVER_TERRAIN_CONTACT_SOURCE_BLEND_BAND
 	}
 
 
@@ -3076,7 +3088,7 @@ func _write_bake_data(texture_size: Vector2i, source_texture_size: Vector2i, con
 		"filtered_feature_edge_sync_depth_pixels": RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS,
 		"obstacle_feature_stats": obstacle_feature_stats.duplicate(true),
 		"terrain_contact_features_baked": true,
-		"terrain_contact_features_algorithm": "uv2_world_height_delta_hterrain_first_physics_fallback_debug_only",
+		"terrain_contact_features_algorithm": "uv2_world_height_delta_supersampled_blended_sources_debug_only",
 		"terrain_contact_features_neutral_value": Color(0.0, 0.0, 0.0, 0.0),
 		"terrain_contact_full_band": RIVER_TERRAIN_CONTACT_FULL_BAND,
 		"terrain_contact_fade_distance": RIVER_TERRAIN_CONTACT_FADE_DISTANCE,
@@ -3088,7 +3100,10 @@ func _write_bake_data(texture_size: Vector2i, source_texture_size: Vector2i, con
 		"terrain_contact_raycast_down_distance": RIVER_TERRAIN_CONTACT_RAYCAST_DOWN_DISTANCE,
 		"terrain_contact_hterrain_source_confidence": RIVER_TERRAIN_HTERRAIN_SOURCE_CONFIDENCE,
 		"terrain_contact_physics_source_confidence": RIVER_TERRAIN_PHYSICS_SOURCE_CONFIDENCE,
-		"terrain_contact_source_selection_epsilon": RIVER_TERRAIN_SOURCE_SELECTION_EPSILON,
+		"terrain_contact_supersamples": RIVER_TERRAIN_CONTACT_SUPERSAMPLES,
+		"terrain_contact_source_blend_band": RIVER_TERRAIN_CONTACT_SOURCE_BLEND_BAND,
+		"terrain_contact_edge_smooth_passes": RIVER_TERRAIN_CONTACT_EDGE_SMOOTH_PASSES,
+		"filter_passes_column_clamped": true,
 		"terrain_contact_feature_stats": terrain_contact_feature_stats.duplicate(true),
 		"bank_response_features_baked": true,
 		"bank_response_features_algorithm": "terrain_contact_depth_bend_grade_flow_semantic_response_debug_only",
@@ -3243,8 +3258,11 @@ func get_bake_source_signature() -> Dictionary:
 		"terrain_contact_raycast_down_distance": _signature_float(RIVER_TERRAIN_CONTACT_RAYCAST_DOWN_DISTANCE),
 		"terrain_contact_hterrain_source_confidence": _signature_float(RIVER_TERRAIN_HTERRAIN_SOURCE_CONFIDENCE),
 		"terrain_contact_physics_source_confidence": _signature_float(RIVER_TERRAIN_PHYSICS_SOURCE_CONFIDENCE),
-		"terrain_contact_source_selection_epsilon": _signature_float(RIVER_TERRAIN_SOURCE_SELECTION_EPSILON),
+		"terrain_contact_supersamples": RIVER_TERRAIN_CONTACT_SUPERSAMPLES,
+		"terrain_contact_source_blend_band": _signature_float(RIVER_TERRAIN_CONTACT_SOURCE_BLEND_BAND),
+		"terrain_contact_edge_smooth_passes": RIVER_TERRAIN_CONTACT_EDGE_SMOOTH_PASSES,
 		"uv2_world_sample_tile_classifier": "floor_partition_match_tile_rect",
+		"filter_passes_column_clamped": true,
 		"filtered_feature_edge_sync_depth_pixels": RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS,
 		"bank_response_probe_tiles": _signature_float(RIVER_BANK_RESPONSE_PROBE_TILES),
 		"bank_response_friction_contact_weight": _signature_float(RIVER_BANK_RESPONSE_FRICTION_CONTACT_WEIGHT),
@@ -3460,7 +3478,9 @@ func _get_bake_settings(source_texture_size: Vector2i, texture_size: Vector2i, c
 		"terrain_contact_raycast_down_distance": RIVER_TERRAIN_CONTACT_RAYCAST_DOWN_DISTANCE,
 		"terrain_contact_hterrain_source_confidence": RIVER_TERRAIN_HTERRAIN_SOURCE_CONFIDENCE,
 		"terrain_contact_physics_source_confidence": RIVER_TERRAIN_PHYSICS_SOURCE_CONFIDENCE,
-		"terrain_contact_source_selection_epsilon": RIVER_TERRAIN_SOURCE_SELECTION_EPSILON,
+		"terrain_contact_supersamples": RIVER_TERRAIN_CONTACT_SUPERSAMPLES,
+		"terrain_contact_source_blend_band": RIVER_TERRAIN_CONTACT_SOURCE_BLEND_BAND,
+		"terrain_contact_edge_smooth_passes": RIVER_TERRAIN_CONTACT_EDGE_SMOOTH_PASSES,
 		"bank_response_probe_tiles": RIVER_BANK_RESPONSE_PROBE_TILES,
 		"bank_response_friction_contact_weight": RIVER_BANK_RESPONSE_FRICTION_CONTACT_WEIGHT,
 		"bank_response_friction_shallow_weight": RIVER_BANK_RESPONSE_FRICTION_SHALLOW_WEIGHT,

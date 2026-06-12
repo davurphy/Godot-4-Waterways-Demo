@@ -14,6 +14,8 @@ uniform float outside_bend_full = 0.70;
 uniform float inside_bend_start = 0.12;
 uniform float inside_bend_full = 0.70;
 
+#include "res://addons/waterways/shaders/filters/atlas_column_clamp.gdshaderinc"
+
 const float EPSILON = 0.0001;
 
 vec2 decode_flow(vec4 color) {
@@ -41,14 +43,14 @@ vec2 boundary_gradient(vec2 uv, float offset) {
 	vec2 dx = vec2(offset, 0.0);
 	vec2 dy = vec2(0.0, offset);
 	return vec2(
-		boundary_source(uv + dx) - boundary_source(uv - dx),
+		boundary_source(atlas_column_clamp(uv + dx, uv)) - boundary_source(atlas_column_clamp(uv - dx, uv)),
 		boundary_source(uv + dy) - boundary_source(uv - dy)
 	);
 }
 
 float forward_protrusion(vec2 uv, vec2 flow_direction, float offset) {
-	float near_ahead = sample_terrain(uv + flow_direction * offset * 0.75).b;
-	float farther_ahead = sample_terrain(uv + flow_direction * offset * 1.5).b;
+	float near_ahead = sample_terrain(atlas_column_clamp(uv + flow_direction * offset * 0.75, uv)).b;
+	float farther_ahead = sample_terrain(atlas_column_clamp(uv + flow_direction * offset * 1.5, uv)).b;
 	return max(near_ahead, farther_ahead * 0.75);
 }
 

@@ -144,6 +144,10 @@ uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_l
 uniform sampler2D depth_texture : hint_depth_texture, repeat_disable, filter_nearest;
 
 const float EPSILON = 0.0001;
+// View-space depth band over which a refracted screen sample fades back to
+// the unrefracted one when it lands in front of the water plane.
+const float REFRACTION_VALID_BAND = 0.15;
+const float REFRACTION_MAX_LOD = 4.0;
 const float EDDY_CONTEXT_UPSTREAM_NEAR_TILES = 0.16;
 const float EDDY_CONTEXT_UPSTREAM_MID_TILES = 0.38;
 const float EDDY_CONTEXT_UPSTREAM_FAR_TILES = 0.70;
@@ -702,12 +706,19 @@ vec2 apply_contextual_flow_slide(vec2 flow, vec2 uv, vec2 texel_size, float hard
 	}
 	vec2 boundary_normal = boundary_gradient / gradient_magnitude;
 	vec2 boundary_tangent = normalize(vec2(-boundary_normal.y, boundary_normal.x));
-	if (dot(boundary_tangent, baseline_direction) < 0.0) {
+	float tangent_alignment = dot(boundary_tangent, baseline_direction);
+	if (tangent_alignment < 0.0) {
 		boundary_tangent = -boundary_tangent;
 	}
 	float flow_into_boundary = max(dot(baseline_direction, boundary_normal), 0.0);
 	float slide_gate = clamp(hard_boundary * smoothstep(0.03, 0.35, gradient_magnitude) * mix(0.35, 1.0, flow_into_boundary), 0.0, 1.0);
-	float slide_amount = clamp(flow_hard_boundary_slide, 0.0, 1.0) * slide_gate;
+	// The tangent sign flips across the obstacle's stagnation centerline
+	// (flow heading straight into the boundary). Sliding at full strength
+	// there shears the advected pattern in opposite lateral directions on
+	// each side of a texel-quantized line - a static jagged crack through
+	// every hard-boundary obstacle. Fade the slide out as the tangent
+	// choice becomes ambiguous; water splits smoothly at a stagnation line.
+	float slide_amount = clamp(flow_hard_boundary_slide, 0.0, 1.0) * slide_gate * smoothstep(0.0, 0.35, abs(tangent_alignment));
 	if (slide_amount <= EPSILON) {
 		return flow;
 	}
@@ -976,9 +987,17 @@ void fragment() {
 	vec3 flowx2_uvA = FlowUVW(UV, flow, jump2, uv_scale * 2.0, time, false);
 	vec3 flowx2_uvB = FlowUVW(UV, flow, jump2, uv_scale * 2.0, time, true);
 	
+	// The flow phase wraps along iso-lines of the per-pixel phase noise;
+	// there the flow UVs jump by a whole flow vector between neighboring
+	// pixels, so derivative-based mip selection picks a tiny mip along
+	// those curves and draws dashed contour-shaped artifacts. Sample with
+	// the continuous base-UV gradients instead.
+	vec2 water_uv_grad_x = dFdx(UV) * uv_scale.xy;
+	vec2 water_uv_grad_y = dFdy(UV) * uv_scale.xy;
+
 	// Level 1 Water
-	vec3 water_a = texture(normal_bump_texture, flow_uvA.xy).rgb;
-	vec3 water_b = texture(normal_bump_texture, flow_uvB.xy).rgb;
+	vec3 water_a = textureGrad(normal_bump_texture, flow_uvA.xy, water_uv_grad_x, water_uv_grad_y).rgb;
+	vec3 water_b = textureGrad(normal_bump_texture, flow_uvB.xy, water_uv_grad_x, water_uv_grad_y).rgb;
 	vec3 water = water_a * flow_uvA.z + water_b * flow_uvB.z;
 
 	vec2 water_norFBM = water.rg;
@@ -986,8 +1005,8 @@ void fragment() {
 
 	// Level 2 Water, only add in if closer than lod 0 distance
 	if (-VERTEX.z < i_lod0_distance) {
-		vec3 waterx2_a = texture(normal_bump_texture, flowx2_uvA.xy).rgb;
-		vec3 waterx2_b = texture(normal_bump_texture, flowx2_uvB.xy, 0.0).rgb;
+		vec3 waterx2_a = textureGrad(normal_bump_texture, flowx2_uvA.xy, water_uv_grad_x * 2.0, water_uv_grad_y * 2.0).rgb;
+		vec3 waterx2_b = textureGrad(normal_bump_texture, flowx2_uvB.xy, water_uv_grad_x * 2.0, water_uv_grad_y * 2.0).rgb;
 		vec3 waterx2 = waterx2_a * flowx2_uvA.z + waterx2_b * flowx2_uvB.z;
 
 		water_norFBM *= 0.65;
@@ -1053,24 +1072,23 @@ void fragment() {
 	vec3 ref_vector = TANGENT * unpacted_normals.x + BINORMAL * unpacted_normals.y;
 	vec3 ref_normal = (length(ref_vector) > EPSILON ? normalize(ref_vector) : vec3(0.0)) * NORMAL_MAP_DEPTH * .1;
 	vec2 ref_ofs = SCREEN_UV - ref_normal.xy * transparency_refraction;
-	float clar_t = clamp(water_depth / max(transparency_clarity, EPSILON), 0.0, 1.0);
-	clar_t = ease(clar_t, transparency_depth_curve);
-	float ref_amount = 1.0 - clamp(clar_t + combined_foam, 0.0, 1.0);
 
 	// Depthtest 2
+	// A refracted sample can land on geometry in front of the water plane.
+	// A hard per-pixel fallback to SCREEN_UV flickers along the screen-space
+	// silhouettes of rocks and banks (the offset wiggles with the water
+	// normal), drawing dashed contour shapes on the surface. Fade the offset
+	// out smoothly across a validity band instead.
 	float scene_z2 = scene_view_z(ref_ofs, INV_PROJECTION_MATRIX);
-	float water_depth2 = max(VERTEX.z - scene_z2, 0.0);
-	
-	if (scene_z2 > VERTEX.z) {
-		ref_ofs = SCREEN_UV;
-		water_depth2 = water_depth;
-	} else {
-		clar_t = clamp(water_depth2 / max(transparency_clarity, EPSILON), 0.0, 1.0);
-		clar_t = ease(clar_t, transparency_depth_curve);
-		ref_amount = 1.0 - clamp(clar_t + combined_foam, 0.0, 1.0);
-		alb_t = clamp(water_depth2 / max(albedo_depth, EPSILON), 0.0, 1.0);
-		alb_t = ease(alb_t, albedo_depth_curve);
-	}
+	float refraction_valid = smoothstep(0.0, REFRACTION_VALID_BAND, VERTEX.z - scene_z2);
+	ref_ofs = mix(SCREEN_UV, ref_ofs, refraction_valid);
+	scene_z2 = scene_view_z(ref_ofs, INV_PROJECTION_MATRIX);
+	float water_depth2 = mix(water_depth, max(VERTEX.z - scene_z2, 0.0), refraction_valid);
+	float clar_t = clamp(water_depth2 / max(transparency_clarity, EPSILON), 0.0, 1.0);
+	clar_t = ease(clar_t, transparency_depth_curve);
+	float ref_amount = 1.0 - clamp(clar_t + combined_foam, 0.0, 1.0);
+	alb_t = clamp(water_depth2 / max(albedo_depth, EPSILON), 0.0, 1.0);
+	alb_t = ease(alb_t, albedo_depth_curve);
 	// Gradient colors are packed into a mat4, so Godot cannot apply source_color automatically.
 	mat4 albedo_color_linear = gradient_srgb_to_linear(albedo_color);
 	vec3 albedo_color_near = vec3(albedo_color_linear[0].x, albedo_color_linear[0].y, albedo_color_linear[0].z);
@@ -1087,7 +1105,7 @@ void fragment() {
 	ALBEDO = mix(alb_mix, foam_color.rgb, combined_foam);
 	// Filtered screen sampling can bleed near edges; a later quality pass can
 	// evaluate texelFetch-style refraction sampling if needed.
-	EMISSION += textureLod(screen_texture, ref_ofs, ROUGHNESS * water_depth2).rgb * ref_amount;
+	EMISSION += textureLod(screen_texture, ref_ofs, min(ROUGHNESS * water_depth2, REFRACTION_MAX_LOD)).rgb * ref_amount;
 
 	ALBEDO *= 1.0 - ref_amount;
 	ALPHA = 1.0;

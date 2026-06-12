@@ -128,7 +128,7 @@ func apply_foam(input_texture : Texture2D, distance : float, cutoff : float, res
 	return _create_output_texture("foam")
 
 
-func apply_blur(input_texture : Texture2D, blur : float, resolution : float) -> ImageTexture:
+func apply_blur(input_texture : Texture2D, blur : float, resolution : float, atlas_columns : float = 1.0) -> ImageTexture:
 	if not _has_valid_reference_texture(input_texture, "blur input_texture"):
 		return null
 	filter_mat.shader = blur_pass1_shader
@@ -138,6 +138,7 @@ func apply_blur(input_texture : Texture2D, blur : float, resolution : float) -> 
 	$ColorRect.material.set_shader_parameter("input_texture", input_texture)
 	$ColorRect.material.set_shader_parameter("size", resolution)
 	$ColorRect.material.set_shader_parameter("blur", blur)
+	$ColorRect.material.set_shader_parameter("atlas_columns", atlas_columns)
 	render_target_update_mode = SubViewport.UPDATE_ONCE
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -186,7 +187,7 @@ func apply_normal_to_flow(input_texture : Texture2D, resolution : float) -> Imag
 	return _create_output_texture("normal_to_flow")
 
 
-func apply_obstacle_avoidance_flow(baseline_flow_texture : Texture2D, normal_texture : Texture2D, support_texture : Texture2D, bank_response_texture : Texture2D, strength : float, influence_start : float, influence_full : float, upstream_lookahead_uv : float = 0.0, upstream_strength : float = 0.0, min_downstream_alignment : float = 0.0, bank_friction_suppression : float = 0.85, hard_boundary_steering_gate : float = 0.55) -> ImageTexture:
+func apply_obstacle_avoidance_flow(baseline_flow_texture : Texture2D, normal_texture : Texture2D, support_texture : Texture2D, bank_response_texture : Texture2D, strength : float, influence_start : float, influence_full : float, upstream_lookahead_uv : float = 0.0, upstream_strength : float = 0.0, min_downstream_alignment : float = 0.0, bank_friction_suppression : float = 0.85, hard_boundary_steering_gate : float = 0.55, atlas_columns : float = 1.0) -> ImageTexture:
 	if not _has_valid_reference_texture(baseline_flow_texture, "obstacle_avoidance baseline_flow_texture"):
 		return null
 	if normal_texture == null:
@@ -213,13 +214,14 @@ func apply_obstacle_avoidance_flow(baseline_flow_texture : Texture2D, normal_tex
 	$ColorRect.material.set_shader_parameter("min_downstream_alignment", min_downstream_alignment)
 	$ColorRect.material.set_shader_parameter("bank_friction_suppression", bank_friction_suppression)
 	$ColorRect.material.set_shader_parameter("hard_boundary_steering_gate", hard_boundary_steering_gate)
+	$ColorRect.material.set_shader_parameter("atlas_columns", atlas_columns)
 	render_target_update_mode = SubViewport.UPDATE_ONCE
 	await get_tree().process_frame
 	await get_tree().process_frame
 	return _create_output_texture("obstacle_avoidance")
 
 
-func apply_obstacle_feature_mask(baseline_flow_texture: Texture2D, normal_texture: Texture2D, support_texture: Texture2D, bank_response_texture: Texture2D, support_start: float, support_full: float, facing_start: float, facing_full: float, wake_length_uv: float, wake_width_uv: float, side_width_uv: float, wake_start: float, wake_full: float, bank_friction_suppression: float, hard_boundary_wake_gate: float, confidence_start: float, confidence_full: float, terrain_contact_texture: Texture2D = null, grade_energy_texture: Texture2D = null, eddy_line_edge_start: float = 0.04, eddy_line_edge_full: float = 0.22, eddy_line_wake_start: float = 0.06, eddy_line_wake_full: float = 0.28, eddy_line_hard_gate_start: float = 0.06, eddy_line_hard_gate_full: float = 0.40, eddy_line_energy_gate_start: float = 0.03, eddy_line_energy_gate_full: float = 0.35, eddy_line_support_reject_start: float = 0.62, eddy_line_support_reject_full: float = 0.92, pillow_support_start: float = 0.40, pillow_support_full: float = 0.88, pillow_contact_search_uv: float = 0.01, pillow_contact_gate_start: float = 0.08, pillow_contact_gate_full: float = 0.38) -> ImageTexture:
+func apply_obstacle_feature_mask(baseline_flow_texture: Texture2D, normal_texture: Texture2D, support_texture: Texture2D, bank_response_texture: Texture2D, support_start: float, support_full: float, facing_start: float, facing_full: float, wake_length_uv: float, wake_width_uv: float, side_width_uv: float, wake_start: float, wake_full: float, bank_friction_suppression: float, hard_boundary_wake_gate: float, confidence_start: float, confidence_full: float, terrain_contact_texture: Texture2D = null, grade_energy_texture: Texture2D = null, eddy_line_edge_start: float = 0.04, eddy_line_edge_full: float = 0.22, eddy_line_wake_start: float = 0.06, eddy_line_wake_full: float = 0.28, eddy_line_hard_gate_start: float = 0.06, eddy_line_hard_gate_full: float = 0.40, eddy_line_energy_gate_start: float = 0.03, eddy_line_energy_gate_full: float = 0.35, eddy_line_support_reject_start: float = 0.62, eddy_line_support_reject_full: float = 0.92, pillow_support_start: float = 0.40, pillow_support_full: float = 0.88, pillow_contact_search_uv: float = 0.01, pillow_contact_gate_start: float = 0.08, pillow_contact_gate_full: float = 0.38, atlas_columns: float = 1.0) -> ImageTexture:
 	if not _has_valid_reference_texture(baseline_flow_texture, "obstacle_feature baseline_flow_texture"):
 		return null
 	if normal_texture == null:
@@ -272,13 +274,14 @@ func apply_obstacle_feature_mask(baseline_flow_texture: Texture2D, normal_textur
 	$ColorRect.material.set_shader_parameter("eddy_line_energy_gate_full", eddy_line_energy_gate_full)
 	$ColorRect.material.set_shader_parameter("eddy_line_support_reject_start", eddy_line_support_reject_start)
 	$ColorRect.material.set_shader_parameter("eddy_line_support_reject_full", eddy_line_support_reject_full)
+	$ColorRect.material.set_shader_parameter("atlas_columns", atlas_columns)
 	render_target_update_mode = SubViewport.UPDATE_ONCE
 	await get_tree().process_frame
 	await get_tree().process_frame
 	return _create_output_texture("obstacle_feature")
 
 
-func apply_bank_response_feature_mask(baseline_flow_texture: Texture2D, terrain_contact_texture: Texture2D, grade_energy_texture: Texture2D, bend_bias_texture: Texture2D, probe_uv: float, friction_contact_weight: float, friction_shallow_weight: float, hard_protrusion_weight: float, outside_bend_start: float, outside_bend_full: float, inside_bend_start: float, inside_bend_full: float) -> ImageTexture:
+func apply_bank_response_feature_mask(baseline_flow_texture: Texture2D, terrain_contact_texture: Texture2D, grade_energy_texture: Texture2D, bend_bias_texture: Texture2D, probe_uv: float, friction_contact_weight: float, friction_shallow_weight: float, hard_protrusion_weight: float, outside_bend_start: float, outside_bend_full: float, inside_bend_start: float, inside_bend_full: float, atlas_columns: float = 1.0) -> ImageTexture:
 	if not _has_valid_reference_texture(baseline_flow_texture, "bank_response baseline_flow_texture"):
 		return null
 	if terrain_contact_texture == null:
@@ -306,13 +309,14 @@ func apply_bank_response_feature_mask(baseline_flow_texture: Texture2D, terrain_
 	$ColorRect.material.set_shader_parameter("outside_bend_full", outside_bend_full)
 	$ColorRect.material.set_shader_parameter("inside_bend_start", inside_bend_start)
 	$ColorRect.material.set_shader_parameter("inside_bend_full", inside_bend_full)
+	$ColorRect.material.set_shader_parameter("atlas_columns", atlas_columns)
 	render_target_update_mode = SubViewport.UPDATE_ONCE
 	await get_tree().process_frame
 	await get_tree().process_frame
 	return _create_output_texture("bank_response_feature")
 
 
-func apply_normal(input_texture : Texture2D, resolution : float) -> ImageTexture:
+func apply_normal(input_texture : Texture2D, resolution : float, atlas_columns : float = 1.0) -> ImageTexture:
 	if not _has_valid_reference_texture(input_texture, "normal input_texture"):
 		return null
 	filter_mat.shader = normal_map_pass_shader
@@ -321,13 +325,14 @@ func apply_normal(input_texture : Texture2D, resolution : float) -> ImageTexture
 	$ColorRect.size = size
 	$ColorRect.material.set_shader_parameter("input_texture", input_texture)
 	$ColorRect.material.set_shader_parameter("size", resolution)
+	$ColorRect.material.set_shader_parameter("atlas_columns", atlas_columns)
 	render_target_update_mode = SubViewport.UPDATE_ONCE
 	await get_tree().process_frame
 	await get_tree().process_frame
 	return _create_output_texture("normal")
 
 
-func apply_dilate(input_texture : Texture2D, dilation : float, fill : float, resolution : float, fill_texture : Texture2D = null) -> ImageTexture:
+func apply_dilate(input_texture : Texture2D, dilation : float, fill : float, resolution : float, fill_texture : Texture2D = null, atlas_columns : float = 1.0) -> ImageTexture:
 	if not _has_valid_reference_texture(input_texture, "dilate input_texture"):
 		return null
 	filter_mat.shader = dilate_pass_1_shader
@@ -337,6 +342,7 @@ func apply_dilate(input_texture : Texture2D, dilation : float, fill : float, res
 	$ColorRect.material.set_shader_parameter("input_texture", input_texture)
 	$ColorRect.material.set_shader_parameter("size", resolution)
 	$ColorRect.material.set_shader_parameter("dilation", dilation)
+	$ColorRect.material.set_shader_parameter("atlas_columns", atlas_columns)
 	render_target_update_mode = SubViewport.UPDATE_ONCE
 	await get_tree().process_frame
 	await get_tree().process_frame

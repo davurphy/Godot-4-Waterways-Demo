@@ -804,12 +804,15 @@ vec2 apply_contextual_flow_slide(vec2 flow, vec2 uv, vec2 texel_size, float hard
 	}
 	vec2 boundary_normal = boundary_gradient / gradient_magnitude;
 	vec2 boundary_tangent = normalize(vec2(-boundary_normal.y, boundary_normal.x));
-	if (dot(boundary_tangent, baseline_direction) < 0.0) {
+	float tangent_alignment = dot(boundary_tangent, baseline_direction);
+	if (tangent_alignment < 0.0) {
 		boundary_tangent = -boundary_tangent;
 	}
 	float flow_into_boundary = max(dot(baseline_direction, boundary_normal), 0.0);
 	float slide_gate = clamp(hard_boundary * smoothstep(0.03, 0.35, gradient_magnitude) * mix(0.35, 1.0, flow_into_boundary), 0.0, 1.0);
-	float slide_amount = clamp(flow_hard_boundary_slide, 0.0, 1.0) * slide_gate;
+	// Match river.gdshader: fade the slide near the stagnation centerline
+	// where the tangent sign flips, instead of shearing the pattern.
+	float slide_amount = clamp(flow_hard_boundary_slide, 0.0, 1.0) * slide_gate * smoothstep(0.0, 0.35, abs(tangent_alignment));
 	if (slide_amount <= EPSILON) {
 		return flow;
 	}
@@ -1151,8 +1154,10 @@ if (i_valid_flowmap) {
 		vec3 flow_uvA = FlowUVW(UV, flow, jump, uv_scale, time, false);
 		vec3 flow_uvB = FlowUVW(UV, flow, jump, uv_scale, time, true);
 
-		vec3 pattern_a = texture(debug_pattern, flow_uvA.xy).rgb;
-		vec3 pattern_b = texture(debug_pattern, flow_uvB.xy).rgb;
+		vec2 pattern_uv_grad_x = dFdx(UV) * uv_scale.xy;
+		vec2 pattern_uv_grad_y = dFdy(UV) * uv_scale.xy;
+		vec3 pattern_a = textureGrad(debug_pattern, flow_uvA.xy, pattern_uv_grad_x, pattern_uv_grad_y).rgb;
+		vec3 pattern_b = textureGrad(debug_pattern, flow_uvB.xy, pattern_uv_grad_x, pattern_uv_grad_y).rgb;
 		
 		vec3 pattern = pattern_a * flow_uvA.z + pattern_b * flow_uvB.z;
 		
@@ -1362,10 +1367,14 @@ if (i_valid_flowmap) {
 		vec3 flowx2_uvA = FlowUVW(UV, flow, jump2, uv_scale * 2.0, time, false);
 		vec3 flowx2_uvB = FlowUVW(UV, flow, jump2, uv_scale * 2.0, time, true);
 		
-		vec3 water_a = texture(normal_bump_texture, flow_uvA.xy).rgb;
-		vec3 water_b = texture(normal_bump_texture, flow_uvB.xy).rgb;
-		vec3 waterx2_a = texture(normal_bump_texture, flowx2_uvA.xy).rgb;
-		vec3 waterx2_b = texture(normal_bump_texture, flowx2_uvB.xy).rgb;
+		// Match river.gdshader: continuous base-UV gradients avoid the
+		// phase-wrap mip seams that draw dashed contour artifacts.
+		vec2 water_uv_grad_x = dFdx(UV) * uv_scale.xy;
+		vec2 water_uv_grad_y = dFdy(UV) * uv_scale.xy;
+		vec3 water_a = textureGrad(normal_bump_texture, flow_uvA.xy, water_uv_grad_x, water_uv_grad_y).rgb;
+		vec3 water_b = textureGrad(normal_bump_texture, flow_uvB.xy, water_uv_grad_x, water_uv_grad_y).rgb;
+		vec3 waterx2_a = textureGrad(normal_bump_texture, flowx2_uvA.xy, water_uv_grad_x * 2.0, water_uv_grad_y * 2.0).rgb;
+		vec3 waterx2_b = textureGrad(normal_bump_texture, flowx2_uvB.xy, water_uv_grad_x * 2.0, water_uv_grad_y * 2.0).rgb;
 		vec3 water = water_a * flow_uvA.z + water_b * flow_uvB.z;
 		vec3 waterx2 = waterx2_a * flowx2_uvA.z + waterx2_b * flowx2_uvB.z;
 		

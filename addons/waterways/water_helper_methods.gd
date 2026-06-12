@@ -466,6 +466,50 @@ static func _synchronize_uv2_longitudinal_edge_band(image: Image, from_tile: Rec
 			image.set_pixelv(to_pixel, average)
 
 
+# Applies a small separable binomial blur to each occupied UV2 tile of a
+# source-resolution feature image. Smooths residual single-texel
+# classification steps (steep banks cross a whole mask ramp inside one
+# texel) into multi-texel ramps that bilinear sampling renders smoothly.
+# Blur is clamped at tile edges: atlas-adjacent tiles are not always
+# world-adjacent, so cross-tile bleed would mix unrelated river segments.
+static func smooth_uv2_tile_channels(image: Image, uv2_sides: int, occupied_steps: int, passes: int = 1) -> void:
+	if image == null or image.is_empty() or passes <= 0:
+		return
+	var side := maxi(1, uv2_sides)
+	if side <= 1 and occupied_steps > 1:
+		side = calculate_side(occupied_steps)
+	var total_tiles := side * side
+	var safe_occupied_steps := clampi(occupied_steps, 0, total_tiles)
+	var source_rect := Rect2i(Vector2i.ZERO, image.get_size())
+	for step_index in safe_occupied_steps:
+		var tile := get_uv2_atlas_tile_rect(step_index, side, source_rect)
+		for pass_index in passes:
+			_blur_tile_separable(image, tile)
+
+
+static func _blur_tile_separable(image: Image, tile: Rect2i) -> void:
+	if tile.size.x <= 0 or tile.size.y <= 0:
+		return
+	var weights: Array[float] = [1.0 / 16.0, 4.0 / 16.0, 6.0 / 16.0, 4.0 / 16.0, 1.0 / 16.0]
+	var source := image.get_region(tile)
+	# Float intermediate avoids quantizing twice through an 8-bit buffer.
+	var horizontal := Image.create(tile.size.x, tile.size.y, false, Image.FORMAT_RGBAF)
+	for y in tile.size.y:
+		for x in tile.size.x:
+			var accumulated := Color(0.0, 0.0, 0.0, 0.0)
+			for tap in 5:
+				var sample_x := clampi(x + tap - 2, 0, tile.size.x - 1)
+				accumulated += source.get_pixel(sample_x, y) * weights[tap]
+			horizontal.set_pixel(x, y, accumulated)
+	for y in tile.size.y:
+		for x in tile.size.x:
+			var accumulated := Color(0.0, 0.0, 0.0, 0.0)
+			for tap in 5:
+				var sample_y := clampi(y + tap - 2, 0, tile.size.y - 1)
+				accumulated += horizontal.get_pixel(x, sample_y) * weights[tap]
+			image.set_pixel(tile.position.x + x, tile.position.y + y, accumulated)
+
+
 static func _edge_sample_t(sample_index: int, sample_count: int) -> float:
 	if sample_count <= 1:
 		return 0.5
@@ -1187,7 +1231,11 @@ static func _create_uv2_world_sample_context(mesh_instance: MeshInstance3D, step
 	}
 
 
-static func _get_uv2_world_sample(context: Dictionary, image_width: int, image_height: int, x: int, y: int) -> Dictionary:
+# subtexel_offset jitters the sample inside the texel (each axis in -0.5..0.5);
+# tile membership stays keyed to the integer texel so jittered samples that
+# fall outside the tile's triangles return empty instead of leaking into a
+# neighboring step.
+static func _get_uv2_world_sample(context: Dictionary, image_width: int, image_height: int, x: int, y: int, subtexel_offset := Vector2.ZERO) -> Dictionary:
 	if context.is_empty() or image_width <= 0 or image_height <= 0:
 		return {}
 	var steps := int(context.get("steps", 0))
@@ -1204,7 +1252,7 @@ static func _get_uv2_world_sample(context: Dictionary, image_width: int, image_h
 	var step_quad: int = column * side + row
 	if step_quad >= steps:
 		return {"outside_occupied_atlas": true}
-	var uv_coordinate := Vector2((0.5 + float(x)) / float(image_width), (0.5 + float(y)) / float(image_height))
+	var uv_coordinate := Vector2((0.5 + float(x) + subtexel_offset.x) / float(image_width), (0.5 + float(y) + subtexel_offset.y) / float(image_height))
 	var p := Vector3(uv_coordinate.x, uv_coordinate.y, 0.0)
 	var barycentric_coords := Vector3.ZERO
 	var correct_triangle := []
@@ -1284,9 +1332,6 @@ static func generate_collisionmap(image : Image, mesh_instance : MeshInstance3D,
 			if not _is_finite_vector3(real_pos):
 				continue
 			var real_pos_up := real_pos + Vector3.UP * raycast_dist
-			if _intersects_collision_shapes_segment(direct_collision_shapes, real_pos_up, real_pos):
-				image.set_pixel(x, y, Color(1.0, 1.0, 1.0))
-				continue
 			
 			var query_up := PhysicsRayQueryParameters3D.create(real_pos, real_pos_up)
 			query_up.collision_mask = raycast_layers
@@ -1301,8 +1346,16 @@ static func generate_collisionmap(image : Image, mesh_instance : MeshInstance3D,
 					up_hit_frontface = true
 			
 			if result_up or result_down:
+				# Physics rays carry facing info: an up-ray whose first hit is an
+				# underside means the geometry hangs above the water here, so it
+				# must not bake as a flow obstacle.
 				if not up_hit_frontface and result_down:
 					image.set_pixel(x, y, Color(1.0, 1.0, 1.0))
+			elif _intersects_collision_shapes_segment(direct_collision_shapes, real_pos_up, real_pos):
+				# Direct shape-segment fallback for contexts where the physics
+				# space reports nothing; it has no facing info, so it cannot
+				# exempt overhangs.
+				image.set_pixel(x, y, Color(1.0, 1.0, 1.0))
 	return image
 
 
@@ -1329,7 +1382,8 @@ static func generate_terrain_contact_feature_map(image: Image, mesh_instance: Me
 	var raycast_down_distance := maxf(shallow_fade_depth, float(settings.get("raycast_down_distance", 1.50)))
 	var hterrain_confidence := clampf(float(settings.get("hterrain_source_confidence", 1.0)), 0.0, 1.0)
 	var physics_confidence := clampf(float(settings.get("physics_source_confidence", 0.5)), 0.0, 1.0)
-	var source_selection_epsilon := maxf(0.0, float(settings.get("source_selection_epsilon", 0.02)))
+	var supersamples := clampi(int(settings.get("contact_supersamples", 1)), 1, 4)
+	var source_blend_band := maxf(0.0, float(settings.get("source_blend_band", 0.0)))
 	var percentage := 0.0
 	_emit_terrain_contact_progress(river, percentage, image_width, image_height)
 	await _await_bake_frame(mesh_instance, river)
@@ -1340,31 +1394,59 @@ static func generate_terrain_contact_feature_map(image: Image, mesh_instance: Me
 			_emit_terrain_contact_progress(river, percentage, image_width, image_height)
 			await _await_bake_frame(mesh_instance, river)
 		for y in image_height:
-			var sample := _get_uv2_world_sample(sample_context, image_width, image_height, x, y)
-			if bool(sample.get("outside_occupied_atlas", false)):
+			var center_sample := _get_uv2_world_sample(sample_context, image_width, image_height, x, y)
+			if bool(center_sample.get("outside_occupied_atlas", false)):
 				break
-			if sample.is_empty():
+			if center_sample.is_empty():
 				continue
-			var water_position: Vector3 = sample.get("world_position", Vector3.ZERO)
-			if not _is_finite_vector3(water_position):
+			# Supersampled texels average the classified masks of N x N
+			# jittered rays so classification edges resolve as coverage ramps
+			# instead of per-texel binary flips. Sub-rays that miss everything
+			# contribute zero (area coverage), matching the untouched-pixel
+			# semantics of a fully missing texel.
+			var contact_sum := 0.0
+			var shallow_sum := 0.0
+			var protrusion_sum := 0.0
+			var confidence_sum := 0.0
+			var sampled := 0
+			var hit := false
+			for sub_x in supersamples:
+				for sub_y in supersamples:
+					var sample := center_sample
+					if supersamples > 1:
+						var jitter := Vector2(
+							(float(sub_x) + 0.5) / float(supersamples) - 0.5,
+							(float(sub_y) + 0.5) / float(supersamples) - 0.5
+						)
+						sample = _get_uv2_world_sample(sample_context, image_width, image_height, x, y, jitter)
+						if sample.is_empty() or bool(sample.get("outside_occupied_atlas", false)):
+							continue
+					var water_position: Vector3 = sample.get("world_position", Vector3.ZERO)
+					if not _is_finite_vector3(water_position):
+						continue
+					sampled += 1
+					var hterrain_sample := _sample_hterrain_contact(hterrain_samplers, water_position, hterrain_confidence)
+					var physics_sample := _sample_physics_contact(space_state, direct_collision_shapes, water_position, raycast_up_offset, raycast_down_distance, raycast_layers, physics_confidence)
+					var selected := _blend_contact_samples(hterrain_sample, physics_sample, source_blend_band)
+					if selected.is_empty():
+						continue
+					hit = true
+					var hit_height := float(selected.get("height", water_position.y))
+					var delta := water_position.y - hit_height
+					contact_sum += _falloff_mask(absf(delta), contact_full_band, contact_fade_distance)
+					if delta >= 0.0:
+						shallow_sum += _falloff_mask(delta, shallow_full_depth, shallow_fade_depth)
+					protrusion_sum += _rise_mask(maxf(0.0, -delta), protrusion_fade_height, protrusion_full_height)
+					confidence_sum += clampf(float(selected.get("confidence", 0.0)), 0.0, 1.0)
+			if sampled == 0 or not hit:
 				continue
-			var selected := _sample_hterrain_contact(hterrain_samplers, water_position, hterrain_confidence)
-			var physics_sample := _sample_physics_contact(space_state, direct_collision_shapes, water_position, raycast_up_offset, raycast_down_distance, raycast_layers, physics_confidence)
-			if not physics_sample.is_empty():
-				if selected.is_empty() or float(physics_sample.get("height", -INF)) > float(selected.get("height", -INF)) + source_selection_epsilon:
-					selected = physics_sample
-			if selected.is_empty():
-				continue
-			var hit_height := float(selected.get("height", water_position.y))
-			var delta := water_position.y - hit_height
-			var abs_delta := absf(delta)
-			var contact := _falloff_mask(abs_delta, contact_full_band, contact_fade_distance)
-			var shallow := 0.0
-			if delta >= 0.0:
-				shallow = _falloff_mask(delta, shallow_full_depth, shallow_fade_depth)
-			var protrusion := _rise_mask(maxf(0.0, -delta), protrusion_fade_height, protrusion_full_height)
-			var confidence := clampf(float(selected.get("confidence", 0.0)), 0.0, 1.0)
-			image.set_pixel(x, y, Color(contact, shallow, protrusion, confidence))
+			var inverse_sampled := 1.0 / float(sampled)
+			image.set_pixel(x, y, Color(
+				contact_sum * inverse_sampled,
+				shallow_sum * inverse_sampled,
+				protrusion_sum * inverse_sampled,
+				confidence_sum * inverse_sampled
+			))
 	return image
 
 
@@ -1410,6 +1492,34 @@ static func _sample_hterrain_contact(hterrain_samplers: Array, water_position: V
 				"source": "hterrain"
 			}
 	return selected
+
+
+# Blends the HTerrain and physics contact candidates by relative height
+# instead of a hard winner-takes-all switch, so the selected source cannot
+# flip per texel along near-tie boundaries (visible as provenance
+# checkerboarding in the baked A channel). blend_band <= 0 preserves the
+# legacy higher-wins selection.
+static func _blend_contact_samples(hterrain_sample: Dictionary, physics_sample: Dictionary, blend_band: float) -> Dictionary:
+	if physics_sample.is_empty():
+		return hterrain_sample
+	if hterrain_sample.is_empty():
+		return physics_sample
+	var height_difference := float(physics_sample.get("height", -INF)) - float(hterrain_sample.get("height", -INF))
+	if blend_band <= 0.0:
+		return physics_sample if height_difference > 0.0 else hterrain_sample
+	var physics_weight := smoothstep(-blend_band, blend_band, height_difference)
+	if physics_weight <= 0.0:
+		return hterrain_sample
+	if physics_weight >= 1.0:
+		return physics_sample
+	var hterrain_position: Vector3 = hterrain_sample.get("position", Vector3.ZERO)
+	var physics_position: Vector3 = physics_sample.get("position", Vector3.ZERO)
+	return {
+		"height": lerpf(float(hterrain_sample.get("height", 0.0)), float(physics_sample.get("height", 0.0)), physics_weight),
+		"position": hterrain_position.lerp(physics_position, physics_weight),
+		"confidence": lerpf(float(hterrain_sample.get("confidence", 0.0)), float(physics_sample.get("confidence", 0.0)), physics_weight),
+		"source": "blended"
+	}
 
 
 static func _sample_physics_contact(space_state: PhysicsDirectSpaceState3D, direct_collision_shapes: Array, water_position: Vector3, up_offset: float, down_distance: float, raycast_layers: int, source_confidence: float) -> Dictionary:
