@@ -7,8 +7,10 @@
 #
 #   & $godotConsole --headless --path $root --script res://addons/waterways/probes/flow_arrow_direction_outlier_probe.gd -- bake=res://waterways_bakes/Demo/Water_River.river_bake.res
 #
-# Shared copy of the river-obstacle-flow-constraints probe; `bake=` selects
-# the river bake resource (defaults to the main demo bake).
+# Shared copy of the river-obstacle-flow-constraints probe. Args:
+#   bake=<res:// path>  river bake resource (defaults to the main demo bake)
+#   out=<dir path>      overlay PNG output directory (defaults to probes/out)
+# Success marker: ARROW_DIRECTION_OUTLIER_PROBE_OK
 extends SceneTree
 
 const WaterHelperMethods := preload("res://addons/waterways/water_helper_methods.gd")
@@ -36,17 +38,26 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var bake_path := BAKE_PATH
+	var out_dir := OUT_DIR
 	for arg in OS.get_cmdline_user_args():
 		if String(arg).begins_with("bake="):
 			bake_path = String(arg).trim_prefix("bake=")
+		elif String(arg).begins_with("out="):
+			out_dir = String(arg).trim_prefix("out=")
 	var bake := load(bake_path) as Resource
 	if bake == null:
 		push_error("Could not load bake: " + bake_path)
 		quit(1)
 		return
-	_flow_image = (bake.get("flow_foam_noise") as Texture2D).get_image()
-	_occupancy_image = (bake.get("water_occupancy") as Texture2D).get_image()
-	_content_rect = bake.get("content_rect")
+	_flow_image = _get_bake_image(bake, "flow_foam_noise", bake_path)
+	_occupancy_image = _get_bake_image(bake, "water_occupancy", bake_path)
+	if _flow_image == null or _occupancy_image == null:
+		quit(1)
+		return
+	_content_rect = Rect2i(Vector2i.ZERO, _flow_image.get_size())
+	var content_rect_variant = bake.get("content_rect")
+	if typeof(content_rect_variant) == TYPE_RECT2I and (content_rect_variant as Rect2i).size.x > 0 and (content_rect_variant as Rect2i).size.y > 0:
+		_content_rect = content_rect_variant
 	var side := maxi(1, int(bake.get("uv2_sides")))
 	var cells := side * ARROWS_PER_TILE
 	_cell_w = float(_content_rect.size.x) / float(cells)
@@ -123,12 +134,29 @@ func _run() -> void:
 		print("  cell=", o.cell, " align=", String.num(o.alignment, 2), " |flow|=", String.num(o.magnitude, 3),
 				" fallback=", o.from_fallback, " center_solid=", o.center_solid,
 				" flow=", o.flow, " neighbors=", o.mean_neighbor)
-	var out_base := ProjectSettings.globalize_path(OUT_DIR)
+	var out_base := ProjectSettings.globalize_path(out_dir)
 	DirAccess.make_dir_recursive_absolute(out_base)
 	var png_path := out_base + "/arrow_direction_outliers_" + bake_path.get_file().get_basename().validate_filename() + ".png"
-	overlay.save_png(png_path)
+	var save_error := overlay.save_png(png_path)
+	if save_error != OK:
+		push_error("Could not write overlay PNG (error " + str(save_error) + "): " + png_path)
+		quit(1)
+		return
 	print("wrote ", png_path)
+	print("ARROW_DIRECTION_OUTLIER_PROBE_OK")
 	quit(0)
+
+
+func _get_bake_image(bake: Resource, property_name: String, bake_path: String) -> Image:
+	var texture := bake.get(property_name) as Texture2D
+	if texture == null:
+		push_error(bake_path + " is missing texture " + property_name)
+		return null
+	var image := texture.get_image()
+	if image == null or image.is_empty():
+		push_error(bake_path + " texture is unreadable: " + property_name)
+		return null
+	return image
 
 
 func _sample(px: int, py: int) -> Vector2:

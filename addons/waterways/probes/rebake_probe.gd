@@ -26,6 +26,7 @@ const BAKE_TIMEOUT_FRAMES := 7200
 const SAVE_FLAGS := ResourceSaver.FLAG_CHANGE_PATH | ResourceSaver.FLAG_REPLACE_SUBRESOURCE_PATHS | ResourceSaver.FLAG_OMIT_EDITOR_PROPERTIES
 
 var _bake_done := false
+var _system_maps_done := false
 var _errors := PackedStringArray()
 
 
@@ -116,7 +117,17 @@ func _regenerate_system(scene: Node, scene_path: String, system_path: String) ->
 		_errors.append("Could not find " + system_path + " in " + scene_path)
 		return
 	print("REBAKE_SYSTEM scene=", scene_path, " system=", system_path)
-	await system.generate_system_maps()
+	# Race the system-map coroutine against a frame timeout so a hung
+	# generate_system_maps cannot park the probe forever.
+	_system_maps_done = false
+	_await_system_maps(system)
+	var frames := 0
+	while not _system_maps_done and frames < BAKE_TIMEOUT_FRAMES:
+		await process_frame
+		frames += 1
+	if not _system_maps_done:
+		_errors.append(scene_path + ": generate_system_maps did not finish within timeout")
+		return
 	var bake := system.get("bake_data") as Resource
 	if bake == null:
 		_errors.append(scene_path + ": WaterSystem bake_data missing after generate_system_maps")
@@ -128,6 +139,11 @@ func _regenerate_system(scene: Node, scene_path: String, system_path: String) ->
 	print("REBAKE_SYSTEM_SAVE save_error=", save_error, " path=", bake.resource_path)
 	if save_error != OK:
 		_errors.append(scene_path + ": WaterSystem bake save failed with error " + str(save_error))
+
+
+func _await_system_maps(system: Node) -> void:
+	await system.generate_system_maps()
+	_system_maps_done = true
 
 
 func _parse_args() -> Dictionary:

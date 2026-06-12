@@ -9,8 +9,10 @@
 #
 #   & $godotConsole --headless --path $root --script res://addons/waterways/probes/flow_arrow_neutral_cells_probe.gd -- bake=res://waterways_bakes/Demo/Water_River.river_bake.res
 #
-# Shared copy of the river-obstacle-flow-constraints probe; `bake=` selects
-# the river bake resource (defaults to the main demo bake).
+# Shared copy of the river-obstacle-flow-constraints probe. Args:
+#   bake=<res:// path>  river bake resource (defaults to the main demo bake)
+#   out=<dir path>      overlay PNG output directory (defaults to probes/out)
+# Success marker: ARROW_NEUTRAL_CELLS_PROBE_OK
 extends SceneTree
 
 const WaterHelperMethods := preload("res://addons/waterways/water_helper_methods.gd")
@@ -22,6 +24,7 @@ const OUT_DIR := "res://addons/waterways/probes/out"
 const ARROWS_PER_TILE := 8
 const NEAR_NEUTRAL := 0.05
 const SPEED_RAMP_FULL := 0.45
+const PROBE_OFFSET_CELLS := 0.3
 # Mirror occupancy bake constants.
 const PROTRUSION_THRESHOLD := 0.9
 const PROTRUSION_CONFIDENCE_MIN := 0.75
@@ -33,18 +36,27 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var bake_path := BAKE_PATH
+	var out_dir := OUT_DIR
 	for arg in OS.get_cmdline_user_args():
 		if String(arg).begins_with("bake="):
 			bake_path = String(arg).trim_prefix("bake=")
+		elif String(arg).begins_with("out="):
+			out_dir = String(arg).trim_prefix("out=")
 	var bake := load(bake_path) as Resource
 	if bake == null:
 		push_error("Could not load bake: " + bake_path)
 		quit(1)
 		return
-	var flow_image: Image = (bake.get("flow_foam_noise") as Texture2D).get_image()
-	var occupancy_image: Image = (bake.get("water_occupancy") as Texture2D).get_image()
-	var terrain_image: Image = (bake.get("terrain_contact_features") as Texture2D).get_image()
-	var content_rect: Rect2i = bake.get("content_rect")
+	var flow_image := _get_bake_image(bake, "flow_foam_noise", bake_path)
+	var occupancy_image := _get_bake_image(bake, "water_occupancy", bake_path)
+	var terrain_image := _get_bake_image(bake, "terrain_contact_features", bake_path)
+	if flow_image == null or occupancy_image == null or terrain_image == null:
+		quit(1)
+		return
+	var content_rect := Rect2i(Vector2i.ZERO, flow_image.get_size())
+	var content_rect_variant = bake.get("content_rect")
+	if typeof(content_rect_variant) == TYPE_RECT2I and (content_rect_variant as Rect2i).size.x > 0 and (content_rect_variant as Rect2i).size.y > 0:
+		content_rect = content_rect_variant
 	var side := maxi(1, int(bake.get("uv2_sides")))
 	var cells := side * ARROWS_PER_TILE
 	var cell_w := float(content_rect.size.x) / float(cells)
@@ -65,8 +77,23 @@ func _run() -> void:
 			var flow := WaterHelperMethods.decode_packed_flow_vector(flow_image.get_pixel(px, py))
 			var occupancy := occupancy_image.get_pixel(px, py)
 			var openness := 1.0 - occupancy.g
-			var factor := smoothstep(0.0, SPEED_RAMP_FULL, openness)
-			if flow.length() * factor > NEAR_NEUTRAL:
+			var factor: float = smoothstep(0.0, SPEED_RAMP_FULL, openness)
+			var displayed := flow * factor
+			# Mirror river_debug's FLOW_ARROWS sub-cell fallback (4 probes, max
+			# magnitude) so cells the shader displays via fallback are not
+			# misreported as neutral.
+			if displayed.length() <= NEAR_NEUTRAL:
+				for probe_index in 4:
+					var sign_x := -1.0 if probe_index % 2 == 0 else 1.0
+					var sign_y := -1.0 if probe_index < 2 else 1.0
+					var probe_x := clampi(px + int(sign_x * PROBE_OFFSET_CELLS * cell_w), 0, flow_image.get_width() - 1)
+					var probe_y := clampi(py + int(sign_y * PROBE_OFFSET_CELLS * cell_h), 0, flow_image.get_height() - 1)
+					var probe_flow := WaterHelperMethods.decode_packed_flow_vector(flow_image.get_pixel(probe_x, probe_y))
+					var probe_factor: float = smoothstep(0.0, SPEED_RAMP_FULL, 1.0 - occupancy_image.get_pixel(probe_x, probe_y).g)
+					var probe_displayed := probe_flow * probe_factor
+					if probe_displayed.length() > displayed.length():
+						displayed = probe_displayed
+			if displayed.length() > NEAR_NEUTRAL:
 				counts.flowing += 1
 				continue
 			var color: Color
@@ -87,12 +114,29 @@ func _run() -> void:
 			_paint_cell(overlay, content_rect, cx, cy, cell_w, cell_h, color)
 
 	print("ARROW_NEUTRAL_CELLS counts=", counts)
-	var out_base := ProjectSettings.globalize_path(OUT_DIR)
+	var out_base := ProjectSettings.globalize_path(out_dir)
 	DirAccess.make_dir_recursive_absolute(out_base)
 	var png_path := out_base + "/arrow_neutral_cells_" + bake_path.get_file().get_basename().validate_filename() + ".png"
-	overlay.save_png(png_path)
+	var save_error := overlay.save_png(png_path)
+	if save_error != OK:
+		push_error("Could not write overlay PNG (error " + str(save_error) + "): " + png_path)
+		quit(1)
+		return
 	print("wrote ", png_path)
+	print("ARROW_NEUTRAL_CELLS_PROBE_OK")
 	quit(0)
+
+
+func _get_bake_image(bake: Resource, property_name: String, bake_path: String) -> Image:
+	var texture := bake.get(property_name) as Texture2D
+	if texture == null:
+		push_error(bake_path + " is missing texture " + property_name)
+		return null
+	var image := texture.get_image()
+	if image == null or image.is_empty():
+		push_error(bake_path + " texture is unreadable: " + property_name)
+		return null
+	return image
 
 
 func _paint_cell(overlay: Image, content_rect: Rect2i, cx: int, cy: int, cell_w: float, cell_h: float, color: Color) -> void:

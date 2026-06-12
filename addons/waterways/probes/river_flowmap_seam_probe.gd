@@ -1,11 +1,16 @@
-# Seam regression gate (headless OK): checks UV2 atlas logical-edge continuity
+# Seam continuity probe (headless OK): samples UV2 atlas logical-edge deltas
 # across all baked channels of the listed river bakes. Re-run whenever flow
 # bake content changes.
 #
-#   & $godotConsole --headless --path $root --script res://addons/waterways/probes/river_flowmap_seam_probe.gd
-#   optional: -- bakes=res://path/a.res,res://path/b.res
+# By default this is DIAGNOSTIC: the exit code reflects only load/read
+# errors, and the measured deltas land in the printed stats. Pass
+# max_logical_delta=<float> to turn it into a gate - any depth-0 logical-edge
+# max delta above the threshold then fails the run.
 #
-# Shared copy of the river-flowmap-seams probe.
+#   & $godotConsole --headless --path $root --script res://addons/waterways/probes/river_flowmap_seam_probe.gd
+#   optional: -- bakes=res://path/a.res,res://path/b.res max_logical_delta=0.05
+#
+# Shared copy of the river-flowmap-seams probe. Success marker: RIVER_FLOWMAP_SEAM_PROBE_OK
 extends SceneTree
 
 const BAKE_PATHS := [
@@ -48,6 +53,8 @@ const PRIORITY_CHANNELS := [
 ]
 
 var _errors := PackedStringArray()
+# Negative = diagnostic mode (no delta gating).
+var _max_logical_delta := -1.0
 
 
 func _initialize() -> void:
@@ -59,6 +66,8 @@ func _run() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if String(arg).begins_with("bakes="):
 			bake_paths = Array(String(arg).trim_prefix("bakes=").split(",", false))
+		elif String(arg).begins_with("max_logical_delta="):
+			_max_logical_delta = float(String(arg).trim_prefix("max_logical_delta="))
 	for bake_path_variant in bake_paths:
 		var bake_path := String(bake_path_variant)
 		_inspect_bake(bake_path)
@@ -109,6 +118,25 @@ func _inspect_bake(bake_path: String) -> void:
 
 	_sample_atlas_column_edges(images, stats, atlas_nonlogical_top, occupied_steps, uv2_sides, content_rect)
 	_print_report(bake_path, bake, first_image, content_rect, uv2_sides, occupied_steps, stats, global_logical_top, atlas_nonlogical_top)
+	_gate_logical_deltas(bake_path, stats)
+
+
+func _gate_logical_deltas(bake_path: String, stats: Dictionary) -> void:
+	if _max_logical_delta < 0.0:
+		return
+	for stat_key in stats:
+		var stat: Dictionary = stats[stat_key]
+		if int(stat["depth"]) != 0:
+			continue
+		var kind := String(stat["kind"])
+		if kind != "logical_same_column" and kind != "logical_row_wrap":
+			continue
+		var max_delta := float(stat["max"])
+		if max_delta > _max_logical_delta:
+			_expect(false, bake_path + " seam gate: " + String(stat["channel"]) + " " + kind
+					+ " depth=0 max_delta=" + str(_round5(max_delta))
+					+ " exceeds max_logical_delta=" + str(_max_logical_delta)
+					+ " at " + str(stat["max_sample"]))
 
 
 func _load_bake_images(bake: Resource, bake_path: String) -> Dictionary:
