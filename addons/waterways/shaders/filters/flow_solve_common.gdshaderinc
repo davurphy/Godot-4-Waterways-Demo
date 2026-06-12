@@ -12,6 +12,11 @@
 //   velocity: packed RG, v = rg * 2 - 1 (matches the river flowmap encoding)
 //   divergence: enc = div * FLOW_SOLVE_DIV_SCALE + 0.5
 //   pressure:   enc = p * FLOW_SOLVE_PRESSURE_SCALE + 0.5
+//
+// The bake seeds the Jacobi pressure ping-pong CPU-side with
+// river_manager's RIVER_FLOW_PRESSURE_SEED_COLOR (r = 0.5), which is enc(0)
+// for all three encodings above. Changing any 0.5 bias here requires
+// updating that seed; flow_solve_seed_assert_probe asserts the pairing.
 
 const float FLOW_SOLVE_EPSILON = 0.0001;
 const float FLOW_SOLVE_DIV_SCALE = 0.25;

@@ -982,6 +982,11 @@ func _init() -> void:
 # fallback (0.5, 0.5, 0.0, 0.0). No built-in hint_default_* can express
 # this texel, so this code-side binding is the real default.
 const RIVER_NEUTRAL_DISTMAP_COLOR := Color(0.75, 0.25, 0.0, 0.5)
+# Jacobi pressure seed. Must equal enc(0) of the solve encodings in
+# flow_solve_common.gdshaderinc (all three use a 0.5 bias), or the first
+# Jacobi pass reads a fictitious pressure field. flow_solve_seed_assert_probe
+# asserts this cross-language pairing.
+const RIVER_FLOW_PRESSURE_SEED_COLOR := Color(0.5, 0.0, 0.0, 1.0)
 static var _neutral_distmap_texture: ImageTexture = null
 
 
@@ -2120,7 +2125,7 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 				return
 			var pressure_size := Vector2i(downstream_baseline_with_margins_texture.get_size())
 			var neutral_pressure_image := Image.create(pressure_size.x, pressure_size.y, false, Image.FORMAT_RGBAF)
-			neutral_pressure_image.fill(Color(0.5, 0.0, 0.0, 1.0))
+			neutral_pressure_image.fill(RIVER_FLOW_PRESSURE_SEED_COLOR)
 			var pressure_map: Texture2D = ImageTexture.create_from_image(neutral_pressure_image)
 			var total_jacobi_passes := RIVER_FLOW_PROJECTION_STRIDES.size() * RIVER_FLOW_PROJECTION_ITERATIONS_PER_STRIDE
 			var jacobi_pass_index := 0
