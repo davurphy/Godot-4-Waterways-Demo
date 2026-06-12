@@ -24,14 +24,14 @@ Use this as the durable map from requirements to proof. Prefer stable probe name
 | Requirement or risk | Check/probe/scene | Environment | Expected marker/result | Last result | Date | Owner |
 | --- | --- | --- | --- | --- | --- | --- |
 | R0 defect fixes hold | Roadmap R0 Validation block (rebake demo river; null-distmap river; mid-bake close; click-without-drag; hardened probes) | Editor (human) + headless probes | Foam Mix matches surface; neutral pillows/gates; re-bake succeeds; no undo entry; probe `*_OK` markers | Partial — probes Pass headless; editor/visual checks pending | 2026-06-12 | Agent |
-| RT tools work (known-good/known-bad) | RT.1 on two same-scene bakes, then on pre/post-R0.5 pair | Headless | Identical → exit 0; margin-region diff flagged → nonzero with per-channel delta | Unrun | — | — |
+| RT tools work (known-good/known-bad) | RT.1 on two same-scene bakes, then on pre/post-R0.5 pair | Headless | Identical → exit 0; margin-region diff flagged → nonzero with per-channel delta | Partial — RT.1 Pass (self-diff exit 0; perturbed-rect copy flagged exactly, exit 1); RT.2–RT.4 not built | 2026-06-12 | Agent |
 | R1 stale-bake detection + scoped diffs | Pre-bump scene load; RT.1 on demo scenes; grep for deleted constants | Editor + headless | Stale warning fires; diffs only in R0.5/R1.3 regions; zero code references remain | Unrun | — | — |
 | R2 system flow respects projection | RT.3 probe on obstacle demo scene; duck-drift check | Headless probe + editor (human) | Angular/magnitude delta under threshold; ducks no longer drift into boundary-shear paths | Unrun | — | — |
 | R3 extraction parity | Shader compile ×3 renderers; RT.2 capture diff; system-map regen compare; inspector revert spot-checks | Windowed (human-assisted) | Compiles clean; pixel deltas under threshold; system maps match; reverts restore live shader defaults | Unrun | — | — |
 | R4 runtime robustness | Forced 20 FPS ripple run; 2 s hitch; 60 Hz emitter; 50-point curve edit frame capture; width array diff; two-system scene; sleep check | Editor/runtime (human-assisted) | Artifact-free reduced-rate propagation (rate documented here); no step burst; waves propagate; interactive editing; identical arrays; coverage-bound binding; body sleeps | Unrun | — | — |
 | R5/R6 behavior preservation | RT.1 hash-compare; property-list dump+diff; undo round-trip probe; (R6) abort matrix + metadata dict diffs | Headless + editor | Byte-identical bakes; empty diffs; undo intact; no stuck flags/leaked renderers/orphan viewports | Unrun | — | — |
 | R7 solve correctness + perf | f16-epsilon compare vs CPU path; adversarial ordering test; wall-clock before/after | Editor | Within epsilon; fence prevents stale read when both viewports update in one frame; wall-clock recorded as regression budget | Unrun | — | — |
-| RT.4 cross-language seed invariant | Seed assertion probe | Headless | `Color(0.5,…)` == enc(0) in all three solve encodings; `*_OK` marker | Unrun | — | — |
+| RT.4 cross-language seed invariant | `flow_solve_seed_assert_probe.gd` | Headless | `Color(0.5,…)` == enc(0) in all three solve encodings; `FLOW_SOLVE_SEED_ASSERT_OK` | Pass | 2026-06-12 | Agent |
 
 ## Premise and Interpretation Checks
 
@@ -109,6 +109,18 @@ When requesting this validation, the agent must put the exact request in the cha
 ## Recorded Results
 
 Record new runs here. Put the newest and most relevant result first, then move older detail under an archive marker when the section gets long.
+
+Recorded result:
+
+- Date: 2026-06-12
+- Ran by: Agent
+- Godot version/renderer/device: Godot 4.6.3 console, headless display server, Windows 11
+- Command, scene, or workflow: RT.1 demonstration — `bake_hash_probe.gd` in hash mode on the demo bake; diff mode self-vs-self; diff mode original-vs-perturbed copy (scratch fixture `.codex-research/bake_hash_known_bad_fixture.gd` adds +0.25 to flow_foam_noise.r in rect (40,50,10x6))
+- Output or parser errors: none
+- Visible result, if applicable: n/a (headless)
+- Stable result marker: `BAKE_HASH_PROBE_OK` (hash mode, signature_version=27, six texture MD5s); `BAKE_HASH_COMPARE_OK` exit 0 (self-diff); known-bad diff exit 1 with `BAKE_HASH_MISMATCH texture=flow_foam_noise` and `diff_rect=[P: (40, 50), S: (10, 6)]`, channel r max_delta=0.24706, all other channels/textures clean
+- Pass/partial/fail: Pass (RT.1 gate demonstrated on known-good and known-bad pairs; the pre/post-R0.5 pair demonstration needs windowed rebakes and rides the next rebake session)
+- Notes or follow-up: fixture script and generated `.res` live in `.codex-research/` (excluded from packaging, safe to delete)
 
 Recorded result:
 
