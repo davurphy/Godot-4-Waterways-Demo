@@ -15,7 +15,7 @@
 - Last automated pass: 2026-06-12 — `CAPTURE_DIFF_OK` (RT.2: two windowed parity runs byte-identical) and `SYSTEM_FLOW_COMPARE_OK` (RT.3, known-good/known-bad demonstrated); earlier same day: `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`
 - Last human-assisted pass: 2026-06-12 — user confirmed R0.2 foam parity, R0.3 mid-bake close recovery, R0.4 no undo entry on click-without-drag (Godot 4.6.3 windowed editor)
 - Highest-risk unproven behavior: R1's stale-bake detection and scoped diffs (next phase); all RT gates now exist and are demonstrated
-- Known repo-state issue found by RT.3: `Demo_obstacle_flow_test.tscn`'s WaterSystem references Demo's system bake (`WaterSystem.water_system_bake.res`) and that map is stale for the obstacle scene ("bake resource path changed") — the obstacle scene needs its own system map generated in the editor (R2's validation regenerates it anyway)
+- Repo-state issue found by RT.3 — resolved 2026-06-12: the demo scenes shared one `WaterSystem.water_system_bake.res`; the user's un-sharing round gave each scene its own bake (Demo's in `waterways_bakes/Demo_28018/` — folder suffixed by design), the orphaned shared file was removed, and the stale detector's texture-path false positive was fixed in `water_system_manager.gd` (see the Recorded Results entry)
 - Known unreliable local check or environment caveat: headless rendering is unreliable per the constitution — all pixel-parity gates are windowed/human-assisted by default; headless editor-load signal is never proof of visible behavior
 
 ## Validation Matrix

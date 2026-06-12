@@ -58,7 +58,7 @@ Use this section as the canonical checklist for unfinished *process* work. When 
 
 ## Validation
 
-- [ ] Run automated checks listed in `validation.md` (RT.1/RT.3/RT.4 once they exist; hardened probes with stable markers).
+- [x] Run automated checks listed in `validation.md` (full suite green 2026-06-12 on the un-shared scene-owned bakes; only intentional red is RT.3 `enforce=all`, the pre-R2 Defect-1 baseline).
 - [ ] Revisit the context challenge check after validation: if results suggest a roadmap item's premise was wrong, tell the user and update docs before doing more implementation.
 - [ ] For Godot editor, viewport, scene-running, gizmo, shader, bake, or runtime checks, ask the user in the chat message to run the exact check and relay output, screenshots, version/renderer, and visible behavior.
 - [ ] Do not rely on `validation.md` alone for human-assisted checks; paste the requested steps into the user-facing message.

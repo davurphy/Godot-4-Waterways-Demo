@@ -6,7 +6,7 @@
 
 ## Current Focus
 
-Stand up the spec-driven feature folder for the hardening/refactor track derived from the 2026-06-12 full-addon code audit. This session created the seven feature-folder documents around the already-written `roadmap.md`; no implementation has started.
+Execute the hardening/refactor track derived from the 2026-06-12 full-addon code audit. Phases R0 (defect hotfixes) and RT (validation tooling, RT.1–RT.4) are complete and validated; the next slice is R1 (dead-code purge + the single v27→v28 signature bump), which must not start without warning the user (it invalidates all saved river bakes).
 
 - Feature folder:
   - `addons\waterways\docs\spec-driven\features\river-refactor\`
@@ -65,6 +65,7 @@ Implementation session (2026-06-12, branch `river-refactor`, all committed):
 - Repo hygiene: probes' `.uid` sidecars tracked; stale bake-resource UID references in `Demo.tscn`/`Demo_obstacle_flow_test.tscn` fixed; user's post-R0.5 rebakes committed as the new bake baseline (still signature v27).
 - User-validated: foam parity (R0.2), mid-bake close recovery (R0.3), no-op click (R0.4) — Phase R0 gate closed.
 - RT.3 (second implementation session, 2026-06-12): new `probes/system_flow_compare_probe.gd` — decodes river baked flow per texel, transforms to world XZ via the same per-triangle UV1 basis `system_flow.gdshader` builds, compares against `_sample_system_map` (the duck-read path); three zones (control/influence/boundary), control gate always on, influence gate (`enforce=all`) is R2's gate for `flow_projected` rivers; stale-map detection via `_get_stale_source_warning`; height-channel filter excludes cross-surface top-down samples. Demonstrated known-good (control p90 8.8° < 10°), known-bad (influence p90 25.8° > 15° flagged), and stale detection (obstacle scene). Deliberately does NOT replicate the slide/force pipeline — no third hand-synced flow copy.
+- Bake un-sharing round (same day, after RT.2/RT.3): the user gave each demo scene its own system bake (commits `fed4967a`, `0bbada9`) — this surfaced that regeneration saves in place into a shared resource path, and a stale-detector false positive: the texture-path metadata keys flip container between editor-embedded scene saves and fresh-load bake-resource binding, so editor-generated maps always read stale at runtime. Fixed in `water_system_manager.gd` `_get_source_river_metadata_changed_key` (commit `2050789`): the two path keys are diagnostics-only now. Orphaned shared bake removed; the obstacle-constraints inspect probe repointed.
 - RT.2 (same session): `probes/debug_view_capture_probe.gd` extended — `views=parity` fixed 13-view set, headless diff mode (`a=`/`b=`, byte-identity fast path, per-channel max/mean deltas, `CAPTURE_DIFF_OK`), and two determinism fixes: `Engine.time_scale=0` at `_initialize` (boot-time; freezing later pins each run at a different shader TIME) and fixed-seed mode on hterrain detail layers (grass RNG is time-randomized per load — diagnosed with a diff heatmap showing only the banks differing). Result: 26/26 parity PNGs byte-identical across two independent windowed runs, both run by the agent on this machine (windowed agent runs worked this session). R3's gate can demand byte-identity for same-session before/after pairs.
 
 ## Current Changes Summary
@@ -87,20 +88,20 @@ Implementation session (2026-06-12, branch `river-refactor`, all committed):
 
 Implementation status:
 
-- In progress — Phase R0 complete and validated; RT 2/4 items done; R1–R8 not started
+- In progress — Phases R0 and RT complete and validated; R1–R8 not started
 
 Spec/plan status:
 
 - Research: Complete (audit + adversarial review; `research.md` records the outcome)
 - Spec: Accepted in practice (R0 executed against it); Resolved Questions table grew the R0.7 reachability finding
 - Plan: Current — Adversarial Plan Review section still not formally completed with the user (work proceeded with per-item user validation instead)
-- Tasks: R0 closed; RT half done; see `tasks.md` Current Truth
-- Validation: Matrix live — R0 row Pass, RT row Partial (RT.1/RT.4 Pass), RT.4 row Pass; recorded results current
+- Tasks: R0 and RT closed; see `tasks.md` Current Truth
+- Validation: Matrix live — R0 row Pass, RT rows Pass (RT.1–RT.4 all demonstrated), R2 row carries the recorded pre-R2 baseline; recorded results current
 - Review: No formal phase review held yet; `review.md` still scaffold + premise review
 
 Validation status:
 
-- Automated: six markers green — `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`
+- Automated: eight markers green — `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`, `SYSTEM_FLOW_COMPARE_OK`, `CAPTURE_DIFF_OK`; the only intentional red is RT.3 `enforce=all` (pre-R2 Defect-1 baseline: influence p90 25.5°/27.6° > 20°)
 - Human-assisted: R0.2/R0.3/R0.4 confirmed by user 2026-06-12 (Godot 4.6.3 windowed)
 - Shader: foam parity confirmed visually post-rebake; 3-renderer compile sweep deferred to R3's gate
 - Editor: mid-bake close + no-op click confirmed
@@ -120,11 +121,11 @@ Validation status:
 
 ## Artifact Hygiene
 
-- Scratch folders or temporary projects created: none this session
-- Generated bakes/resources created: none
+- Scratch folders or temporary projects created (all under `.codex-research\`, excluded from packaging, safe to delete): `capture_diff_fixture.gd` + `capture-diff-fixture/` (RT.2 known-bad demo), `capture_diff_heatmap.gd` (diff visualizer), `stale_metadata_inspect.gd` (stale-warning diagnosis), `probe-out/rt2/` (RT.2 parity capture PNGs)
+- Generated bakes/resources created: scene-owned system bakes committed at `waterways_bakes/Demo_28018/` and `waterways_bakes/Demo_obstacle_flow_test/` (user editor rounds); the formerly shared `waterways_bakes/Demo/WaterSystem.water_system_bake.res` was removed as orphaned
 - Active files mirrored into scratch validation: n/a
-- Files/folders that must be excluded from packaging: `.codex-research\` (standing), future RT baselines/captures
-- Files/folders safe to delete now: none
+- Files/folders that must be excluded from packaging: `.codex-research\` (standing), RT.2 capture PNGs/baselines
+- Files/folders safe to delete now: the `.codex-research` scratch items above once RT results are no longer being re-demonstrated
 
 ## Known Risks and Open Issues
 
@@ -149,13 +150,11 @@ Relevant audit sections:
 
 ## Commands or Checks Used
 
-```powershell
-# none — documentation-only session; no probes or Godot launches run
-```
+See **Validation Commands** below for the full RT.1–RT.4 invocations (all use the `.codex-research` profile redirect). Latest sweep (2026-06-12, after the bake un-sharing round): RT.3 report mode exit 0; RT.3 `enforce=all` exit 1 (expected pre-R2); `BAKE_HASH_PROBE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`, `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK` all exit 0.
 
 Result summary:
 
-- No commands run this session. Folder contents verified by directory listing only (roadmap.md was the sole file before this session).
+- Full headless suite green on the current scenes/bakes; RT.2 byte-identity demonstrated windowed (26/26 PNGs); the only intentionally red check is RT.3 `enforce=all` (the pre-R2 Defect-1 baseline).
 
 ## Next Tasks
 
