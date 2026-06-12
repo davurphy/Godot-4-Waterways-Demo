@@ -120,7 +120,19 @@ Recorded result:
 - Visible result, if applicable: Foam Mix matches the normal view after rebake
 - Stable result marker: n/a (visual)
 - Pass/partial/fail: Pass (R0.2 foam parity)
-- Notes or follow-up: the rebake regenerated both demo bake resources; RT.1 hash-diff vs the old baseline showed changes in flow_foam_noise, dist_pressure, obstacle_features, water_occupancy (R0.5 margin fix + GPU run variance) with terrain_contact_features and bank_response_features byte-identical. Committed as the post-R0.5 baseline (29349f0). Remaining R0 human checks: null-distmap neutrality (R0.7), mid-bake scene close (R0.3), click-without-drag (R0.4).
+- Notes or follow-up: the rebake regenerated both demo bake resources; RT.1 hash-diff vs the old baseline showed changes in flow_foam_noise, dist_pressure, obstacle_features, water_occupancy (R0.5 margin fix + GPU run variance) with terrain_contact_features and bank_response_features byte-identical. Committed as the post-R0.5 baseline (29349f0). Remaining R0 human checks: mid-bake scene close (R0.3), click-without-drag (R0.4).
+
+Recorded result:
+
+- Date: 2026-06-12
+- Ran by: User (visual attempt) + Agent (probe)
+- Godot version/renderer/device: Godot 4.6.3 windowed editor + headless console, Windows 11
+- Command, scene, or workflow: R0.7 check. User cleared Dist Pressure on the demo bake resource and inspected the Distance/Pressure debug views — both showed alternating blue/pink lines. Diagnosis: that is the debug shader's deliberate invalid-flowmap indicator (`river_debug.gdshader:1098-1101`, magenta/cyan diagonal checker), painted over every view because a null distmap also fails the validity gate (`_apply_bake_data`). All distmap-driven visuals in both shaders are gated behind `i_valid_flowmap`, so the neutral texel is not visually reachable from the demo scene; the real Defect-11 scenario is a legacy scene with `valid_flowmap` saved true and a missing distmap. Verified the mechanism instead with new `probes/distmap_neutral_binding_probe.gd`: a fresh RiverManager binds the neutral texel to `i_distmap` on both materials.
+- Output or parser errors: none (final run)
+- Visible result, if applicable: blue/pink invalid-indicator stripes (expected for an invalidated flowmap — not a failure)
+- Stable result marker: `DISTMAP_NEUTRAL_BINDING_OK texel=(0.75, 0.25, 0.0, 0.5)`
+- Pass/partial/fail: Pass (R0.7 — probe-verified binding; the invalid-indicator stripes additionally confirm the validity gate works)
+- Notes or follow-up: roadmap R0 validation wording "confirm pillows/gates render neutral" was based on a wrong assumption about reachability; the probe is the durable gate for this behavior.
 
 Recorded result:
 
