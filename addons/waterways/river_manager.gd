@@ -601,7 +601,6 @@ func _get_property_list() -> Array:
 	
 	if _material.shader != null:
 		var shader_params: Array = RenderingServer.get_shader_parameter_list(_material.shader.get_rid())
-		shader_params = WaterHelperMethods.reorder_params(shader_params)
 		shader_params = _ordered_shader_parameters_for_inspector(shader_params)
 		var appended_subgroups := {}
 		for p in shader_params:

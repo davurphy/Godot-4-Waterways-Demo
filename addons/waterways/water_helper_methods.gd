@@ -366,13 +366,6 @@ static func _looks_like_hterrain(node: Node) -> bool:
 		and node.has_method("get_data")
 
 
-static func sum_array(array) -> float:
-	var sum = 0.0
-	for element in array:
-			sum += element
-	return sum
-
-
 static func calculate_side(steps : int) -> int:
 	var safe_steps := max(1, steps)
 	var side_float : float = sqrt(float(safe_steps))
@@ -1784,30 +1777,3 @@ static func _copy_scaled_region(destination: Image, destination_rect: Rect2i, so
 			destination.set_pixel(destination_rect.position.x + x, destination_rect.position.y + y, source.get_pixel(source_x, source_y))
 
 
-static func reorder_params(unordered_params : Array) -> Array:
-	var ordered = []
-	
-	for param in unordered_params:
-		if param.hint_string != "Texture":
-			ordered.append(param)
-		else:
-			#find the last index in ordered with the same
-			var prefix = param.name.rsplit("_")[0]
-			var index = last_prefix_occurence(ordered, prefix)
-			if index != -1:
-				ordered.insert(index, param)
-			else:
-				ordered.append(param)
-	return ordered
-
-
-static func last_prefix_occurence(array : Array, search : String) -> int:
-	var inverted_array = array.duplicate(true)
-	inverted_array.invert()
-	
-	for i in array.size():
-		var prefix = inverted_array[i].name.rsplit("_")[0]
-		if prefix ==  search:
-			return array.size() - i
-	
-	return -1
