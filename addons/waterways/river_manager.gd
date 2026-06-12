@@ -228,7 +228,11 @@ const RUNTIME_RIPPLE_MATERIAL_PARAMETER_SET = {
 const BAKE_CHANNEL_FLAT_EPSILON := 0.002
 const BAKE_CHANNEL_LOW_CONTRAST_EPSILON := 0.03
 const BAKE_CHANNEL_SATURATION_EPSILON := 0.02
-const RIVER_BAKE_SOURCE_SIGNATURE_VERSION := 27
+# v28 (2026-06-12, refactor track R1): R1.1 SDF-steering metadata removal,
+# R1.2 signature-gap keys, R1.3 occupancy serialization; retroactively covers
+# the R0.5 first-tile UV2 margin fix, which changed multi-tile bake content
+# without a bump. All pre-v28 bakes are stale and need a rebake.
+const RIVER_BAKE_SOURCE_SIGNATURE_VERSION := 28
 # Shader parameters that displace VERTEX.y upward; their sum is the headroom
 # added to the mesh's custom AABB.
 const DISPLACEMENT_AABB_SHADER_PARAMETERS: Array[String] = ["pillow_terrain_height", "pillow_obstruction_height"]

@@ -52,7 +52,7 @@ R = bank friction/drag · G = outside-bend wet pressure / bank pillow candidate 
 
 ### Key metadata fields
 
-`source_signature` (version `RIVER_BAKE_SOURCE_SIGNATURE_VERSION`, currently 27) — staleness detection; bump the version whenever same-inputs bake output changes. Each point entry carries `width` and `flow_speed`. `source_metadata.obstacle_avoidance_algorithm` = `"pressure_projection_free_slip_jacobi_with_normal_to_flow_blur_fallback"` + solve params; `flow_projected = true` disables the runtime contextual slide (re-bending a projected field would corrupt it).
+`source_signature` (version `RIVER_BAKE_SOURCE_SIGNATURE_VERSION`, currently 28) — staleness detection; bump the version whenever same-inputs bake output changes. Each point entry carries `width` and `flow_speed`. `source_metadata.obstacle_avoidance_algorithm` = `"pressure_projection_free_slip_jacobi_with_normal_to_flow_blur_fallback"` + solve params; `flow_projected = true` disables the runtime contextual slide (re-bending a projected field would corrupt it).
 
 ## System bake (`WaterSystemBakeData.system_map`)
 
