@@ -2258,7 +2258,12 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 func _filter_output_is_valid(texture: Texture2D, label: String, renderer_instance: Node) -> bool:
 	if texture != null and texture.get_width() > 0 and texture.get_height() > 0:
 		return true
-	push_warning("Waterways: River Flow & Foam bake failed while generating " + label + ". The bake was aborted and temporary renderer nodes were cleaned up.")
+	var readback_detail := ""
+	if renderer_instance != null and is_instance_valid(renderer_instance) and "last_readback_error" in renderer_instance:
+		var readback_error := String(renderer_instance.last_readback_error)
+		if not readback_error.is_empty():
+			readback_detail = " Cause: " + readback_error + "."
+	push_warning("Waterways: River Flow & Foam bake failed while generating " + label + "." + readback_detail + " The bake was aborted and temporary renderer nodes were cleaned up.")
 	_cleanup_bake_renderer(renderer_instance)
 	_finish_flowmap_bake_after_failure()
 	return false
