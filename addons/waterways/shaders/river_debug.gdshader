@@ -97,6 +97,7 @@ uniform float flow_hard_boundary_pressure : hint_range(0.0, 1.0) = 0.45;
 uniform float flow_hard_boundary_slide : hint_range(0.0, 1.0) = 0.45;
 uniform float flow_hard_boundary_min_downstream : hint_range(0.0, 1.0) = 0.55;
 uniform float flow_boundary_probe : hint_range(0.25, 4.0) = 1.0;
+uniform float flow_wake_damping : hint_range(0.0, 1.0) = 0.6;
 uniform float flow_max : hint_range(0.0, 8.0) = 4.0;
 
 uniform float foam_amount : hint_range(0.0, 4.0) = 1.0;
@@ -173,6 +174,10 @@ uniform sampler2D i_distmap : hint_default_white, repeat_disable, filter_linear;
 uniform sampler2D i_obstacle_features : hint_default_black, repeat_disable, filter_linear;
 uniform sampler2D i_terrain_contact_features : hint_default_black, repeat_disable, filter_linear;
 uniform sampler2D i_bank_response_features : hint_default_black, repeat_disable, filter_linear;
+// R: crisp solid mask, G: solid proximity (see river.gdshader).
+uniform sampler2D i_water_occupancy : hint_default_black, repeat_disable, filter_linear;
+// True for pressure-projected bakes - the runtime boundary slide is skipped.
+uniform bool i_flow_projected = false;
 uniform bool i_valid_flowmap = false;
 uniform int i_uv2_sides = 2;
 uniform bool i_ripple_enabled = false;
@@ -194,9 +199,30 @@ const float EDDY_CONTEXT_UPSTREAM_NEAR_TILES = 0.16;
 const float EDDY_CONTEXT_UPSTREAM_MID_TILES = 0.38;
 const float EDDY_CONTEXT_UPSTREAM_FAR_TILES = 0.70;
 const float EDDY_CONTEXT_LATERAL_TILES = 0.14;
-const float FLOW_ARROW_NEAR_NEUTRAL_THRESHOLD = 0.02;
+// Below this speed the residual direction left by the solve near walls is
+// numerically meaningless - render neutral instead of a confident arrow.
+const float FLOW_ARROW_NEAR_NEUTRAL_THRESHOLD = 0.05;
 const float FLOW_ARROW_DENSITY_PER_UV2_TILE = 8.0;
 const float FLOW_ARROW_GLYPH_SCALE = 0.55;
+// Glyphs scale with flow speed (full size at the downstream baseline speed),
+// so slow wall-adjacent water reads as a small arrow rather than a
+// full-confidence glyph with a noisy direction.
+const float FLOW_ARROW_FULL_SPEED_REFERENCE = 0.25;
+const float FLOW_ARROW_MIN_GLYPH_FRACTION = 0.45;
+// Mirrors river.gdshader occupancy constants.
+const float OCCUPANCY_CLIP_START = 0.35;
+const float OCCUPANCY_CLIP_FULL = 0.75;
+const float OCCUPANCY_SPEED_RAMP_FULL = 0.45;
+
+vec2 water_occupancy_at(vec2 uv) {
+	// R: solid mask, G: solid proximity.
+	return textureLod(i_water_occupancy, clamp(uv, vec2(0.0), vec2(1.0)), 0.0).rg;
+}
+
+float occupancy_speed_factor(vec2 occupancy_rg) {
+	float openness = 1.0 - occupancy_rg.g;
+	return smoothstep(0.0, OCCUPANCY_SPEED_RAMP_FULL, openness);
+}
 
 vec3 FlowUVW(vec2 uv_in, vec2 flowVector, vec2 jump, vec3 tiling, float time, bool flowB) {
 	float phaseOffset = flowB ? 0.5 : 0.0;
@@ -804,12 +830,15 @@ vec2 apply_contextual_flow_slide(vec2 flow, vec2 uv, vec2 texel_size, float hard
 	}
 	vec2 boundary_normal = boundary_gradient / gradient_magnitude;
 	vec2 boundary_tangent = normalize(vec2(-boundary_normal.y, boundary_normal.x));
-	if (dot(boundary_tangent, baseline_direction) < 0.0) {
+	float tangent_alignment = dot(boundary_tangent, baseline_direction);
+	if (tangent_alignment < 0.0) {
 		boundary_tangent = -boundary_tangent;
 	}
 	float flow_into_boundary = max(dot(baseline_direction, boundary_normal), 0.0);
 	float slide_gate = clamp(hard_boundary * smoothstep(0.03, 0.35, gradient_magnitude) * mix(0.35, 1.0, flow_into_boundary), 0.0, 1.0);
-	float slide_amount = clamp(flow_hard_boundary_slide, 0.0, 1.0) * slide_gate;
+	// Match river.gdshader: fade the slide near the stagnation centerline
+	// where the tangent sign flips, instead of shearing the pattern.
+	float slide_amount = clamp(flow_hard_boundary_slide, 0.0, 1.0) * slide_gate * smoothstep(0.0, 0.35, abs(tangent_alignment));
 	if (slide_amount <= EPSILON) {
 		return flow;
 	}
@@ -975,7 +1004,9 @@ void vertex() {
 		vec4 bank_response_features = textureLod(i_bank_response_features, custom_UV, 0.0);
 		vec2 flow = (flow_foam_noise.xy - vec2(0.5)) * 2.0;
 		float hard_boundary_context = clamp(max(bank_response_features.a, terrain_contact_features.b), 0.0, 1.0);
-		flow = apply_contextual_flow_slide(flow, custom_UV, 1.0 / atlas_size, hard_boundary_context);
+		if (!i_flow_projected) {
+			flow = apply_contextual_flow_slide(flow, custom_UV, 1.0 / atlas_size, hard_boundary_context);
+		}
 		vec3 flow_viewspace = flow.x * TANGENT + flow.y * BINORMAL;
 		vec3 up_viewspace = (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz;
 		float steepness_map = max(0.0, dot(flow_viewspace, up_viewspace)) * 4.0;
@@ -993,6 +1024,7 @@ void vertex() {
 		vec3 view_vertex = (MODELVIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
 		float pillow_height_fade = 1.0 - smoothstep(i_lod0_distance * 0.75, i_lod0_distance * 1.50, -view_vertex.z);
 		pillow_height_fade *= pillow_height_tile_seam_fade_mask(UV2, UV, safe_uv2_sides);
+		pillow_height_fade *= 1.0 - water_occupancy_at(custom_UV).r;
 		float terrain_height = pillow_terrain_height * pillow_height_influence(terrain_pillow_mask, pillow_terrain_height_curve);
 		float obstruction_height = pillow_obstruction_height * pillow_height_influence(obstruction_pillow_mask, pillow_obstruction_height_curve);
 		VERTEX.y += (terrain_height + obstruction_height) * pillow_height_fade;
@@ -1068,7 +1100,10 @@ if (i_valid_flowmap) {
 	flow = (flow - 0.5) * 2.0; // unpack flowmap
 	vec2 raw_flow = flow;
 	float hard_boundary_context = clamp(max(hard_boundary_protrusion, terrain_protrusion), 0.0, 1.0);
-	flow = apply_contextual_flow_slide(flow, custom_UV, 1.0 / atlas_size, hard_boundary_context);
+	if (!i_flow_projected) {
+		flow = apply_contextual_flow_slide(flow, custom_UV, 1.0 / atlas_size, hard_boundary_context);
+	}
+	vec2 occupancy_rg = water_occupancy_at(custom_UV);
 	
 	// calculate the steepness map
 	vec3 flow_viewspace = flow.x * TANGENT + flow.y * BINORMAL;
@@ -1129,6 +1164,9 @@ if (i_valid_flowmap) {
 	float wake_edge_context_gate = clamp(max(eddy_line_hard_context_search_visual, eddy_line_wake_context_search_visual) * wake_bank_keep_gate_visual * wake_energy_gate_visual * wake_flow_gate_visual, 0.0, 1.0);
 	float experimental_wake_edge_eddy_source = clamp(raw_wake_edge_candidate * wake_edge_context_gate, 0.0, 1.0);
 	float eddy_line_visual = eddy_line_visual_mask(raw_wake_edge_candidate, wake_edge_context_gate);
+	// Mirror river.gdshader: lee-side wake damping + occupancy stilling ramp.
+	flow_force *= 1.0 - clamp(flow_wake_damping, 0.0, 1.0) * wake_seed_visual;
+	flow_force *= occupancy_speed_factor(occupancy_rg);
 	flow *= flow_force;
 	float foam_randomness = texture(i_texture_foam_noise, UV * uv_scale.xy).r;
 	float bank_friction_edge = bank_friction_edge_mask(custom_UV, 1.0 / atlas_size);
@@ -1151,8 +1189,10 @@ if (i_valid_flowmap) {
 		vec3 flow_uvA = FlowUVW(UV, flow, jump, uv_scale, time, false);
 		vec3 flow_uvB = FlowUVW(UV, flow, jump, uv_scale, time, true);
 
-		vec3 pattern_a = texture(debug_pattern, flow_uvA.xy).rgb;
-		vec3 pattern_b = texture(debug_pattern, flow_uvB.xy).rgb;
+		vec2 pattern_uv_grad_x = dFdx(UV) * uv_scale.xy;
+		vec2 pattern_uv_grad_y = dFdy(UV) * uv_scale.xy;
+		vec3 pattern_a = textureGrad(debug_pattern, flow_uvA.xy, pattern_uv_grad_x, pattern_uv_grad_y).rgb;
+		vec3 pattern_b = textureGrad(debug_pattern, flow_uvB.xy, pattern_uv_grad_x, pattern_uv_grad_y).rgb;
 		
 		vec3 pattern = pattern_a * flow_uvA.z + pattern_b * flow_uvB.z;
 		
@@ -1168,19 +1208,48 @@ if (i_valid_flowmap) {
 		vec4 arrow_terrain_contact_features = textureLod(i_terrain_contact_features, arrow_custom_UV, 0.0);
 		vec4 arrow_bank_response_features = textureLod(i_bank_response_features, arrow_custom_UV, 0.0);
 		float arrow_hard_boundary_context = clamp(max(arrow_bank_response_features.a, arrow_terrain_contact_features.b), 0.0, 1.0);
-		arrow_flow = apply_contextual_flow_slide(arrow_flow, arrow_custom_UV, 1.0 / atlas_size, arrow_hard_boundary_context);
-		// Near-neutral packed RG has an unstable numeric angle; show it as neutral.
+		if (!i_flow_projected) {
+			arrow_flow = apply_contextual_flow_slide(arrow_flow, arrow_custom_UV, 1.0 / atlas_size, arrow_hard_boundary_context);
+		}
+		// Stilled/solid texels read as neutral arrows instead of full-speed glyphs.
+		arrow_flow *= occupancy_speed_factor(water_occupancy_at(arrow_custom_UV));
+		// An arrow cell spans ~1/8 of the river width but samples one texel at
+		// its center. A cell straddling a solid rim (rock waterline footprint)
+		// would paint fully dark even though most of it is flowing water, so
+		// when the center is neutral, probe sub-cell offsets and represent the
+		// cell with the strongest open-water flow found. Cells entirely inside
+		// solids stay dark.
 		if (length(arrow_flow) <= FLOW_ARROW_NEAR_NEUTRAL_THRESHOLD) {
+			vec2 cell_size_source_uv = vec2(1.0) / (safe_uv2_sides * FLOW_ARROW_DENSITY_PER_UV2_TILE);
+			for (int probe_index = 0; probe_index < 4; probe_index++) {
+				vec2 probe_sign = vec2(
+					probe_index % 2 == 0 ? -1.0 : 1.0,
+					probe_index < 2 ? -1.0 : 1.0
+				);
+				vec2 probe_source_UV = clamp(arrow_source_UV + probe_sign * cell_size_source_uv * 0.3, vec2(0.0), vec2(1.0));
+				vec2 probe_custom_UV = (probe_source_UV * source_size + margin) / atlas_size;
+				vec2 probe_flow = textureLod(i_flowmap, probe_custom_UV, 0.0).rg * 2.0 - 1.0;
+				probe_flow *= occupancy_speed_factor(water_occupancy_at(probe_custom_UV));
+				if (length(probe_flow) > length(arrow_flow)) {
+					arrow_flow = probe_flow;
+				}
+			}
+		}
+		// Near-neutral packed RG has an unstable numeric angle; show it as neutral.
+		float arrow_speed = length(arrow_flow);
+		if (arrow_speed <= FLOW_ARROW_NEAR_NEUTRAL_THRESHOLD) {
 			ALBEDO = vec3(0.04);
 		} else {
+			float speed_fraction = clamp(arrow_speed / FLOW_ARROW_FULL_SPEED_REFERENCE, 0.0, 1.0);
+			float glyph_scale = FLOW_ARROW_GLYPH_SCALE * mix(FLOW_ARROW_MIN_GLYPH_FRACTION, 1.0, speed_fraction);
 			float rotation = atan(arrow_flow.y, arrow_flow.x) - 3.14 / 2.0;
 			float cosine = cos(rotation);
 			float sine = sin(rotation);
 			mat2 rotation_mat = mat2(vec2(cosine, -sine), vec2(sine, cosine));
 			vec2 arrow_local_uv = rotation_mat * tiled_UV;
-			vec2 new_uv = arrow_local_uv / FLOW_ARROW_GLYPH_SCALE + 0.5;
+			vec2 new_uv = arrow_local_uv / glyph_scale + 0.5;
 			float lod = mip_map_level(tiled_UV_raw * vec2(textureSize(debug_arrow, 0)));
-			if (abs(arrow_local_uv.x) > 0.5 * FLOW_ARROW_GLYPH_SCALE || abs(arrow_local_uv.y) > 0.5 * FLOW_ARROW_GLYPH_SCALE) {
+			if (abs(arrow_local_uv.x) > 0.5 * glyph_scale || abs(arrow_local_uv.y) > 0.5 * glyph_scale) {
 				ALBEDO = vec3(0.0, 0.5, 1.0);
 			} else {
 				ALBEDO = textureLod(debug_arrow, new_uv, lod).rgb;
@@ -1362,10 +1431,14 @@ if (i_valid_flowmap) {
 		vec3 flowx2_uvA = FlowUVW(UV, flow, jump2, uv_scale * 2.0, time, false);
 		vec3 flowx2_uvB = FlowUVW(UV, flow, jump2, uv_scale * 2.0, time, true);
 		
-		vec3 water_a = texture(normal_bump_texture, flow_uvA.xy).rgb;
-		vec3 water_b = texture(normal_bump_texture, flow_uvB.xy).rgb;
-		vec3 waterx2_a = texture(normal_bump_texture, flowx2_uvA.xy).rgb;
-		vec3 waterx2_b = texture(normal_bump_texture, flowx2_uvB.xy).rgb;
+		// Match river.gdshader: continuous base-UV gradients avoid the
+		// phase-wrap mip seams that draw dashed contour artifacts.
+		vec2 water_uv_grad_x = dFdx(UV) * uv_scale.xy;
+		vec2 water_uv_grad_y = dFdy(UV) * uv_scale.xy;
+		vec3 water_a = textureGrad(normal_bump_texture, flow_uvA.xy, water_uv_grad_x, water_uv_grad_y).rgb;
+		vec3 water_b = textureGrad(normal_bump_texture, flow_uvB.xy, water_uv_grad_x, water_uv_grad_y).rgb;
+		vec3 waterx2_a = textureGrad(normal_bump_texture, flowx2_uvA.xy, water_uv_grad_x * 2.0, water_uv_grad_y * 2.0).rgb;
+		vec3 waterx2_b = textureGrad(normal_bump_texture, flowx2_uvB.xy, water_uv_grad_x * 2.0, water_uv_grad_y * 2.0).rgb;
 		vec3 water = water_a * flow_uvA.z + water_b * flow_uvB.z;
 		vec3 waterx2 = waterx2_a * flowx2_uvA.z + waterx2_b * flowx2_uvB.z;
 		

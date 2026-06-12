@@ -4,6 +4,8 @@ uniform float size = 512.0;
 uniform sampler2D input_texture : repeat_disable, filter_nearest;
 uniform float blur = 0.1;
 
+#include "res://addons/waterways/shaders/filters/atlas_column_clamp.gdshaderinc"
+
 const float EPSILON = 0.0001;
 
 vec4 fct(vec2 uv) {
@@ -14,7 +16,7 @@ vec4 fct(vec2 uv) {
 	float sum = 0.0;
 	for (float i = -50.0; i <= 50.0; i += 1.0) {
 		float coef = exp(-0.5 * (pow(i / safe_blur, 2.0)))/(6.28318530718 * safe_blur * safe_blur);
-		rv += texture(input_texture, uv + vec2(i * e, 0.0)) * coef;
+		rv += texture(input_texture, atlas_column_clamp(uv + vec2(i * e, 0.0), uv)) * coef;
 		sum += coef;
 	}
 	return rv / max(sum, EPSILON);

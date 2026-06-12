@@ -147,13 +147,18 @@ void fragment() {
 	vec3 flow_uvA = FlowUVW(UV, flow, jump1, uv_scale, time, false);
 	vec3 flow_uvB = FlowUVW(UV, flow, jump1, uv_scale, time, true);
 	
+	// Continuous base-UV gradients avoid the phase-wrap mip seams that draw
+	// dashed contour artifacts (see river.gdshader).
+	vec2 lava_uv_grad_x = dFdx(UV) * uv_scale.xy;
+	vec2 lava_uv_grad_y = dFdy(UV) * uv_scale.xy;
+
 	// Level 1 Lava
-	vec3 lava_nor_bump_a = texture(normal_bump_texture, flow_uvA.xy).rgb;
-	vec3 lava_nor_bump_b = texture(normal_bump_texture, flow_uvB.xy).rgb;
+	vec3 lava_nor_bump_a = textureGrad(normal_bump_texture, flow_uvA.xy, lava_uv_grad_x, lava_uv_grad_y).rgb;
+	vec3 lava_nor_bump_b = textureGrad(normal_bump_texture, flow_uvB.xy, lava_uv_grad_x, lava_uv_grad_y).rgb;
 	vec3 lava_nor_bump = lava_nor_bump_a * flow_uvA.z + lava_nor_bump_b * flow_uvB.z;
-	
-	vec3 lava_emission_a = texture(emission_texture, flow_uvA.xy).rgb;
-	vec3 lava_emission_b = texture(emission_texture, flow_uvB.xy).rgb;
+
+	vec3 lava_emission_a = textureGrad(emission_texture, flow_uvA.xy, lava_uv_grad_x, lava_uv_grad_y).rgb;
+	vec3 lava_emission_b = textureGrad(emission_texture, flow_uvB.xy, lava_uv_grad_x, lava_uv_grad_y).rgb;
 	vec3 lava_emission = lava_emission_a * flow_uvA.z + lava_emission_b * flow_uvB.z;
 	
 	vec2 lava_norFBM = lava_nor_bump.rg;

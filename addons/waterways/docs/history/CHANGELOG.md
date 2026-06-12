@@ -1,5 +1,27 @@
 # Waterways Changelog
 
+## Unreleased - 2026-06-12
+
+### Roadmap Phase 1 Foundations (Crest-informed)
+
+Planned in `docs/spec-driven/features/river-future/Roadmap.md`; informed by `Crest Spline System Comparison.md` (same folder).
+
+- Added custom render AABB expansion: the river mesh's bounds now grow by the sum of configured vertical displacement amplitudes (`DISPLACEMENT_AABB_SHADER_PARAMETERS` — currently the pillow height uniforms), recomputed on mesh generation and on those material property edits. Prevents frustum culling of displaced geometry; prerequisite for future flow-advected height displacement. Verified by `river-future/probes/custom_aabb_probe.gd`.
+- Added tight-bend mesh robustness to `generate_river_mesh`: bank-edge points that fold backwards on the inside of sharp bends are clamped against the spline tangent (keeping their own height), clamped neighborhoods get Laplacian relaxation, and interior vertices are rebuilt between the corrected edges. No-op for rivers without overlaps.
+- Width interpolation between curve points is now smoothstep-eased (no derivative kinks in bank lines). River bake source signature bumped 25 → 26.
+- Added `docs/spec-driven/features/river-future/Data Contract.md`: channel semantics, encodings, units, and consumers for all baked textures plus the WaterSystem map, with change rules (new flow-like data in m/s, signature bumps, AABB amplitude registration).
+
+### Shared Probes Folder
+
+- Added `addons/waterways/probes/` (with README and gitignored `out/`): cross-feature, argument-driven validation/diagnostic tools, runnable as `--script ... -- key=value`. New generalized probes: `rebake_probe.gd` (regenerates river bakes + WaterSystem map with explicit saves — replaces the bake loop copy-pasted across four feature probes), `debug_view_capture_probe.gd` (screenshots any debug view(s) from a curve fly-along or named scene cameras; view list read live from `gui/debug_view_menu.gd`), and `bake_inspect_probe.gd` (headless channel stats + PNG for any river/system bake texture, coverage-masked for the system map). Shared copies of the seam regression gate and both flow-arrow diagnostics take `bake(s)=` args. Feature-specific gates remain in feature folders.
+
+### Per-Point Flow Speed (Roadmap Phase 2)
+
+- Added a `flow_speeds` array on RiverManager (inspector "Flow" group): one factor per curve point, 0–2 with 1.0 neutral, sanitized/padded/maintained through point add/insert/remove and undo like `widths`, plus a `set_flow_speeds()` API. Authors can now express slow pools and fast rapids as intent.
+- Added `shaders/filters/flow_speed_scale_pass.gdshader` + `apply_flow_speed_scale`: a final bake pass that scales finished flow vectors by the authored factor (smoothstep-interpolated along the curve, packed as factor/2 in a grade-energy-style source image). Magnitude only — direction is untouched, so the pressure projection's non-penetration guarantee survives; the WaterSystem map and buoyancy inherit authored speeds automatically. Skipped entirely when all points are neutral.
+- Bake source signature bumped 26 → 27 (per-point `flow_speed` in the points signature); `flow_speed_scaled` and `flow_speed_factor_max` recorded in source metadata. Demo bakes and the WaterSystem map regenerated; projection penetration gates unchanged.
+- Validated by `river-future/probes/flow_speed_scale_probe.gd`: authored 0.5/1.5 thirds produced baked band ratios 0.49/1.48 vs the neutral baseline, neutral band 1.0, mean direction delta 0.01 rad, solid-interior flow unchanged.
+
 ## Unreleased - 2026-05-26
 
 ### River Ripples Runtime Visual Layer

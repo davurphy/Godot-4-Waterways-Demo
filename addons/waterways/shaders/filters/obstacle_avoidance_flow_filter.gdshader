@@ -13,6 +13,8 @@ uniform float min_downstream_alignment = 0.0;
 uniform float bank_friction_suppression = 0.85;
 uniform float hard_boundary_steering_gate = 0.55;
 
+#include "res://addons/waterways/shaders/filters/atlas_column_clamp.gdshaderinc"
+
 const float EPSILON = 0.0001;
 const float OBSTACLE_FACING_START = 0.08;
 const float OBSTACLE_FACING_FULL = 0.85;
@@ -112,9 +114,9 @@ void fragment() {
 		float safe_upstream_strength = clamp(upstream_strength, 0.0, 1.0);
 		if (upstream_lookahead_uv > EPSILON && safe_upstream_strength > EPSILON) {
 			vec2 lookahead = baseline_direction * upstream_lookahead_uv;
-			add_steering_sample(UV + lookahead * 0.4, baseline_direction, safe_upstream_strength * 0.65, steering_normal, steering_support);
-			add_steering_sample(UV + lookahead * 0.7, baseline_direction, safe_upstream_strength * 0.85, steering_normal, steering_support);
-			add_steering_sample(UV + lookahead, baseline_direction, safe_upstream_strength, steering_normal, steering_support);
+			add_steering_sample(atlas_column_clamp(UV + lookahead * 0.4, UV), baseline_direction, safe_upstream_strength * 0.65, steering_normal, steering_support);
+			add_steering_sample(atlas_column_clamp(UV + lookahead * 0.7, UV), baseline_direction, safe_upstream_strength * 0.85, steering_normal, steering_support);
+			add_steering_sample(atlas_column_clamp(UV + lookahead, UV), baseline_direction, safe_upstream_strength, steering_normal, steering_support);
 		}
 
 		float steering_normal_magnitude = length(steering_normal);
@@ -122,9 +124,18 @@ void fragment() {
 		if (steering_normal_magnitude > EPSILON && influence > EPSILON) {
 			vec2 obstacle_normal = steering_normal / steering_normal_magnitude;
 			vec2 tangent = normalize(vec2(-obstacle_normal.y, obstacle_normal.x));
-			if (dot(tangent, baseline_direction) < 0.0) {
+			float tangent_alignment = dot(tangent, baseline_direction);
+			if (tangent_alignment < 0.0) {
 				tangent = -tangent;
 			}
+			// The tangent sign flips across the obstacle's stagnation
+			// centerline (obstacle normal parallel to the flow). Steering at
+			// full strength there bakes a hard lateral shear into the flow
+			// map - a static crack-like seam in the advected water pattern,
+			// texel-stepped at bake resolution. Fade the steering out as the
+			// tangent choice becomes ambiguous; water heads straight at a
+			// stagnation line anyway.
+			influence *= smoothstep(0.0, 0.35, abs(tangent_alignment));
 
 			vec2 avoided_direction = keep_downstream_component(normalize(mix(baseline_direction, tangent, influence)), baseline_direction);
 			flow = avoided_direction * baseline_magnitude;

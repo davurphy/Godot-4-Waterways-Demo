@@ -4,6 +4,8 @@ uniform float size = 512.0;
 uniform sampler2D input_texture : repeat_disable, filter_nearest;
 uniform float dilation = 0.1;
 
+#include "res://addons/waterways/shaders/filters/atlas_column_clamp.gdshaderinc"
+
 const float EPSILON = 0.0001;
 
 float input_in(vec2 uv) {
@@ -21,12 +23,12 @@ vec3 distance_h(vec2 uv) {
 	float rv = 0.0;
 	vec2 source_uv = uv;
 	for (int i = 0; i < steps; ++i) {
-		source_uv = uv + float(i) * e;
+		source_uv = atlas_column_clamp(uv + float(i) * e, uv);
 		if (input_in(source_uv) > 0.5) {
 			rv = 1.0 - float(i) * e.x / safe_dilation;
 			break;
 		}
-		source_uv = uv - float(i) * e;
+		source_uv = atlas_column_clamp(uv - float(i) * e, uv);
 		if (input_in(source_uv) > 0.5) {
 			rv = 1.0 - float(i) * e.x / safe_dilation;
 			break;

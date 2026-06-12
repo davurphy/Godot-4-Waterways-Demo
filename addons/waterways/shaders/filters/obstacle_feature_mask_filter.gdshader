@@ -36,6 +36,8 @@ uniform float eddy_line_energy_gate_full = 0.35;
 uniform float eddy_line_support_reject_start = 0.62;
 uniform float eddy_line_support_reject_full = 0.92;
 
+#include "res://addons/waterways/shaders/filters/atlas_column_clamp.gdshaderinc"
+
 const float EPSILON = 0.0001;
 
 vec2 decode_flow(vec4 color) {
@@ -144,18 +146,18 @@ float pillow_source_at(vec2 uv, vec2 flow_direction) {
 float direct_pillow_contact_search_at(vec2 uv, vec2 flow_direction) {
 	float search_uv = max(pillow_contact_search_uv, 0.0);
 	float contact = direct_pillow_contact_at(uv);
-	contact = max(contact, direct_pillow_contact_at(uv + flow_direction * search_uv * 0.50));
-	contact = max(contact, direct_pillow_contact_at(uv + flow_direction * search_uv));
-	contact = max(contact, direct_pillow_contact_at(uv + flow_direction * search_uv * 1.50) * 0.65);
+	contact = max(contact, direct_pillow_contact_at(atlas_column_clamp(uv + flow_direction * search_uv * 0.50, uv)));
+	contact = max(contact, direct_pillow_contact_at(atlas_column_clamp(uv + flow_direction * search_uv, uv)));
+	contact = max(contact, direct_pillow_contact_at(atlas_column_clamp(uv + flow_direction * search_uv * 1.50, uv)) * 0.65);
 	return clamp(contact, 0.0, 1.0);
 }
 
 float pillow_bank_context_search_at(vec2 uv, vec2 flow_direction) {
 	float search_uv = max(pillow_contact_search_uv, 0.0);
 	float bank_context = pillow_bank_context_at(uv);
-	bank_context = max(bank_context, pillow_bank_context_at(uv + flow_direction * search_uv * 0.50));
-	bank_context = max(bank_context, pillow_bank_context_at(uv + flow_direction * search_uv));
-	bank_context = max(bank_context, pillow_bank_context_at(uv + flow_direction * search_uv * 1.50) * 0.65);
+	bank_context = max(bank_context, pillow_bank_context_at(atlas_column_clamp(uv + flow_direction * search_uv * 0.50, uv)));
+	bank_context = max(bank_context, pillow_bank_context_at(atlas_column_clamp(uv + flow_direction * search_uv, uv)));
+	bank_context = max(bank_context, pillow_bank_context_at(atlas_column_clamp(uv + flow_direction * search_uv * 1.50, uv)) * 0.65);
 	return clamp(bank_context, 0.0, 1.0);
 }
 
@@ -169,7 +171,7 @@ float pillow_contact_gate_at(vec2 uv, vec2 flow_direction) {
 
 float wake_seed_at(vec2 uv, vec2 flow_direction) {
 	float wake = 0.0;
-	vec2 sample_uv = uv - flow_direction * wake_length_uv * 0.25;
+	vec2 sample_uv = atlas_column_clamp(uv - flow_direction * wake_length_uv * 0.25, uv);
 	float support = sample_support(sample_uv);
 	vec2 obstacle_normal = sample_obstacle_normal(sample_uv);
 	float hard_boundary = hard_boundary_at(sample_uv);
@@ -178,7 +180,7 @@ float wake_seed_at(vec2 uv, vec2 flow_direction) {
 	float hard_gate = mix(hard_boundary_wake_gate, 1.0, hard_boundary);
 	wake = max(wake, support * lee * context * hard_gate);
 
-	sample_uv = uv - flow_direction * wake_length_uv * 0.5;
+	sample_uv = atlas_column_clamp(uv - flow_direction * wake_length_uv * 0.5, uv);
 	support = sample_support(sample_uv);
 	obstacle_normal = sample_obstacle_normal(sample_uv);
 	hard_boundary = hard_boundary_at(sample_uv);
@@ -187,7 +189,7 @@ float wake_seed_at(vec2 uv, vec2 flow_direction) {
 	hard_gate = mix(hard_boundary_wake_gate, 1.0, hard_boundary);
 	wake = max(wake, support * lee * context * hard_gate * 0.62);
 
-	sample_uv = uv - flow_direction * wake_length_uv * 0.85;
+	sample_uv = atlas_column_clamp(uv - flow_direction * wake_length_uv * 0.85, uv);
 	support = sample_support(sample_uv);
 	obstacle_normal = sample_obstacle_normal(sample_uv);
 	hard_boundary = hard_boundary_at(sample_uv);
@@ -196,7 +198,7 @@ float wake_seed_at(vec2 uv, vec2 flow_direction) {
 	hard_gate = mix(hard_boundary_wake_gate, 1.0, hard_boundary);
 	wake = max(wake, support * lee * context * hard_gate * 0.32);
 
-	sample_uv = uv - flow_direction * wake_length_uv * 1.15;
+	sample_uv = atlas_column_clamp(uv - flow_direction * wake_length_uv * 1.15, uv);
 	support = sample_support(sample_uv);
 	obstacle_normal = sample_obstacle_normal(sample_uv);
 	hard_boundary = hard_boundary_at(sample_uv);
@@ -214,17 +216,17 @@ float wake_mask_at(vec2 uv, vec2 flow_direction) {
 
 float wake_source_hard_context(vec2 uv, vec2 flow_direction) {
 	float hard_context = hard_boundary_at(uv);
-	hard_context = max(hard_context, hard_boundary_at(uv - flow_direction * wake_length_uv * 0.25));
-	hard_context = max(hard_context, hard_boundary_at(uv - flow_direction * wake_length_uv * 0.50));
-	hard_context = max(hard_context, hard_boundary_at(uv - flow_direction * wake_length_uv * 0.85));
+	hard_context = max(hard_context, hard_boundary_at(atlas_column_clamp(uv - flow_direction * wake_length_uv * 0.25, uv)));
+	hard_context = max(hard_context, hard_boundary_at(atlas_column_clamp(uv - flow_direction * wake_length_uv * 0.50, uv)));
+	hard_context = max(hard_context, hard_boundary_at(atlas_column_clamp(uv - flow_direction * wake_length_uv * 0.85, uv)));
 	return clamp(hard_context, 0.0, 1.0);
 }
 
 float wake_source_energy_context(vec2 uv, vec2 flow_direction) {
 	float energy = grade_energy_at(uv);
-	energy = max(energy, grade_energy_at(uv - flow_direction * wake_length_uv * 0.25));
-	energy = max(energy, grade_energy_at(uv - flow_direction * wake_length_uv * 0.50));
-	energy = max(energy, grade_energy_at(uv - flow_direction * wake_length_uv * 0.85));
+	energy = max(energy, grade_energy_at(atlas_column_clamp(uv - flow_direction * wake_length_uv * 0.25, uv)));
+	energy = max(energy, grade_energy_at(atlas_column_clamp(uv - flow_direction * wake_length_uv * 0.50, uv)));
+	energy = max(energy, grade_energy_at(atlas_column_clamp(uv - flow_direction * wake_length_uv * 0.85, uv)));
 	return clamp(energy, 0.0, 1.0);
 }
 
@@ -245,16 +247,16 @@ void fragment() {
 	float pillow_source = pillow_source_at(UV, flow_direction);
 	float pillow_contact_gate = pillow_contact_gate_at(UV, flow_direction);
 	float current_contact_anchor = smooth_gate(pillow_contact_gate_start, pillow_contact_gate_full, direct_pillow_contact_at(UV));
-	float pulled_contact_source = pillow_source_at(UV - flow_direction * max(pillow_contact_search_uv, 0.0) * 0.55, flow_direction) * current_contact_anchor * 0.80;
+	float pulled_contact_source = pillow_source_at(atlas_column_clamp(UV - flow_direction * max(pillow_contact_search_uv, 0.0) * 0.55, UV), flow_direction) * current_contact_anchor * 0.80;
 	float pillow = max(pillow_source * pillow_contact_gate, pulled_contact_source);
 	float side_deflection = support * side * side * (1.0 - pillow * 0.5) * local_side_context;
 
 	float wake = wake_mask_at(UV, flow_direction);
 	vec2 lateral = vec2(-flow_direction.y, flow_direction.x);
-	float wake_left = wake_mask_at(UV + lateral * wake_width_uv, flow_direction);
-	float wake_right = wake_mask_at(UV - lateral * wake_width_uv, flow_direction);
-	float wake_far_left = wake_mask_at(UV + lateral * side_width_uv, flow_direction);
-	float wake_far_right = wake_mask_at(UV - lateral * side_width_uv, flow_direction);
+	float wake_left = wake_mask_at(atlas_column_clamp(UV + lateral * wake_width_uv, UV), flow_direction);
+	float wake_right = wake_mask_at(atlas_column_clamp(UV - lateral * wake_width_uv, UV), flow_direction);
+	float wake_far_left = wake_mask_at(atlas_column_clamp(UV + lateral * side_width_uv, UV), flow_direction);
+	float wake_far_right = wake_mask_at(atlas_column_clamp(UV - lateral * side_width_uv, UV), flow_direction);
 	float wake_edge = max(abs(wake_left - wake), abs(wake_right - wake));
 	float wake_cross_edge = abs(wake_left - wake_right);
 	float wake_far_cross_edge = abs(wake_far_left - wake_far_right);
