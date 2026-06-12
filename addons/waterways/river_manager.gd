@@ -976,6 +976,23 @@ func _init() -> void:
 	_material.set_shader_parameter("albedo_color", Transform3D(Vector3(0.0, 0.8, 1.0), Vector3(0.15, 0.2, 0.5), Vector3.ZERO, Vector3.ZERO))
 
 
+# Neutral texel for i_distmap, derived from the shader decode (distance =
+# (1-R)*2, pressure = G*2, grade_energy = B, bend_bias = A*2-1) so a null
+# dist_pressure yields the same values as the shader's invalid-flowmap
+# fallback (0.5, 0.5, 0.0, 0.0). No built-in hint_default_* can express
+# this texel, so this code-side binding is the real default.
+const RIVER_NEUTRAL_DISTMAP_COLOR := Color(0.75, 0.25, 0.0, 0.5)
+static var _neutral_distmap_texture: ImageTexture = null
+
+
+static func _get_neutral_distmap_texture() -> ImageTexture:
+	if _neutral_distmap_texture == null:
+		var image := Image.create(1, 1, false, Image.FORMAT_RGBA8)
+		image.fill(RIVER_NEUTRAL_DISTMAP_COLOR)
+		_neutral_distmap_texture = ImageTexture.create_from_image(image)
+	return _neutral_distmap_texture
+
+
 func _enter_tree() -> void:
 	if Engine.is_editor_hint() and _first_enter_tree:
 		_first_enter_tree = false
@@ -997,7 +1014,7 @@ func _enter_tree() -> void:
 	_apply_bake_data()
 	set_materials("i_valid_flowmap", valid_flowmap)
 	set_materials("i_uv2_sides", _uv2_sides)
-	set_materials("i_distmap", dist_pressure)
+	set_materials("i_distmap", dist_pressure if dist_pressure != null else _get_neutral_distmap_texture())
 	set_materials("i_flowmap", flow_foam_noise)
 	set_materials("i_obstacle_features", obstacle_features)
 	set_materials("i_terrain_contact_features", terrain_contact_features)
@@ -2262,7 +2279,7 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 	_apply_bake_data()
 	
 	set_materials("i_flowmap", flow_foam_noise)
-	set_materials("i_distmap", dist_pressure)
+	set_materials("i_distmap", dist_pressure if dist_pressure != null else _get_neutral_distmap_texture())
 	set_materials("i_obstacle_features", obstacle_features)
 	set_materials("i_terrain_contact_features", terrain_contact_features)
 	set_materials("i_bank_response_features", bank_response_features)
@@ -3292,7 +3309,7 @@ func _apply_bake_data() -> void:
 	if resource_uv2_sides != null:
 		_uv2_sides = max(1, int(resource_uv2_sides))
 	set_materials("i_flowmap", flow_foam_noise)
-	set_materials("i_distmap", dist_pressure)
+	set_materials("i_distmap", dist_pressure if dist_pressure != null else _get_neutral_distmap_texture())
 	set_materials("i_obstacle_features", obstacle_features)
 	set_materials("i_terrain_contact_features", terrain_contact_features)
 	set_materials("i_bank_response_features", bank_response_features)

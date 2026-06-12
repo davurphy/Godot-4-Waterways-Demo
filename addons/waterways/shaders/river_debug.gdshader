@@ -170,7 +170,10 @@ uniform float wake_fleck_noise_scale : hint_range(1.0, 96.0) = 42.0;
 uniform float i_lod0_distance : hint_range(5.0, 200.0) = 50.0;
 uniform sampler2D i_texture_foam_noise : hint_default_white, repeat_enable, filter_linear_mipmap;
 uniform sampler2D i_flowmap : repeat_disable, filter_linear;
-uniform sampler2D i_distmap : hint_default_white, repeat_disable, filter_linear;
+// The real default is a neutral texel (0.75, 0.25, 0.0, 0.5) bound code-side
+// by river_manager whenever dist_pressure is null - no hint_default_* can
+// express it (white maxes pressure/bend, black maxes distance, bend_bias -1).
+uniform sampler2D i_distmap : hint_default_black, repeat_disable, filter_linear;
 uniform sampler2D i_obstacle_features : hint_default_black, repeat_disable, filter_linear;
 uniform sampler2D i_terrain_contact_features : hint_default_black, repeat_disable, filter_linear;
 uniform sampler2D i_bank_response_features : hint_default_black, repeat_disable, filter_linear;
