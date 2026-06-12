@@ -11,10 +11,10 @@
 
 ## Current Validation Snapshot
 
-- Overall status: Unrun — track not started; the RT tooling several gates depend on does not exist yet
-- Last automated pass: none
+- Overall status: Partial — R0 implemented (branch `river-refactor`); headless checks pass, human-assisted R0 checks pending; RT tooling not built yet
+- Last automated pass: 2026-06-12 — `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK` (all exit 0), plus `--check-only` parse pass on river_manager.gd / river_gizmo.gd / plugin.gd / rebake_probe.gd
 - Last human-assisted pass: none
-- Highest-risk unproven behavior: R3 include-extraction pixel parity (the gate tool, RT.2, must be built and demonstrated first)
+- Highest-risk unproven behavior: R0 visual/editor checks (foam parity, null-distmap neutrality, mid-bake close recovery, click-without-drag) — headless signal cannot prove these; then R3 include-extraction pixel parity (RT.2 must be built first)
 - Known unreliable local check or environment caveat: headless rendering is unreliable per the constitution — all pixel-parity gates are windowed/human-assisted by default; headless editor-load signal is never proof of visible behavior
 
 ## Validation Matrix
@@ -23,7 +23,7 @@ Use this as the durable map from requirements to proof. Prefer stable probe name
 
 | Requirement or risk | Check/probe/scene | Environment | Expected marker/result | Last result | Date | Owner |
 | --- | --- | --- | --- | --- | --- | --- |
-| R0 defect fixes hold | Roadmap R0 Validation block (rebake demo river; null-distmap river; mid-bake close; click-without-drag; hardened probes) | Editor (human) + headless probes | Foam Mix matches surface; neutral pillows/gates; re-bake succeeds; no undo entry; probe `*_OK` markers | Unrun | — | — |
+| R0 defect fixes hold | Roadmap R0 Validation block (rebake demo river; null-distmap river; mid-bake close; click-without-drag; hardened probes) | Editor (human) + headless probes | Foam Mix matches surface; neutral pillows/gates; re-bake succeeds; no undo entry; probe `*_OK` markers | Partial — probes Pass headless; editor/visual checks pending | 2026-06-12 | Agent |
 | RT tools work (known-good/known-bad) | RT.1 on two same-scene bakes, then on pre/post-R0.5 pair | Headless | Identical → exit 0; margin-region diff flagged → nonzero with per-channel delta | Unrun | — | — |
 | R1 stale-bake detection + scoped diffs | Pre-bump scene load; RT.1 on demo scenes; grep for deleted constants | Editor + headless | Stale warning fires; diffs only in R0.5/R1.3 regions; zero code references remain | Unrun | — | — |
 | R2 system flow respects projection | RT.3 probe on obstacle demo scene; duck-drift check | Headless probe + editor (human) | Angular/magnitude delta under threshold; ducks no longer drift into boundary-shear paths | Unrun | — | — |
@@ -110,7 +110,17 @@ When requesting this validation, the agent must put the exact request in the cha
 
 Record new runs here. Put the newest and most relevant result first, then move older detail under an archive marker when the section gets long.
 
-No results yet — track not started.
+Recorded result:
+
+- Date: 2026-06-12
+- Ran by: Agent
+- Godot version/renderer/device: Godot 4.6.3 console, headless display server, Windows 11
+- Command, scene, or workflow: Phase R0 headless validation on branch `river-refactor` — `flow_arrow_neutral_cells_probe.gd` and `flow_arrow_direction_outlier_probe.gd` (with `out=res://.codex-research/probe-out`), `river_flowmap_seam_probe.gd` (diagnostic mode), and `--check-only` on river_manager.gd, river_gizmo.gd, plugin.gd, rebake_probe.gd
+- Output or parser errors: first run caught a compile error in the R0.5 edit (`previous_strip_y` type inference from `max()`); fixed with an explicit `int` type, all subsequent runs clean
+- Visible result, if applicable: n/a (headless)
+- Stable result marker: `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, all exit 0; neutral-cells counts on the demo bake: flowing 928, dead_flow 517, solid_protrusion 94, solid_collision 58, stilled_ring 3
+- Pass/partial/fail: Partial (phase gate) — headless portion Pass; human-assisted portion (foam parity, null-distmap visuals, mid-bake close, click-without-drag undo) not yet run
+- Notes or follow-up: headless-OK probe runs prove parse/compile and probe behavior only, not editor or shader visuals. The probe overlays were written to `.codex-research/probe-out/` (excluded from packaging). Neutral-cells counts shifted vs pre-R0.9 runs are expected: the probe now mirrors the FLOW_ARROWS sub-cell fallback.
 
 Recorded result:
 

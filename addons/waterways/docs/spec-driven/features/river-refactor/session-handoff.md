@@ -15,12 +15,12 @@ Stand up the spec-driven feature folder for the hardening/refactor track derived
 
 ## Current Truth
 
-- Overall status: Not started (documentation scaffold complete; zero code changes)
-- Highest-priority open task: Phase R0 hotfixes (9 independent items) with Phase RT tooling started in parallel; RT.1 must land before R1
-- Last passing validation: none — `validation.md` matrix is entirely Unrun
-- Known failing or unproven check: everything; the RT tools several phase gates depend on do not exist yet (verified against `probes/`)
-- Next recommended action: complete `plan.md`'s Adversarial Plan Review with the user, then cut a branch from `main` for the first R0 item or RT.1
-- Packaging/artifact hygiene status: clean — no scratch artifacts created this session
+- Overall status: In progress — Phase R0 implemented (9/9 items, branch `river-refactor`, one commit each, 2026-06-12); headless validation passed; human-assisted R0 checks pending
+- Highest-priority open task: R0 human-assisted validation block, then RT.1 (bake hash-compare — gates R1)
+- Last passing validation: 2026-06-12 headless — `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `--check-only` parse pass on all edited scripts
+- Known failing or unproven check: R0's editor/visual behaviors (foam parity, null-distmap neutrality, mid-bake close, click-without-drag) — headless cannot prove them; RT tools still do not exist
+- Next recommended action: user runs the R0 human-assisted checks (exact steps in roadmap R0 Validation block); agent starts RT.1 in parallel
+- Packaging/artifact hygiene status: probe overlays written to `.codex-research/probe-out/` (excluded from packaging; safe to delete)
 - Historical detail starts at: nothing archived yet
 
 ## How To Use This Feature Folder
