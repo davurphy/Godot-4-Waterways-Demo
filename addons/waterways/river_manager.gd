@@ -3515,6 +3515,9 @@ func get_bake_source_signature() -> Dictionary:
 		"shape_step_length_divs": shape_step_length_divs,
 		"shape_step_width_divs": shape_step_width_divs,
 		"shape_smoothness": _signature_float(shape_smoothness),
+		# Edge-overlap resolution shapes the mesh the bake derives from.
+		"river_edge_smooth_radius": WaterHelperMethods.RIVER_EDGE_SMOOTH_RADIUS,
+		"river_edge_smooth_iterations": WaterHelperMethods.RIVER_EDGE_SMOOTH_ITERATIONS,
 		"baking_resolution": baking_resolution,
 		"baking_raycast_distance": _signature_float(baking_raycast_distance),
 		"baking_raycast_layers": baking_raycast_layers,
@@ -3525,6 +3528,12 @@ func get_bake_source_signature() -> Dictionary:
 		"baking_foam_blur": _signature_float(baking_foam_blur),
 		"bake_generation_behavior": _sanitize_bake_generation_behavior(bake_generation_behavior),
 		"downstream_baseline_strength": _signature_float(RIVER_DOWNSTREAM_BASELINE_STRENGTH),
+		"flow_speed_factor_max": _signature_float(RIVER_FLOW_SPEED_FACTOR_MAX),
+		# A code constant, so it is the same stable literal in every load context
+		# (unlike texture resource paths, which flip container between scene saves
+		# and bake binding — see water_system_manager's stale comparator). Catches
+		# the texture being repointed; in-place PNG edits still need a manual rebake.
+		"flow_offset_noise_texture_path": FLOW_OFFSET_NOISE_TEXTURE_PATH,
 		"obstacle_feature_support_start": _signature_float(RIVER_OBSTACLE_FEATURE_SUPPORT_START),
 		"obstacle_feature_support_full": _signature_float(RIVER_OBSTACLE_FEATURE_SUPPORT_FULL),
 		"obstacle_feature_facing_start": _signature_float(RIVER_OBSTACLE_FEATURE_FACING_START),
