@@ -47,6 +47,7 @@ uniform float flow_hard_boundary_pressure : hint_range(0.0, 1.0) = 0.45;
 uniform float flow_hard_boundary_slide : hint_range(0.0, 1.0) = 0.45;
 uniform float flow_hard_boundary_min_downstream : hint_range(0.0, 1.0) = 0.55;
 uniform float flow_boundary_probe : hint_range(0.25, 4.0) = 1.0;
+uniform float flow_wake_damping : hint_range(0.0, 1.0) = 0.6;
 uniform float flow_max : hint_range(0.0, 8.0) = 4.0;
 
 // Foam
@@ -127,6 +128,14 @@ uniform sampler2D i_distmap : hint_default_white, repeat_disable, filter_linear;
 uniform sampler2D i_obstacle_features : hint_default_black, repeat_disable, filter_linear;
 uniform sampler2D i_terrain_contact_features : hint_default_black, repeat_disable, filter_linear;
 uniform sampler2D i_bank_response_features : hint_default_black, repeat_disable, filter_linear;
+// R: crisp solid mask (1 = inside obstacle/protruding terrain), G: solid
+// proximity (1 at the solid surface, 0 beyond the ramp radius). Absent on
+// legacy bakes - the black default makes every occupancy behavior neutral.
+uniform sampler2D i_water_occupancy : hint_default_black, repeat_disable, filter_linear;
+// True when the baked flow field came from the pressure projection solve.
+// Projected fields are divergence-free; re-bending them with the runtime
+// boundary slide would corrupt them, so the slide only runs on legacy bakes.
+uniform bool i_flow_projected = false;
 uniform bool i_valid_flowmap = false;
 uniform int i_uv2_sides = 2;
 uniform bool i_ripple_enabled = false;
@@ -155,6 +164,13 @@ const float EDDY_CONTEXT_LATERAL_TILES = 0.14;
 const float PILLOW_BAKE_CONTACT_SEARCH_TILES = 0.07;
 const float PILLOW_BAKE_CONTACT_GATE_START = 0.08;
 const float PILLOW_BAKE_CONTACT_GATE_FULL = 0.38;
+// Water fades out across this band of the crisp solid mask (bilinear ramp).
+const float OCCUPANCY_CLIP_START = 0.35;
+const float OCCUPANCY_CLIP_FULL = 0.75;
+// Advection speed recovers from 0 at the solid surface over the proximity
+// ramp; openness = 1 - proximity. Full speed returns by mid-ring so the
+// stilled band hugs the solid instead of deadening the whole proximity ring.
+const float OCCUPANCY_SPEED_RAMP_FULL = 0.45;
 
 vec3 FlowUVW(vec2 uv_in, vec2 flowVector, vec2 jump, vec3 tiling, float time, bool flowB) {
 	float phaseOffset = flowB ? 0.5 : 0.0;
@@ -242,6 +258,16 @@ vec2 keep_minimum_alignment(vec2 direction, vec2 baseline_direction, float min_a
 	}
 	float lateral_limit = sqrt(max(0.0, 1.0 - floor_value * floor_value));
 	return normalize(baseline_direction * floor_value + (lateral / lateral_magnitude) * lateral_limit);
+}
+
+vec2 water_occupancy_at(vec2 uv) {
+	// R: solid mask, G: solid proximity.
+	return textureLod(i_water_occupancy, clamp(uv, vec2(0.0), vec2(1.0)), 0.0).rg;
+}
+
+float occupancy_speed_factor(vec2 occupancy_rg) {
+	float openness = 1.0 - occupancy_rg.g;
+	return smoothstep(0.0, OCCUPANCY_SPEED_RAMP_FULL, openness);
 }
 
 float boundary_context_at(vec2 uv) {
@@ -862,7 +888,9 @@ void vertex() {
 		vec4 bank_response_features = textureLod(i_bank_response_features, custom_UV, 0.0);
 		vec2 flow = (flow_foam_noise.xy - vec2(0.5)) * 2.0;
 		float hard_boundary_context = clamp(max(bank_response_features.a, terrain_contact_features.b), 0.0, 1.0);
-		flow = apply_contextual_flow_slide(flow, custom_UV, 1.0 / atlas_size, hard_boundary_context);
+		if (!i_flow_projected) {
+			flow = apply_contextual_flow_slide(flow, custom_UV, 1.0 / atlas_size, hard_boundary_context);
+		}
 		vec3 flow_viewspace = flow.x * TANGENT + flow.y * BINORMAL;
 		vec3 up_viewspace = (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz;
 		float steepness_map = max(0.0, dot(flow_viewspace, up_viewspace)) * 4.0;
@@ -880,6 +908,9 @@ void vertex() {
 		vec3 view_vertex = (MODELVIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
 		float pillow_height_fade = 1.0 - smoothstep(i_lod0_distance * 0.75, i_lod0_distance * 1.50, -view_vertex.z);
 		pillow_height_fade *= pillow_height_tile_seam_fade_mask(UV2, UV, safe_uv2_sides);
+		// No pillow displacement inside solid occupancy - the surface there is
+		// being clipped by the fragment stage.
+		pillow_height_fade *= 1.0 - water_occupancy_at(custom_UV).r;
 		float terrain_height = pillow_terrain_height * pillow_height_influence(terrain_pillow_mask, pillow_terrain_height_curve);
 		float obstruction_height = pillow_obstruction_height * pillow_height_influence(obstruction_pillow_mask, pillow_obstruction_height_curve);
 		VERTEX.y += (terrain_height + obstruction_height) * pillow_height_fade;
@@ -944,7 +975,10 @@ void fragment() {
 	
 	flow = (flow - 0.5) * 2.0; // unpack the flow vectors
 	float hard_boundary_context = clamp(max(hard_boundary_protrusion, terrain_protrusion), 0.0, 1.0);
-	flow = apply_contextual_flow_slide(flow, custom_UV, 1.0 / atlas_size, hard_boundary_context);
+	if (!i_flow_projected) {
+		flow = apply_contextual_flow_slide(flow, custom_UV, 1.0 / atlas_size, hard_boundary_context);
+	}
+	vec2 occupancy_rg = water_occupancy_at(custom_UV);
 	
 	// Calculate the steepness map
 	vec3 flow_viewspace = flow.x * TANGENT + flow.y * BINORMAL;
@@ -971,6 +1005,12 @@ void fragment() {
 	float eddy_line_mask = eddy_line_visual_mask(custom_UV, source_tile_uv_size, pillow_reach_direction, terrain_contact_features, bank_response_features, grade_energy_map, normalized_flow_force);
 	float pillow_direct_terrain_anchor_search = pillow_contact_search_direct_terrain(custom_UV, source_tile_uv_size, pillow_reach_direction);
 	float pillow_direct_contact_gate = pillow_bake_contact_gate(pillow_direct_terrain_anchor_search);
+	// Lee-side damping: the wake region advects slowly instead of resuming
+	// full baseline speed immediately behind obstacles.
+	flow_force *= 1.0 - clamp(flow_wake_damping, 0.0, 1.0) * wake_seed_mask;
+	// Stilling ramp: advection speed is zero at solid boundaries/interiors
+	// and recovers across the occupancy proximity ring.
+	flow_force *= occupancy_speed_factor(occupancy_rg);
 	flow *= flow_force;
 	
 	vec2 jump1 = vec2(0.24, 0.2083333);
@@ -1110,4 +1150,7 @@ void fragment() {
 	ALBEDO *= 1.0 - ref_amount;
 	ALPHA = 1.0;
 	ALPHA *= smoothstep(0.0, max(edge_fade, EPSILON), water_depth);
+	// Clip water inside solid occupancy (obstacle interiors, crevices,
+	// protruding terrain) - the Crest clip-surface analogue.
+	ALPHA *= 1.0 - smoothstep(OCCUPANCY_CLIP_START, OCCUPANCY_CLIP_FULL, occupancy_rg.r);
 }

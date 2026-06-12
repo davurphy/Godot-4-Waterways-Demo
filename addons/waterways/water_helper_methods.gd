@@ -407,6 +407,35 @@ static func create_downstream_baseline_flow_image(resolution: int, uv2_sides: in
 	return image
 
 
+static func create_solid_occupancy_source_image(collision_image: Image, terrain_contact_image: Image, protrusion_threshold: float = 0.5, protrusion_confidence_min: float = 0.0) -> Image:
+	if collision_image == null or collision_image.is_empty():
+		return collision_image
+	var width := collision_image.get_width()
+	var height := collision_image.get_height()
+	var occupancy := Image.create(width, height, false, Image.FORMAT_RGBA8)
+	occupancy.fill(Color(0.0, 0.0, 0.0, 1.0))
+	var has_terrain_contact := terrain_contact_image != null and not terrain_contact_image.is_empty() \
+			and terrain_contact_image.get_width() == width and terrain_contact_image.get_height() == height
+	var safe_threshold := clampf(protrusion_threshold, 0.0, 1.0)
+	var safe_confidence_min := clampf(protrusion_confidence_min, 0.0, 1.0)
+	for y in height:
+		for x in width:
+			var solid := collision_image.get_pixel(x, y).r > 0.5
+			if not solid and has_terrain_contact:
+				# Only high-confidence (heightfield-sourced) protrusion may add
+				# solids: heightfields cannot overhang, so terrain above the
+				# water there really displaces the water column. Physics-collider
+				# protrusion is overhang-blind (the down-ray hits a boulder's
+				# top even when open water passes beneath) and is redundant
+				# anyway - the same colliders are baked into collision_image
+				# with a facing-aware overhang exemption.
+				var contact := terrain_contact_image.get_pixel(x, y)
+				solid = contact.b >= safe_threshold and contact.a >= safe_confidence_min
+			if solid:
+				occupancy.set_pixel(x, y, Color(1.0, 1.0, 1.0, 1.0))
+	return occupancy
+
+
 static func neutralize_unused_uv2_atlas_flow_rg(image: Image, uv2_sides: int, occupied_steps: int, content_rect: Rect2i = Rect2i()) -> void:
 	if image == null or image.is_empty():
 		return
@@ -754,7 +783,10 @@ static func generate_river_width_values(curve : Curve3D, steps : int, step_lengt
 					closest_dist = dist
 					closest_interpolate = interpolate
 					closest_point = c_point
-		river_width_values.append(max(MIN_RIVER_WIDTH, lerp(_safe_width_value(widths, closest_point), _safe_width_value(widths, closest_point + 1), closest_interpolate)))
+		# Smoothstep-eased interpolation keeps the width derivative continuous
+		# across curve points (no visible kinks in the bank lines).
+		var eased_interpolate := smoothstep(0.0, 1.0, closest_interpolate)
+		river_width_values.append(max(MIN_RIVER_WIDTH, lerp(_safe_width_value(widths, closest_point), _safe_width_value(widths, closest_point + 1), eased_interpolate)))
 	
 	return river_width_values
 
@@ -774,6 +806,7 @@ static func generate_river_mesh(curve : Curve3D, steps : int, step_length_divs :
 	safe_smoothness = clamp(safe_smoothness, SHAPE_SMOOTHNESS_MIN, SHAPE_SMOOTHNESS_MAX)
 
 	var rows := []
+	var center_positions := []
 	for step in step_count + 1:
 		var row := []
 		var position := _sample_river_position(curve, step, step_count, curve_length)
@@ -786,7 +819,10 @@ static func generate_river_mesh(curve : Curve3D, steps : int, step_length_divs :
 		for w_sub in safe_step_width_divs + 1:
 			var width_ratio := float(w_sub) / float(safe_step_width_divs)
 			row.append(position + right_vector * width_lerp - 2.0 * right_vector * width_lerp * width_ratio)
+		center_positions.append(position)
 		rows.append(row)
+
+	_resolve_river_row_overlaps(rows, center_positions, safe_step_width_divs)
 
 	var grid_side := calculate_side(safe_steps)
 	var grid_side_length := 1.0 / float(grid_side)
@@ -835,6 +871,71 @@ static func generate_river_mesh(curve : Curve3D, steps : int, step_length_divs :
 	st.generate_normals()
 	st.generate_tangents()
 	return st.commit()
+
+
+# On the inside of tight bends the bank edges fold back over themselves and
+# produce flipped triangles. Clamp edge points that move backwards relative to
+# the spline tangent, relax the clamped neighborhoods, and rebuild the interior
+# row points between the corrected edges. No-op when there are no overlaps.
+const RIVER_EDGE_SMOOTH_RADIUS := 2
+const RIVER_EDGE_SMOOTH_ITERATIONS := 5
+
+
+static func _resolve_river_row_overlaps(rows: Array, center_positions: Array, step_width_divs: int) -> void:
+	if rows.size() < 3 or step_width_divs < 1 or center_positions.size() != rows.size():
+		return
+	var affected_rows := {}
+	for edge_index in [0, step_width_divs]:
+		var clamped := _clamp_backpedaling_edge_points(rows, center_positions, edge_index)
+		_smooth_clamped_edge_neighborhoods(rows, edge_index, clamped)
+		for clamped_index in clamped:
+			for offset in range(-RIVER_EDGE_SMOOTH_RADIUS, RIVER_EDGE_SMOOTH_RADIUS + 1):
+				var row_index: int = clamped_index + offset
+				if row_index >= 0 and row_index < rows.size():
+					affected_rows[row_index] = true
+	if step_width_divs < 2:
+		return
+	for row_index in affected_rows:
+		var edge_start: Vector3 = rows[row_index][0]
+		var edge_end: Vector3 = rows[row_index][step_width_divs]
+		for w_sub in range(1, step_width_divs):
+			rows[row_index][w_sub] = edge_start.lerp(edge_end, float(w_sub) / float(step_width_divs))
+
+
+static func _clamp_backpedaling_edge_points(rows: Array, center_positions: Array, edge_index: int) -> PackedInt32Array:
+	var clamped := PackedInt32Array()
+	var last_good: Vector3 = rows[0][edge_index]
+	for row_index in range(1, rows.size()):
+		var point: Vector3 = rows[row_index][edge_index]
+		# Flatland test: vertical movement must not mask a horizontal backpedal.
+		var spline_tangent: Vector3 = center_positions[row_index] - center_positions[row_index - 1]
+		var edge_tangent: Vector3 = point - last_good
+		spline_tangent.y = 0.0
+		edge_tangent.y = 0.0
+		if edge_tangent.dot(spline_tangent) > 0.0:
+			last_good = point
+		else:
+			# Keep the point's own height so collapsed points do not stack.
+			rows[row_index][edge_index] = Vector3(last_good.x, point.y, last_good.z)
+			clamped.append(row_index)
+	return clamped
+
+
+static func _smooth_clamped_edge_neighborhoods(rows: Array, edge_index: int, clamped: PackedInt32Array) -> void:
+	if clamped.is_empty():
+		return
+	var affected := {}
+	for clamped_index in clamped:
+		for offset in range(-RIVER_EDGE_SMOOTH_RADIUS, RIVER_EDGE_SMOOTH_RADIUS + 1):
+			var row_index: int = clamped_index + offset
+			if row_index > 0 and row_index < rows.size() - 1:
+				affected[row_index] = true
+	for _iteration in RIVER_EDGE_SMOOTH_ITERATIONS:
+		var smoothed := {}
+		for row_index in affected:
+			smoothed[row_index] = 0.5 * (rows[row_index - 1][edge_index] + rows[row_index + 1][edge_index])
+		for row_index in smoothed:
+			rows[row_index][edge_index] = smoothed[row_index]
 
 
 static func _uv2_tile_pixel_center_rect(tile_x: int, tile_y: int, grid_side: int, source_resolution: int) -> Rect2:
@@ -1335,17 +1436,26 @@ static func generate_collisionmap(image : Image, mesh_instance : MeshInstance3D,
 			
 			var query_up := PhysicsRayQueryParameters3D.create(real_pos, real_pos_up)
 			query_up.collision_mask = raycast_layers
+			query_up.hit_from_inside = true
 			var result_up: Dictionary = space_state.intersect_ray(query_up)
 			var query_down := PhysicsRayQueryParameters3D.create(real_pos_up, real_pos)
 			query_down.collision_mask = raycast_layers
 			var result_down: Dictionary = space_state.intersect_ray(query_down)
-			
+
 			var up_hit_frontface := false
+			var up_hit_inside := false
 			if result_up:
-				if result_up.normal.y < 0:
+				if result_up.normal == Vector3.ZERO:
+					# hit_from_inside reports a zero normal when the ray origin
+					# is already embedded in a collider - deep interiors of tall
+					# boulders/cliffs that both rays would otherwise miss.
+					up_hit_inside = true
+				elif result_up.normal.y < 0:
 					up_hit_frontface = true
-			
-			if result_up or result_down:
+
+			if up_hit_inside:
+				image.set_pixel(x, y, Color(1.0, 1.0, 1.0))
+			elif result_up or result_down:
 				# Physics rays carry facing info: an up-ray whose first hit is an
 				# underside means the geometry hangs above the water here, so it
 				# must not bake as a flow obstacle.

@@ -124,7 +124,7 @@ This is the closest thing to the traditional "flow map", but it also carries foa
 | B | base foam mask |
 | A | phase/noise offset for animated flow texture sampling |
 
-The flow channels are baked from either a downstream baseline plus obstacle avoidance, or the older collision-gradient path depending on generation behavior. The visible shader unpacks R/G, applies contextual force and slide logic, and then uses the result to animate water normals.
+The flow channels are baked from either a downstream baseline plus obstacle avoidance, or the older collision-gradient path depending on generation behavior. When any per-point `flow_speeds` factor deviates from neutral, a final bake pass (`flow_speed_scale_pass.gdshader`) scales the finished flow magnitude by the authored factor — direction is untouched, so obstacle non-penetration is preserved, and the WaterSystem map and buoyancy inherit the authored speeds. The visible shader unpacks R/G, applies contextual force and slide logic, and then uses the result to animate water normals.
 
 ### `dist_pressure`
 
@@ -276,9 +276,11 @@ The WaterSystem flow shader samples the per-river flow, distance/pressure, terra
 ### River Authoring
 
 - spline/curve-based river layout
-- generated river mesh
+- generated river mesh (smoothstep-eased width interpolation; tight-bend edge overlap resolution with targeted relaxation)
+- render bounds grown by configured vertical displacement amplitudes (`set_custom_aabb`)
 - UV2 atlas layout with padded margins
 - per-point width support
+- per-point flow speed support (`flow_speeds`, factor 0–2, baked as a post-projection magnitude scale)
 - editor generation controls
 
 ### Flow And Force Data

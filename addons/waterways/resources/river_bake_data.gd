@@ -34,6 +34,12 @@ const DEFAULT_CHANNEL_METADATA := {
 		"g": "outside_bend_wet_pressure_or_bank_pillow_candidate_0_to_1_neutral_0",
 		"b": "inside_bend_shallow_or_deposition_candidate_0_to_1_neutral_0",
 		"a": "hard_boundary_or_protrusion_response_candidate_0_to_1_neutral_0"
+	},
+	"water_occupancy": {
+		"r": "crisp_solid_mask_1_inside_obstacle_or_protrusion_0_water_neutral_0",
+		"g": "solid_proximity_1_at_solid_surface_0_beyond_ramp_radius_neutral_0",
+		"b": "unused_neutral_0",
+		"a": "unused_neutral_1"
 	}
 }
 
@@ -61,6 +67,8 @@ const SOURCE_KIND_CURVE_ONLY_BAKE := "generated_curve_only_bake"
 @export var obstacle_features: Texture2D
 @export var terrain_contact_features: Texture2D
 @export var bank_response_features: Texture2D
+# Optional - absent on bakes made before the occupancy/projection system.
+@export var water_occupancy: Texture2D
 @export var texture_size := Vector2i.ZERO
 @export var source_texture_size := Vector2i.ZERO
 @export var content_rect := Rect2i()
@@ -98,13 +106,15 @@ func set_from_bake(
 		new_texture_layout: String,
 		new_source_kind: String,
 		new_source_metadata: Dictionary,
-		new_source_signature: Dictionary = {}
+		new_source_signature: Dictionary = {},
+		new_water_occupancy: Texture2D = null
 ) -> void:
 	flow_foam_noise = new_flow_foam_noise
 	dist_pressure = new_dist_pressure
 	obstacle_features = new_obstacle_features
 	terrain_contact_features = new_terrain_contact_features
 	bank_response_features = new_bank_response_features
+	water_occupancy = new_water_occupancy
 	texture_size = new_texture_size
 	source_texture_size = new_source_texture_size
 	content_rect = new_content_rect

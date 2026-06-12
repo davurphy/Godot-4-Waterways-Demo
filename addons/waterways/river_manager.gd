@@ -228,7 +228,10 @@ const RUNTIME_RIPPLE_MATERIAL_PARAMETER_SET = {
 const BAKE_CHANNEL_FLAT_EPSILON := 0.002
 const BAKE_CHANNEL_LOW_CONTRAST_EPSILON := 0.03
 const BAKE_CHANNEL_SATURATION_EPSILON := 0.02
-const RIVER_BAKE_SOURCE_SIGNATURE_VERSION := 24
+const RIVER_BAKE_SOURCE_SIGNATURE_VERSION := 27
+# Shader parameters that displace VERTEX.y upward; their sum is the headroom
+# added to the mesh's custom AABB.
+const DISPLACEMENT_AABB_SHADER_PARAMETERS: Array[String] = ["pillow_terrain_height", "pillow_obstruction_height"]
 const RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS := 1
 const RIVER_FLOW_GENERATION_BEHAVIOR_DOWNSTREAM_BASELINE := "downstream_baseline_collision_support"
 const RIVER_FLOW_GENERATION_BEHAVIOR_CURVE_ONLY := "curve_only"
@@ -244,6 +247,24 @@ const RIVER_OBSTACLE_AVOIDANCE_UPSTREAM_STRENGTH := 0.30
 const RIVER_OBSTACLE_AVOIDANCE_MIN_DOWNSTREAM_ALIGNMENT := 0.65
 const RIVER_OBSTACLE_AVOIDANCE_BANK_FRICTION_SUPPRESSION := 0.85
 const RIVER_OBSTACLE_AVOIDANCE_HARD_BOUNDARY_STEERING_GATE := 0.55
+# Water occupancy mask (crisp solid interiors + speed-ramp proximity field).
+const RIVER_OCCUPANCY_RAMP_TILES := 0.12
+# Only terrain that protrudes essentially its full reference height above the
+# water surface counts as solid. Lower values mark shallow shelves and bank
+# margins (where water still renders and ducks still float) as walls, which
+# bakes dead flow zones far larger than the actual obstacles.
+const RIVER_OCCUPANCY_PROTRUSION_THRESHOLD := 0.9
+# Minimum terrain-contact source confidence (A channel) for protrusion to mark
+# occupancy solids. Sits between the physics-collider confidence (0.5) and the
+# heightfield confidence (1.0): collider-sourced protrusion is overhang-blind
+# (a boulder wider above the waterline reads as protruding even where open
+# water passes beneath it) and those colliders are already covered by the
+# collision map's facing-aware overhang exemption.
+const RIVER_OCCUPANCY_PROTRUSION_CONFIDENCE_MIN := 0.75
+# Bake-time pressure projection (divergence-free flow solve).
+const RIVER_FLOW_PROJECTION_STRIDES: Array[int] = [32, 16, 8, 4, 2, 1, 1, 1]
+const RIVER_FLOW_PROJECTION_ITERATIONS_PER_STRIDE := 5
+const RIVER_FLOW_TANGENCY_PASSES := 2
 const RIVER_OBSTACLE_FEATURE_SUPPORT_START := 0.22
 const RIVER_OBSTACLE_FEATURE_SUPPORT_FULL := 0.82
 const RIVER_OBSTACLE_FEATURE_FACING_START := 0.35
@@ -299,6 +320,12 @@ const RIVER_GRADE_ENERGY_LOOKAHEAD_TILES := 1.0
 const RIVER_GRADE_ENERGY_SMOOTH_RADIUS_TILES := 1
 const RIVER_GRADE_ENERGY_REFERENCE_GRADE := 0.25
 const RIVER_NEUTRAL_BEND_BIAS_VALUE := 0.5
+# Per-point flow speed factor: 1.0 = neutral, < 1 slows (pools), > 1 speeds up
+# (rapids). Applied as a post-projection magnitude scale, so the solve's
+# non-penetration guarantee is preserved (direction never changes).
+const RIVER_NEUTRAL_FLOW_SPEED_FACTOR := 1.0
+const RIVER_FLOW_SPEED_FACTOR_MIN := 0.0
+const RIVER_FLOW_SPEED_FACTOR_MAX := 2.0
 const RIVER_BEND_BIAS_LOOKAHEAD_TILES := 1.0
 const RIVER_BEND_BIAS_SMOOTH_RADIUS_TILES := 1
 const RIVER_BEND_BIAS_REFERENCE_RADIANS := 0.45
@@ -453,6 +480,12 @@ var widths := []:
 		_ensure_width_count_for_curve()
 		if not _suppress_property_change_notifications and not _first_enter_tree:
 			_on_geometry_property_changed(true)
+var flow_speeds := []:
+	set(value):
+		flow_speeds = _sanitize_flow_speed_array(value)
+		_ensure_flow_speed_count_for_curve()
+		if not _suppress_property_change_notifications and not _first_enter_tree:
+			_on_bake_property_changed()
 var valid_flowmap := false
 var debug_view := 0
 var mesh_instance : MeshInstance3D
@@ -461,6 +494,7 @@ var dist_pressure : Texture2D
 var obstacle_features : Texture2D
 var terrain_contact_features : Texture2D
 var bank_response_features : Texture2D
+var water_occupancy : Texture2D
 var _bake_data_resource : Resource
 var bake_data : Resource:
 	get:
@@ -522,6 +556,19 @@ func _get_property_list() -> Array:
 			type = TYPE_FLOAT,
 			hint = PROPERTY_HINT_RANGE,
 			hint_string = "0.1, 5.0",
+			usage = PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_SCRIPT_VARIABLE
+		},
+		{
+			name = "Flow",
+			type = TYPE_NIL,
+			hint_string = "flow_",
+			usage = PROPERTY_USAGE_GROUP | PROPERTY_USAGE_SCRIPT_VARIABLE
+		},
+		{
+			# One factor per curve point (like widths): 1.0 neutral, < 1 pools,
+			# > 1 rapids. Scales baked flow magnitude after the projection.
+			name = "flow_speeds",
+			type = TYPE_ARRAY,
 			usage = PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_SCRIPT_VARIABLE
 		},
 		{
@@ -839,6 +886,8 @@ func _set(property: StringName, value: Variant) -> bool:
 		if _debug_material != null:
 			_debug_material.set_shader_parameter(param_name, value)
 		_apply_debug_view_material()
+		if param_name in DISPLACEMENT_AABB_SHADER_PARAMETERS:
+			_update_mesh_custom_aabb()
 		return true
 	return false
 
@@ -935,6 +984,7 @@ func _enter_tree() -> void:
 		curve.add_point(Vector3(0.0, 0.0, 0.0), Vector3(0.0, 0.0, -0.25), Vector3(0.0, 0.0, 0.25))
 		curve.add_point(Vector3(0.0, 0.0, 1.0), Vector3(0.0, 0.0, -0.25), Vector3(0.0, 0.0, 0.25))
 		_set_widths_without_property_notifications([1.0, 1.0])
+		_set_flow_speeds_without_property_notifications([RIVER_NEUTRAL_FLOW_SPEED_FACTOR, RIVER_NEUTRAL_FLOW_SPEED_FACTOR])
 	_sanitize_authoring_properties()
 	
 	_ensure_generated_mesh_instance()
@@ -978,12 +1028,14 @@ func add_point(position : Vector3, index : int, dir : Vector3 = Vector3.ZERO, wi
 		var new_dir: Vector3 = dir if dir != Vector3.ZERO else (position - curve.get_point_position(last_index) - curve.get_point_out(last_index) ).normalized() * 0.25 * dist
 		curve.add_point(position, -new_dir, new_dir, -1)
 		widths.append(_get_width_for_point(widths.size() - 1)) # If this is a new point at the end, add a width that's the same as last
+		flow_speeds.append(_get_flow_speed_for_point(flow_speeds.size() - 1))
 	else:
 		var dist := curve.get_point_position(index).distance_to(curve.get_point_position(index + 1))
 		var new_dir: Vector3 = dir if dir != Vector3.ZERO else (curve.get_point_position(index + 1) - curve.get_point_position(index)).normalized() * 0.25 * dist
 		curve.add_point(position, -new_dir, new_dir, index + 1)
 		var new_width = _sanitize_width_value(width, "width") if width != 0.0 else (_get_width_for_point(index) + _get_width_for_point(index + 1)) / 2.0
 		widths.insert(index + 1, new_width) # We set the width to the average of the two surrounding widths
+		flow_speeds.insert(index + 1, (_get_flow_speed_for_point(index) + _get_flow_speed_for_point(index + 1)) / 2.0)
 	_invalidate_generated_bake(true, true)
 
 
@@ -1002,6 +1054,11 @@ func insert_point_with_handles(position: Vector3, index: int, point_in: Vector3,
 		widths.append(safe_width)
 	else:
 		widths.insert(insert_index, safe_width)
+	var neighbor_flow_speed := (_get_flow_speed_for_point(maxi(insert_index - 1, 0)) + _get_flow_speed_for_point(insert_index)) / 2.0
+	if insert_index >= flow_speeds.size():
+		flow_speeds.append(neighbor_flow_speed)
+	else:
+		flow_speeds.insert(insert_index, neighbor_flow_speed)
 	_invalidate_generated_bake(true, true)
 
 
@@ -1017,7 +1074,8 @@ func get_curve_state() -> Dictionary:
 		"positions": positions,
 		"point_ins": point_ins,
 		"point_outs": point_outs,
-		"widths": widths.duplicate(true)
+		"widths": widths.duplicate(true),
+		"flow_speeds": flow_speeds.duplicate(true)
 	}
 
 
@@ -1026,6 +1084,7 @@ func restore_curve_state(state: Dictionary) -> void:
 	var point_ins: PackedVector3Array = state.get("point_ins", PackedVector3Array())
 	var point_outs: PackedVector3Array = state.get("point_outs", PackedVector3Array())
 	_set_widths_without_property_notifications(state.get("widths", []).duplicate(true))
+	_set_flow_speeds_without_property_notifications(state.get("flow_speeds", []).duplicate(true))
 	curve.clear_points()
 	for point_index in positions.size():
 		var point_in := Vector3.ZERO
@@ -1036,6 +1095,7 @@ func restore_curve_state(state: Dictionary) -> void:
 			point_out = point_outs[point_index]
 		curve.add_point(positions[point_index], point_in, point_out, -1)
 	_ensure_width_count_for_curve()
+	_ensure_flow_speed_count_for_curve()
 	_invalidate_generated_bake(true, true)
 
 
@@ -1068,6 +1128,8 @@ func remove_point(index : int) -> void:
 		return
 	curve.remove_point(index)
 	widths.remove_at(index)
+	if index < flow_speeds.size():
+		flow_speeds.remove_at(index)
 	_invalidate_generated_bake(true, true)
 
 
@@ -1110,6 +1172,10 @@ func set_curve_point_out(index : int, position : Vector3) -> void:
 
 func set_widths(new_widths : Array) -> void:
 	widths = new_widths
+
+
+func set_flow_speeds(new_flow_speeds : Array) -> void:
+	flow_speeds = new_flow_speeds
 
 
 func set_materials(param : String, value) -> void:
@@ -1315,7 +1381,39 @@ func _generate_river() -> void:
 	mesh_instance.mesh = WaterHelperMethods.generate_river_mesh(curve, _steps, shape_step_length_divs, shape_step_width_divs, shape_smoothness, river_width_values, uv2_source_resolution)
 	if mesh_instance.mesh != null and mesh_instance.mesh.get_surface_count() > 0:
 		mesh_instance.mesh.surface_set_material(0, _material)
+	_update_mesh_custom_aabb()
 	_apply_debug_view_material()
+
+
+# The surface shader displaces VERTEX.y upward by up to the sum of the pillow
+# height amplitudes (river.gdshader vertex()). The render AABB must include
+# that headroom or the river gets frustum-culled at the undisplaced bounds.
+func _update_mesh_custom_aabb() -> void:
+	if mesh_instance == null or mesh_instance.mesh == null:
+		return
+	var aabb: AABB = mesh_instance.mesh.get_aabb()
+	var upward := _get_configured_max_vertical_displacement()
+	if upward > 0.0:
+		aabb.size.y += upward
+	mesh_instance.set_custom_aabb(aabb)
+
+
+func _get_configured_max_vertical_displacement() -> float:
+	var total := 0.0
+	for param_name in DISPLACEMENT_AABB_SHADER_PARAMETERS:
+		total += _get_float_shader_parameter(param_name)
+	return total
+
+
+func _get_float_shader_parameter(param_name: String) -> float:
+	if _material == null:
+		return 0.0
+	var value = _material.get_shader_parameter(param_name)
+	if value == null and _material.shader != null:
+		value = RenderingServer.shader_get_parameter_default(_material.shader.get_rid(), param_name)
+	if value is float or value is int:
+		return float(value)
+	return 0.0
 
 
 func _apply_debug_view_material() -> void:
@@ -1533,6 +1631,11 @@ func _get_bake_preflight_failures(flowmap_resolution: int, require_mesh: bool, g
 		if not _is_finite_number(width_value) or width_value < WaterHelperMethods.MIN_RIVER_WIDTH:
 			failures.append("all river widths must be finite positive values")
 			break
+	for flow_speed in flow_speeds:
+		var flow_speed_value := float(flow_speed)
+		if not _is_finite_number(flow_speed_value) or flow_speed_value < RIVER_FLOW_SPEED_FACTOR_MIN or flow_speed_value > RIVER_FLOW_SPEED_FACTOR_MAX:
+			failures.append("all flow speeds must be between " + str(RIVER_FLOW_SPEED_FACTOR_MIN) + " and " + str(RIVER_FLOW_SPEED_FACTOR_MAX))
+			break
 	if not (_filter_renderer is PackedScene):
 		failures.append("filter renderer scene could not be loaded")
 	if require_mesh:
@@ -1633,6 +1736,7 @@ func _sanitize_authoring_properties() -> void:
 	baking_foam_blur = baking_foam_blur
 	bake_generation_behavior = bake_generation_behavior
 	widths = widths
+	flow_speeds = flow_speeds
 	_suppress_property_change_notifications = was_suppressed
 
 
@@ -1641,6 +1745,58 @@ func _set_widths_without_property_notifications(new_widths: Array) -> void:
 	_suppress_property_change_notifications = true
 	widths = new_widths
 	_suppress_property_change_notifications = was_suppressed
+
+
+func _set_flow_speeds_without_property_notifications(new_flow_speeds: Array) -> void:
+	var was_suppressed := _suppress_property_change_notifications
+	_suppress_property_change_notifications = true
+	flow_speeds = new_flow_speeds
+	_suppress_property_change_notifications = was_suppressed
+
+
+func _sanitize_flow_speed_array(value: Variant) -> Array:
+	var sanitized_flow_speeds := []
+	if typeof(value) != TYPE_ARRAY:
+		_warn_sanitized_property("flow_speeds", value, "[]")
+		return sanitized_flow_speeds
+	var source_flow_speeds: Array = value
+	for flow_speed_index in source_flow_speeds.size():
+		sanitized_flow_speeds.append(_sanitize_flow_speed_value(source_flow_speeds[flow_speed_index], "flow_speeds[" + str(flow_speed_index) + "]"))
+	return sanitized_flow_speeds
+
+
+func _sanitize_flow_speed_value(value: Variant, property_name: String) -> float:
+	var flow_speed_value := float(value)
+	if not _is_finite_number(flow_speed_value) or flow_speed_value < RIVER_FLOW_SPEED_FACTOR_MIN or flow_speed_value > RIVER_FLOW_SPEED_FACTOR_MAX:
+		_warn_sanitized_property(property_name, value, RIVER_NEUTRAL_FLOW_SPEED_FACTOR)
+		return RIVER_NEUTRAL_FLOW_SPEED_FACTOR
+	return flow_speed_value
+
+
+func _ensure_flow_speed_count_for_curve() -> void:
+	var required_count := 0
+	if curve != null:
+		required_count = curve.get_point_count()
+	if required_count <= 0:
+		return
+	if flow_speeds.is_empty():
+		flow_speeds.append(RIVER_NEUTRAL_FLOW_SPEED_FACTOR)
+	while flow_speeds.size() < required_count:
+		flow_speeds.append(flow_speeds[flow_speeds.size() - 1])
+
+
+func _get_flow_speed_for_point(point_index: int) -> float:
+	if flow_speeds.is_empty():
+		return RIVER_NEUTRAL_FLOW_SPEED_FACTOR
+	var flow_speed_index: int = clamp(point_index, 0, flow_speeds.size() - 1)
+	return _sanitize_flow_speed_value(flow_speeds[flow_speed_index], "flow_speeds[" + str(flow_speed_index) + "]")
+
+
+func _any_flow_speed_non_neutral() -> bool:
+	for flow_speed_index in flow_speeds.size():
+		if not is_equal_approx(_get_flow_speed_for_point(flow_speed_index), RIVER_NEUTRAL_FLOW_SPEED_FACTOR):
+			return true
+	return false
 
 
 func _sanitize_width_array(value: Variant) -> Array:
@@ -1778,6 +1934,12 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 	var grade_energy_with_margins_texture := ImageTexture.create_from_image(grade_energy_with_margins)
 	var bend_bias_with_margins := WaterHelperMethods.add_margins(_create_curve_bend_bias_source_image(int(flowmap_resolution), _uv2_sides, _steps), flowmap_resolution, margin, _steps)
 	var bend_bias_with_margins_texture := ImageTexture.create_from_image(bend_bias_with_margins)
+	# Authored per-point flow speed: only built when any point deviates from
+	# neutral, so default rivers skip the extra scale pass entirely.
+	var flow_speed_with_margins_texture: Texture2D = null
+	if _any_flow_speed_non_neutral():
+		var flow_speed_with_margins := WaterHelperMethods.add_margins(_create_curve_flow_speed_source_image(int(flowmap_resolution), _uv2_sides, _steps), flowmap_resolution, margin, _steps)
+		flow_speed_with_margins_texture = ImageTexture.create_from_image(flow_speed_with_margins)
 
 	# Create correctly tiling noise for A channel
 	var noise_texture := load(FLOW_OFFSET_NOISE_TEXTURE_PATH) as Texture2D
@@ -1808,12 +1970,14 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 	var support_fallback_applied := not support_fallback_reason.is_empty()
 	var run_collision_support_filters := not support_fallback_applied
 	var obstacle_avoidance_applied := false
+	var flow_projected_applied := false
 	var primary_flow_map: Texture2D = null
 	var blurred_foam_map: Texture2D = blank_support_with_margins_texture
 	var blurred_flow_pressure_map: Texture2D = blank_support_with_margins_texture
 	var dilated_texture: Texture2D = blank_support_with_margins_texture
 	var obstacle_feature_mask: Texture2D = blank_obstacle_features_with_margins_texture
 	var bank_response_feature_mask: Texture2D = blank_bank_response_features_with_margins_texture
+	var water_occupancy_mask: Texture2D = null
 	var bank_response_feature_mask_ready := false
 	if downstream_baseline_with_margins_texture != null:
 		var early_bank_response_feature_settings := _get_bank_response_feature_settings()
@@ -1852,22 +2016,19 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 		var normal_map = await renderer_instance.apply_normal(dilated_texture, flowmap_resolution, bake_atlas_columns)
 		if not _filter_output_is_valid(normal_map, "normal map", renderer_instance):
 			return
+		# Crisp water occupancy: collision interiors plus protruding terrain,
+		# packed with a proximity ramp for runtime clipping and flow stilling.
+		var solid_occupancy_source := WaterHelperMethods.create_solid_occupancy_source_image(image, terrain_contact_source, RIVER_OCCUPANCY_PROTRUSION_THRESHOLD, RIVER_OCCUPANCY_PROTRUSION_CONFIDENCE_MIN)
+		var solid_occupancy_with_margins := WaterHelperMethods.add_margins(solid_occupancy_source, flowmap_resolution, margin, _steps)
+		var solid_occupancy_with_margins_texture := ImageTexture.create_from_image(solid_occupancy_with_margins)
+		var occupancy_proximity = await renderer_instance.apply_proximity(solid_occupancy_with_margins_texture, RIVER_OCCUPANCY_RAMP_TILES / float(_uv2_sides), flowmap_resolution, bake_atlas_columns)
+		if not _filter_output_is_valid(occupancy_proximity, "occupancy proximity field", renderer_instance):
+			return
+		var water_occupancy_result = await renderer_instance.apply_occupancy_pack(solid_occupancy_with_margins_texture, occupancy_proximity)
+		if not _filter_output_is_valid(water_occupancy_result, "water occupancy mask", renderer_instance):
+			return
+		water_occupancy_mask = water_occupancy_result
 		if _uses_obstacle_avoidance_generation(generation_behavior) and downstream_baseline_with_margins_texture != null:
-			var steering_support_map: Texture2D = dilated_texture
-			var steering_normal_map: Texture2D = normal_map
-			var steering_dilate_amount := maxf(dilate_amount, RIVER_OBSTACLE_AVOIDANCE_SDF_RADIUS_TILES / float(_uv2_sides))
-			if steering_dilate_amount > dilate_amount + SOURCE_SIGNATURE_FLOAT_STEP:
-				steering_support_map = await renderer_instance.apply_dilate(collision_with_margins, steering_dilate_amount, 0.0, flowmap_resolution, null, bake_atlas_columns)
-				if not _filter_output_is_valid(steering_support_map, "SDF steering support map", renderer_instance):
-					return
-				var steering_blur_amount := RIVER_OBSTACLE_AVOIDANCE_SDF_BLUR_TILES / float(_uv2_sides) * flowmap_resolution
-				steering_support_map = await renderer_instance.apply_blur(steering_support_map, steering_blur_amount, flowmap_resolution, bake_atlas_columns)
-				if not _filter_output_is_valid(steering_support_map, "blurred SDF steering support map", renderer_instance):
-					return
-				steering_normal_map = await renderer_instance.apply_normal(steering_support_map, flowmap_resolution, bake_atlas_columns)
-				if not _filter_output_is_valid(steering_normal_map, "SDF steering normal map", renderer_instance):
-					return
-			var upstream_lookahead_uv := RIVER_OBSTACLE_AVOIDANCE_UPSTREAM_LOOKAHEAD_TILES / (float(_uv2_sides) + 2.0)
 			var feature_uv_denominator := float(_uv2_sides) + 2.0
 			var obstacle_feature_mask_result = await renderer_instance.apply_obstacle_feature_mask(
 				downstream_baseline_with_margins_texture,
@@ -1909,28 +2070,42 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 			if not _filter_output_is_valid(obstacle_feature_mask_result, "obstacle feature mask", renderer_instance):
 				return
 			obstacle_feature_mask = obstacle_feature_mask_result
-			var obstacle_avoidance_flow_map = await renderer_instance.apply_obstacle_avoidance_flow(
-				downstream_baseline_with_margins_texture,
-				steering_normal_map,
-				steering_support_map,
-				bank_response_feature_mask,
-				RIVER_OBSTACLE_AVOIDANCE_STRENGTH,
-				RIVER_OBSTACLE_AVOIDANCE_INFLUENCE_START,
-				RIVER_OBSTACLE_AVOIDANCE_INFLUENCE_FULL,
-				upstream_lookahead_uv,
-				RIVER_OBSTACLE_AVOIDANCE_UPSTREAM_STRENGTH,
-				RIVER_OBSTACLE_AVOIDANCE_MIN_DOWNSTREAM_ALIGNMENT,
-				RIVER_OBSTACLE_AVOIDANCE_BANK_FRICTION_SUPPRESSION,
-				RIVER_OBSTACLE_AVOIDANCE_HARD_BOUNDARY_STEERING_GATE,
-				bake_atlas_columns
-			)
-			if not _filter_output_is_valid(obstacle_avoidance_flow_map, "obstacle avoidance flow map", renderer_instance):
+			# Pressure projection (Helmholtz-Hodge): make the baseline field
+			# divergence-free with free-slip solid boundaries. Guarantees flow
+			# does not cross obstacle/bank boundaries, splits around solids,
+			# stagnates in front, and speeds up through constrictions.
+			# Replaces the legacy local SDF tangent steering.
+			renderer_instance.set_hdr_2d(true)
+			var divergence_map = await renderer_instance.apply_flow_divergence(downstream_baseline_with_margins_texture, water_occupancy_mask, flowmap_resolution, bake_atlas_columns)
+			if not _filter_output_is_valid(divergence_map, "flow divergence map", renderer_instance):
 				return
-			var blurred_obstacle_avoidance_flow_map = await renderer_instance.apply_blur(obstacle_avoidance_flow_map, flowmap_blur_amount, flowmap_resolution, bake_atlas_columns)
-			if not _filter_output_is_valid(blurred_obstacle_avoidance_flow_map, "blurred obstacle avoidance flow map", renderer_instance):
+			var pressure_size := Vector2i(downstream_baseline_with_margins_texture.get_size())
+			var neutral_pressure_image := Image.create(pressure_size.x, pressure_size.y, false, Image.FORMAT_RGBAF)
+			neutral_pressure_image.fill(Color(0.5, 0.0, 0.0, 1.0))
+			var pressure_map: Texture2D = ImageTexture.create_from_image(neutral_pressure_image)
+			var total_jacobi_passes := RIVER_FLOW_PROJECTION_STRIDES.size() * RIVER_FLOW_PROJECTION_ITERATIONS_PER_STRIDE
+			var jacobi_pass_index := 0
+			for stride in RIVER_FLOW_PROJECTION_STRIDES:
+				emit_signal("progress_notified", 0.95, "Projecting flow %d/%d (stride %d)" % [jacobi_pass_index, total_jacobi_passes, stride])
+				for iteration in RIVER_FLOW_PROJECTION_ITERATIONS_PER_STRIDE:
+					pressure_map = await renderer_instance.apply_flow_pressure_jacobi(pressure_map, divergence_map, water_occupancy_mask, float(stride), flowmap_resolution, bake_atlas_columns)
+					if not _filter_output_is_valid(pressure_map, "flow pressure jacobi pass", renderer_instance):
+						return
+					jacobi_pass_index += 1
+			var projected_flow_map = await renderer_instance.apply_flow_gradient_subtract(downstream_baseline_with_margins_texture, pressure_map, water_occupancy_mask, flowmap_resolution, bake_atlas_columns)
+			if not _filter_output_is_valid(projected_flow_map, "projected flow map", renderer_instance):
 				return
-			primary_flow_map = blurred_obstacle_avoidance_flow_map
+			var tangent_flow_map: Texture2D = projected_flow_map
+			for tangency_pass in RIVER_FLOW_TANGENCY_PASSES:
+				tangent_flow_map = await renderer_instance.apply_flow_boundary_tangency(tangent_flow_map, water_occupancy_mask, flowmap_resolution, bake_atlas_columns)
+				if not _filter_output_is_valid(tangent_flow_map, "boundary tangency flow map", renderer_instance):
+					return
+			renderer_instance.set_hdr_2d(false)
+			# No post-blur: the projected field is smooth by construction and
+			# blurring would smear velocity back across solid boundaries.
+			primary_flow_map = tangent_flow_map
 			obstacle_avoidance_applied = true
+			flow_projected_applied = true
 		else:
 			var flow_map = await renderer_instance.apply_normal_to_flow(normal_map, flowmap_resolution)
 			if not _filter_output_is_valid(flow_map, "flow map", renderer_instance):
@@ -1954,6 +2129,11 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 		return
 	if support_fallback_applied:
 		_print_curve_support_fallback_notice(generation_behavior, support_fallback_reason)
+	if flow_speed_with_margins_texture != null:
+		var speed_scaled_flow_map = await renderer_instance.apply_flow_speed_scale(primary_flow_map, flow_speed_with_margins_texture, RIVER_FLOW_SPEED_FACTOR_MAX)
+		if not _filter_output_is_valid(speed_scaled_flow_map, "flow speed scale map", renderer_instance):
+			return
+		primary_flow_map = speed_scaled_flow_map
 	var bank_response_source_flow := downstream_baseline_with_margins_texture
 	if bank_response_source_flow == null:
 		bank_response_source_flow = primary_flow_map
@@ -1992,6 +2172,9 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 	var obstacle_features_result: Image = obstacle_feature_mask.get_image()
 	var terrain_contact_features_result: Image = terrain_contact_with_margins
 	var bank_response_features_result: Image = bank_response_feature_mask.get_image()
+	var water_occupancy_result_image: Image = null
+	if water_occupancy_mask != null:
+		water_occupancy_result_image = water_occupancy_mask.get_image()
 	var crop_rect := Rect2i(margin, margin, int(flowmap_resolution), int(flowmap_resolution))
 	# Filters and combine passes can leave meaningful-looking RG in unused atlas cells.
 	# Clear only the source-region unused tiles so occupied seam margins stay intact.
@@ -2005,6 +2188,8 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 	WaterHelperMethods.synchronize_uv2_logical_edge_bands(dist_pressure_result, _uv2_sides, _steps, crop_rect, RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS)
 	WaterHelperMethods.synchronize_uv2_logical_edge_bands(obstacle_features_result, _uv2_sides, _steps, crop_rect, RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS)
 	WaterHelperMethods.synchronize_uv2_logical_edge_bands(bank_response_features_result, _uv2_sides, _steps, crop_rect, RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS)
+	if water_occupancy_result_image != null:
+		WaterHelperMethods.synchronize_uv2_logical_edge_bands(water_occupancy_result_image, _uv2_sides, _steps, crop_rect, RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS)
 	var grade_energy_stats := _get_occupied_channel_stats(dist_pressure_result, crop_rect, 2)
 	var bend_bias_stats := _get_occupied_channel_stats(dist_pressure_result, crop_rect, 3)
 	var obstacle_feature_stats := _get_obstacle_feature_stats(obstacle_features_result, crop_rect)
@@ -2034,12 +2219,15 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 	obstacle_features = ImageTexture.create_from_image(obstacle_features_result)
 	terrain_contact_features = ImageTexture.create_from_image(terrain_contact_features_result)
 	bank_response_features = ImageTexture.create_from_image(bank_response_features_result)
+	water_occupancy = ImageTexture.create_from_image(water_occupancy_result_image) if water_occupancy_result_image != null else null
 	var bake_diagnostics := {
 		"collision_probe_skipped": collision_probe_skipped,
 		"collision_support_filters_ran": run_collision_support_filters,
 		"support_fallback_applied": support_fallback_applied,
 		"support_fallback_reason": support_fallback_reason,
 		"obstacle_avoidance_applied": obstacle_avoidance_applied,
+		"flow_projected": flow_projected_applied,
+		"water_occupancy_baked": water_occupancy != null,
 		"collision_stats": collision_stats.duplicate(true),
 		"grade_energy_stats": grade_energy_stats.duplicate(true),
 		"bend_bias_stats": bend_bias_stats.duplicate(true),
@@ -2056,6 +2244,8 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 	set_materials("i_obstacle_features", obstacle_features)
 	set_materials("i_terrain_contact_features", terrain_contact_features)
 	set_materials("i_bank_response_features", bank_response_features)
+	set_materials("i_water_occupancy", water_occupancy)
+	set_materials("i_flow_projected", flow_projected_applied)
 	set_materials("i_valid_flowmap", true)
 	set_materials("i_uv2_sides", _uv2_sides)
 	valid_flowmap = true;
@@ -2197,6 +2387,78 @@ func _calculate_curve_grade_energy_by_step(step_count: int) -> Array:
 		var downhill_drop := sample_position.y - downstream_position.y
 		raw_grades[step_index] = maxf(0.0, downhill_drop / run_distance)
 	return _normalize_curve_grade_values(_smooth_curve_grade_values(raw_grades, RIVER_GRADE_ENERGY_SMOOTH_RADIUS_TILES))
+
+
+# Per-point flow speed factor sampled along the curve, packed into R as
+# factor / RIVER_FLOW_SPEED_FACTOR_MAX (0.5 = neutral factor 1.0).
+func _create_curve_flow_speed_source_image(resolution: int, uv2_sides: int, occupied_steps: int) -> Image:
+	var safe_resolution := maxi(1, resolution)
+	var image := Image.create(safe_resolution, safe_resolution, false, Image.FORMAT_RGBA8)
+	var neutral_packed := RIVER_NEUTRAL_FLOW_SPEED_FACTOR / RIVER_FLOW_SPEED_FACTOR_MAX
+	image.fill(Color(neutral_packed, neutral_packed, neutral_packed, 1.0))
+	var side := maxi(1, uv2_sides)
+	var total_tiles := side * side
+	var safe_occupied_steps := clampi(occupied_steps, 0, total_tiles)
+	if safe_occupied_steps <= 0:
+		return image
+	var flow_speed_by_step := _calculate_curve_flow_speed_by_step(safe_occupied_steps)
+	var source_rect := Rect2i(0, 0, safe_resolution, safe_resolution)
+	for step_index in safe_occupied_steps:
+		var tile_rect := WaterHelperMethods.get_uv2_atlas_tile_rect(step_index, side, source_rect)
+		for y in tile_rect.size.y:
+			var local_y := _tile_axis_vertex_aligned_ratio(y, tile_rect.size.y)
+			var step_progress := float(step_index) + local_y
+			var flow_speed := clampf(_sample_step_value_linear(flow_speed_by_step, step_progress, RIVER_NEUTRAL_FLOW_SPEED_FACTOR), RIVER_FLOW_SPEED_FACTOR_MIN, RIVER_FLOW_SPEED_FACTOR_MAX)
+			var packed := flow_speed / RIVER_FLOW_SPEED_FACTOR_MAX
+			var color := Color(packed, packed, packed, 1.0)
+			for x in tile_rect.size.x:
+				image.set_pixel(tile_rect.position.x + x, tile_rect.position.y + y, color)
+	return image
+
+
+func _calculate_curve_flow_speed_by_step(step_count: int) -> Array:
+	var safe_step_count := maxi(1, step_count)
+	var factors := []
+	factors.resize(safe_step_count + 1)
+	for step_index in safe_step_count + 1:
+		factors[step_index] = RIVER_NEUTRAL_FLOW_SPEED_FACTOR
+	if curve == null or curve.get_point_count() < 2 or flow_speeds.is_empty():
+		return factors
+	var curve_length := curve.get_baked_length()
+	if curve_length <= 0.0:
+		return factors
+	var point_offsets := _get_curve_point_offsets()
+	for step_index in safe_step_count + 1:
+		var distance := (float(step_index) / float(safe_step_count)) * curve_length
+		factors[step_index] = _sample_flow_speed_at_offset(distance, point_offsets)
+	return factors
+
+
+func _get_curve_point_offsets() -> PackedFloat32Array:
+	var offsets := PackedFloat32Array()
+	var running := 0.0
+	for point_index in curve.get_point_count():
+		var offset := curve.get_closest_offset(curve.get_point_position(point_index))
+		# Offsets must be monotonic; a near-self-intersecting curve can fool
+		# get_closest_offset, so never step backwards.
+		running = maxf(running, offset)
+		offsets.append(running)
+	return offsets
+
+
+func _sample_flow_speed_at_offset(distance: float, point_offsets: PackedFloat32Array) -> float:
+	if point_offsets.size() < 2:
+		return _get_flow_speed_for_point(0)
+	for segment_index in point_offsets.size() - 1:
+		var segment_start := point_offsets[segment_index]
+		var segment_end := point_offsets[segment_index + 1]
+		if distance <= segment_end or segment_index == point_offsets.size() - 2:
+			var t := 0.0
+			if segment_end > segment_start:
+				t = clampf((distance - segment_start) / (segment_end - segment_start), 0.0, 1.0)
+			# Smoothstep easing matches the width interpolation convention.
+			return lerpf(_get_flow_speed_for_point(segment_index), _get_flow_speed_for_point(segment_index + 1), smoothstep(0.0, 1.0, t))
+	return _get_flow_speed_for_point(point_offsets.size() - 1)
 
 
 func _create_curve_bend_bias_source_image(resolution: int, uv2_sides: int, occupied_steps: int) -> Image:
@@ -2996,6 +3258,7 @@ func _apply_bake_data() -> void:
 	obstacle_features = bake_data.get("obstacle_features") as Texture2D
 	terrain_contact_features = bake_data.get("terrain_contact_features") as Texture2D
 	bank_response_features = bake_data.get("bank_response_features") as Texture2D
+	water_occupancy = bake_data.get("water_occupancy") as Texture2D
 	var resource_uv2_sides = bake_data.get("uv2_sides")
 	if resource_uv2_sides != null:
 		_uv2_sides = max(1, int(resource_uv2_sides))
@@ -3004,9 +3267,20 @@ func _apply_bake_data() -> void:
 	set_materials("i_obstacle_features", obstacle_features)
 	set_materials("i_terrain_contact_features", terrain_contact_features)
 	set_materials("i_bank_response_features", bank_response_features)
+	set_materials("i_water_occupancy", water_occupancy)
 	set_materials("i_uv2_sides", _uv2_sides)
+	set_materials("i_flow_projected", _bake_metadata_flow_projected())
 	var textures_are_present := flow_foam_noise != null and dist_pressure != null and obstacle_features != null and terrain_contact_features != null and bank_response_features != null
 	_set_valid_flowmap(textures_are_present and _bake_data_matches_current_source())
+
+
+func _bake_metadata_flow_projected() -> bool:
+	if bake_data == null:
+		return false
+	var metadata = bake_data.get("source_metadata")
+	if typeof(metadata) != TYPE_DICTIONARY:
+		return false
+	return bool((metadata as Dictionary).get("flow_projected", false))
 
 
 func _write_bake_data(texture_size: Vector2i, source_texture_size: Vector2i, content_rect: Rect2i, flow_vector_diagnostics: Dictionary = {}, generation_behavior: String = RIVER_FLOW_GENERATION_BEHAVIOR_DOWNSTREAM_BASELINE, foam_support_reduced: bool = false, pressure_support_reduced: bool = false, bake_diagnostics: Dictionary = {}) -> void:
@@ -3035,8 +3309,15 @@ func _write_bake_data(texture_size: Vector2i, source_texture_size: Vector2i, con
 		"collision_probe_skipped": bool(bake_diagnostics.get("collision_probe_skipped", false)),
 		"collision_support_filters_ran": bool(bake_diagnostics.get("collision_support_filters_ran", false)),
 		"obstacle_avoidance_applied": bool(bake_diagnostics.get("obstacle_avoidance_applied", false)),
+		"flow_projected": bool(bake_diagnostics.get("flow_projected", false)),
+		"water_occupancy_baked": bool(bake_diagnostics.get("water_occupancy_baked", false)),
+		"water_occupancy_ramp_tiles": RIVER_OCCUPANCY_RAMP_TILES,
+		"water_occupancy_protrusion_threshold": RIVER_OCCUPANCY_PROTRUSION_THRESHOLD,
+		"water_occupancy_protrusion_confidence_min": RIVER_OCCUPANCY_PROTRUSION_CONFIDENCE_MIN,
+		"flow_projection_strides": RIVER_FLOW_PROJECTION_STRIDES.duplicate(),
+		"flow_projection_iterations_per_stride": RIVER_FLOW_PROJECTION_ITERATIONS_PER_STRIDE,
 		"obstacle_avoidance_strength": RIVER_OBSTACLE_AVOIDANCE_STRENGTH,
-		"obstacle_avoidance_algorithm": "bank_context_gated_local_sdf_steering",
+		"obstacle_avoidance_algorithm": "pressure_projection_free_slip_jacobi_with_legacy_sdf_steering_fallback",
 		"obstacle_avoidance_influence_start": RIVER_OBSTACLE_AVOIDANCE_INFLUENCE_START,
 		"obstacle_avoidance_influence_full": RIVER_OBSTACLE_AVOIDANCE_INFLUENCE_FULL,
 		"obstacle_avoidance_sdf_radius_tiles": RIVER_OBSTACLE_AVOIDANCE_SDF_RADIUS_TILES,
@@ -3138,6 +3419,8 @@ func _write_bake_data(texture_size: Vector2i, source_texture_size: Vector2i, con
 		"bend_bias_smooth_radius_tiles": RIVER_BEND_BIAS_SMOOTH_RADIUS_TILES,
 		"bend_bias_reference_radians": RIVER_BEND_BIAS_REFERENCE_RADIANS,
 		"bend_bias_stats": bend_bias_stats.duplicate(true),
+		"flow_speed_scaled": _any_flow_speed_non_neutral(),
+		"flow_speed_factor_max": RIVER_FLOW_SPEED_FACTOR_MAX,
 		"flat_foam_support_reduced": foam_support_reduced,
 		"flat_foam_support_value": RIVER_FLAT_FOAM_SUPPORT_VALUE,
 		"flat_pressure_support_reduced": pressure_support_reduced,
@@ -3174,7 +3457,8 @@ func _write_bake_data(texture_size: Vector2i, source_texture_size: Vector2i, con
 			texture_layout,
 			source_kind,
 			source_metadata,
-			get_bake_source_signature()
+			get_bake_source_signature(),
+			water_occupancy
 		)
 	if Engine.is_editor_hint():
 		notify_property_list_changed()
@@ -3188,7 +3472,8 @@ func get_bake_source_signature() -> Dictionary:
 				"position": _vector3_signature(curve.get_point_position(point_index)),
 				"in": _vector3_signature(curve.get_point_in(point_index)),
 				"out": _vector3_signature(curve.get_point_out(point_index)),
-				"width": _signature_float(_get_width_for_point(point_index))
+				"width": _signature_float(_get_width_for_point(point_index)),
+				"flow_speed": _signature_float(_get_flow_speed_for_point(point_index))
 			})
 	var step_count := _calculate_step_count()
 	return {
@@ -3248,6 +3533,12 @@ func get_bake_source_signature() -> Dictionary:
 		"obstacle_feature_eddy_line_energy_gate_full": _signature_float(RIVER_OBSTACLE_FEATURE_EDDY_LINE_ENERGY_GATE_FULL),
 		"obstacle_feature_eddy_line_support_reject_start": _signature_float(RIVER_OBSTACLE_FEATURE_EDDY_LINE_SUPPORT_REJECT_START),
 		"obstacle_feature_eddy_line_support_reject_full": _signature_float(RIVER_OBSTACLE_FEATURE_EDDY_LINE_SUPPORT_REJECT_FULL),
+		"water_occupancy_ramp_tiles": _signature_float(RIVER_OCCUPANCY_RAMP_TILES),
+		"water_occupancy_protrusion_threshold": _signature_float(RIVER_OCCUPANCY_PROTRUSION_THRESHOLD),
+		"water_occupancy_protrusion_confidence_min": _signature_float(RIVER_OCCUPANCY_PROTRUSION_CONFIDENCE_MIN),
+		"flow_projection_strides": ",".join(RIVER_FLOW_PROJECTION_STRIDES.map(func(stride: int) -> String: return str(stride))),
+		"flow_projection_iterations_per_stride": RIVER_FLOW_PROJECTION_ITERATIONS_PER_STRIDE,
+		"flow_tangency_passes": RIVER_FLOW_TANGENCY_PASSES,
 		"terrain_contact_full_band": _signature_float(RIVER_TERRAIN_CONTACT_FULL_BAND),
 		"terrain_contact_fade_distance": _signature_float(RIVER_TERRAIN_CONTACT_FADE_DISTANCE),
 		"terrain_contact_shallow_full_depth": _signature_float(RIVER_TERRAIN_SHALLOW_FULL_DEPTH),
