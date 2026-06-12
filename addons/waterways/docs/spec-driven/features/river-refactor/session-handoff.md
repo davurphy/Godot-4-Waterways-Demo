@@ -56,20 +56,22 @@ Then do this next:
 
 ## What Changed This Session
 
-- `spec.md`: created — goals/non-goals/requirements/acceptance tests distilled from `roadmap.md`, plus the Resolved Questions table capturing the adversarial-review corrections.
-- `plan.md`: created — track-level architecture, layers, lifecycle answers, files-to-change map, validation strategy; flags the unfinished Adversarial Plan Review.
-- `research.md`: created — records the audit + adversarial review as this track's research, the Godot 4.6 findings that constrain the design, and the option analysis behind the phased plan.
-- `tasks.md`: created — cross-phase process checklist; defers item-level tracking to `roadmap.md` to avoid duplicate checklists.
-- `validation.md`: created — per-phase-gate validation matrix (all Unrun), premise/interpretation traps (e.g., R4.1's reduced rate is by design), launch instructions, and the regression-budget slot for R7's wall-clock.
-- `review.md`: created — empty review scaffold with the pre-implementation premise review filled in; first reviewable unit is the first R0/RT slice.
-- `session-handoff.md`: this file.
+Implementation session (2026-06-12, branch `river-refactor`, all committed):
+
+- Phase R0, all nine items, one commit each: readback diagnostics in bake warnings (R0.1); foam parity re-sync in `river_debug.gdshader` (R0.2); tracked bake renderer + `_exit_tree` abort so mid-bake scene close can't stick the bake flag (R0.3); gizmo connection sweep, `_commit_handle` no-change guard, `is_instance_valid` in `_set_progress_source` (R0.4); first-tile UV2 margin clamp (R0.5); Godot-3 leftover deletions (R0.6); code-side neutral `i_distmap` texture + `hint_default_black` comments (R0.7); blank-image stats skip + `fill_rect` (R0.8); probe hardening across four probes (R0.9).
+- RT.1: new `probes/bake_hash_probe.gd` (hash + diff modes, per-channel deltas, diff-rect localization); demonstrated on known-good and known-bad pairs.
+- RT.4: seed named `RIVER_FLOW_PRESSURE_SEED_COLOR`, comment pair, new `probes/flow_solve_seed_assert_probe.gd`.
+- R0.7 follow-up: new `probes/distmap_neutral_binding_probe.gd` after the visual check proved unreachable (invalid-indicator stripes mask all debug views when validity fails).
+- Repo hygiene: probes' `.uid` sidecars tracked; stale bake-resource UID references in `Demo.tscn`/`Demo_obstacle_flow_test.tscn` fixed; user's post-R0.5 rebakes committed as the new bake baseline (still signature v27).
+- User-validated: foam parity (R0.2), mid-bake close recovery (R0.3), no-op click (R0.4) — Phase R0 gate closed.
 
 ## Current Changes Summary
 
-- All seven feature-folder documents created around the pre-existing `roadmap.md`. Docs only; no add-on code, shaders, probes, scenes, or resources touched.
+- Phase R0 complete and validated; RT.1/RT.4 done; six probe markers green; docs and dashboards current. Next: RT.3, RT.2, then R1.
 
 ## Historical Change Log
 
+- 2026-06-12 (scaffold session): seven feature-folder documents created around the pre-existing `roadmap.md` (docs only).
 - 2026-06-12 (earlier): `roadmap.md` written from the audit and hardened by adversarial review (commit `c34cd9a` "refactor notes" predates this folder scaffold).
 
 ## Decisions Made
@@ -83,27 +85,27 @@ Then do this next:
 
 Implementation status:
 
-- Not started
+- In progress — Phase R0 complete and validated; RT 2/4 items done; R1–R8 not started
 
 Spec/plan status:
 
 - Research: Complete (audit + adversarial review; `research.md` records the outcome)
-- Spec: Draft
-- Plan: Draft — Adversarial Plan Review not yet completed with the user
-- Tasks: Scaffolded; all open
-- Validation: Scaffolded; matrix entirely Unrun; RT tooling not yet built
-- Review: Scaffolded; nothing to review yet
+- Spec: Accepted in practice (R0 executed against it); Resolved Questions table grew the R0.7 reachability finding
+- Plan: Current — Adversarial Plan Review section still not formally completed with the user (work proceeded with per-item user validation instead)
+- Tasks: R0 closed; RT half done; see `tasks.md` Current Truth
+- Validation: Matrix live — R0 row Pass, RT row Partial (RT.1/RT.4 Pass), RT.4 row Pass; recorded results current
+- Review: No formal phase review held yet; `review.md` still scaffold + premise review
 
 Validation status:
 
-- Automated: none run. The probes the gates need (RT.1 hash-compare, RT.2 capture diff, RT.3 flow comparison, RT.4 seed assertion) do not exist yet.
-- Human-assisted: none requested yet. First requests will come from R0's validation block (Foam Mix parity, null-distmap neutrality, mid-bake close recovery, click-without-drag undo check).
-- Shader: none
-- Editor: none
-- Visual: none
-- Runtime: none
-- Performance: none
-- Manual: none
+- Automated: six markers green — `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`
+- Human-assisted: R0.2/R0.3/R0.4 confirmed by user 2026-06-12 (Godot 4.6.3 windowed)
+- Shader: foam parity confirmed visually post-rebake; 3-renderer compile sweep deferred to R3's gate
+- Editor: mid-bake close + no-op click confirmed
+- Visual: Foam Mix vs surface confirmed; R0.7 visual route unreachable (probe instead)
+- Runtime: untouched (R4 territory)
+- Performance: untouched (R4/R7 territory)
+- Manual: n/a
 
 ## Important Context
 
@@ -155,9 +157,9 @@ Result summary:
 
 ## Next Tasks
 
-- [ ] Complete `plan.md`'s Adversarial Plan Review with the user.
-- [ ] Start RT.1 (bake hash-compare) — it gates R1, R5, and R6 and should land before R1 begins.
-- [ ] Start Phase R0 items in parallel (independent; any order; R0.2 unblocks R3 later).
+- [ ] RT.3 — system-vs-river flow comparison probe (gates R2; headless-able). Check `river-flowmap-seams/probes/river_flowmap_world_sample_probe.gd` for existing world→atlas sampling machinery first.
+- [ ] RT.2 — pixel-parity capture harness on `debug_view_capture_probe.gd` (gates R3; windowed/human-assisted).
+- [ ] R1 — dead-code purge + single v27→v28 signature bump (unblocked). Warn the user before starting: invalidates all saved river bakes; land at a quiet point.
 
 ## Do Not Do Yet
 
@@ -168,7 +170,16 @@ Result summary:
 
 ## Notes for the Next Agent
 
-This track is unusual in that the planning is *finished and verified* — the roadmap was adversarially reviewed against source at cited line numbers, and the corrections (R1.4 live interface, R0.6 no-op ordering, R4.2 non-drop-in API) are already baked in. Your job is execution discipline, not re-planning: pick up the next unchecked roadmap item, branch from `main`, fix, run the phase's validation block (pasting human-assisted steps into chat), record results in `validation.md`, check the box in `roadmap.md`, update this handoff. Resist re-deriving the audit; if you find evidence a roadmap item's premise is wrong, that's worth raising — the review missed exactly one thing (R1.4) and the grep-everything rule exists because of it.
+This track is unusual in that the planning is *finished and verified* — the roadmap was adversarially reviewed against source at cited line numbers, and the corrections (R1.4 live interface, R0.6 no-op ordering, R4.2 non-drop-in API) are already baked in. Your job is execution discipline, not re-planning: pick up the next unchecked roadmap item, fix, run the phase's validation block (pasting human-assisted steps into chat), record results in `validation.md`, check the box in `roadmap.md`, update this handoff. Resist re-deriving the audit; if you find evidence a roadmap item's premise is wrong, that's worth raising — the review missed exactly one thing (R1.4) and the grep-everything rule exists because of it.
+
+Session lessons (2026-06-12), in force going forward:
+
+- Work has been on the `river-refactor` branch (not per-item branches from `main`) with the user's acquiescence; keep that unless told otherwise.
+- Debug-view visual checks are masked by the magenta/cyan invalid-flowmap stripe indicator (`river_debug.gdshader:1098`) whenever the change also fails the validity gate — use binding/content probes for those (model: `distmap_neutral_binding_probe.gd`).
+- Run an actual headless probe after editing shared scripts, not just `--check-only` — two type-inference parse errors (`max()`, Color subscript) were only caught by real runs.
+- Rebakes are not byte-deterministic (GPU variance): RT.1 byte-identity gates apply to no-rebake refactors only (R5/R6); rebake comparisons show broad small deltas in filter-derived textures.
+- PowerShell 5.1: no embedded double quotes in `git commit -m` here-strings.
+- The user's editor sessions modify the working tree (bake .res rewrites, scene saves with embedded image data, generated `.uid` sidecars) — diff and commit these deliberately after human-assisted validation rounds; verify scene `ext_resource` uid lines survive editor saves.
 
 ## Godot Launch Instructions
 
