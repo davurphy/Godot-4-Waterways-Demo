@@ -6,7 +6,7 @@
 
 ## Current Focus
 
-Execute the hardening/refactor track derived from the 2026-06-12 full-addon code audit. Phases R0 (defect hotfixes) and RT (validation tooling, RT.1–RT.4) are complete and validated; the next slice is R1 (dead-code purge + the single v27→v28 signature bump), which must not start without warning the user (it invalidates all saved river bakes).
+Execute the hardening/refactor track derived from the 2026-06-12 full-addon code audit. Phases R0, RT, and now R1 (dead-code purge + the v27→v28 signature bump, landed with explicit user go 2026-06-12) are implemented; R1's human-assisted gate is the immediate next step — the user must verify the editor stale warning, rebake both demo rivers and regenerate both system maps, then the agent runs the RT.1 diff and re-greens the suite on fresh v28 bakes. After that: R2+R3 (best merged).
 
 - Feature folder:
   - `addons\waterways\docs\spec-driven\features\river-refactor\`
@@ -15,11 +15,11 @@ Execute the hardening/refactor track derived from the 2026-06-12 full-addon code
 
 ## Current Truth
 
-- Overall status: In progress — **Phase R0 complete and validated**; **Phase RT complete** (RT.1–RT.4 all built and demonstrated, 2026-06-12); demo bakes rebaked and committed as the post-R0.5 baseline
-- Highest-priority open task: R1 (dead-code purge + the single v27→v28 signature bump) — unblocked; warn the user before starting (invalidates all saved river bakes; land at a quiet point)
-- Last passing validation: 2026-06-12 — RT.2 `CAPTURE_DIFF_OK` (26/26 parity PNGs byte-identical across two windowed runs) and RT.3 `SYSTEM_FLOW_COMPARE_OK` (known-good/known-bad/stale all demonstrated); earlier same day Phase R0 gate closed (user editor checks + probe markers)
-- Known failing or unproven check: none open from RT — the bake un-sharing round closed the shared-resource issue (each scene now owns its system bake; Demo's lives in `waterways_bakes/Demo_28018/` because `_get_scene_bake_folder` diverts when `Demo/` holds another scene's bakes). En route, a stale-detector false positive was found and fixed (`water_system_manager.gd`: texture-path keys flip container between editor-embedded scene saves and bake-resource binding on fresh load — no longer compared). Pre-R2 RT.3 baseline on fresh scene-owned maps: influence-zone angular p90 25.5°/27.6° vs the 20° gate and an 8.5°/12.5° control floor (the Defect-1 signature, proven against freshly generated data).
-- Next recommended action: start R1 on a fresh slice — but warn the user first (the v28 bump invalidates every saved river bake). Operating rule: grep shaders *and* probes *and* feature specs before deleting any uniform/function (R1.4's ripple interface is live — annotate, never delete). Note for R1: the R0.7 lesson — debug-view visual checks are masked by the invalid-flowmap stripe indicator whenever validity fails; prefer binding/content probes for anything that also invalidates the flowmap.
+- Overall status: In progress — **Phases R0, RT, and R1 implemented**; R1 (commits `1ca6109`..`717fdb6`, 2026-06-12) landed the dead-SDF-steering deletion, the three signature-gap keys, the occupancy serialization fix, the ripple-rider annotations, the small sweep, and the v27→v28 bump — **all saved river bakes are now intentionally stale**
+- Highest-priority open task: R1's human-assisted gate — user verifies the editor stale warning fires, rebakes both demo rivers (Generate Flow & Foam Map) and regenerates both system maps, saves; then agent runs RT.1 diff vs the committed v27 baseline, re-runs the suite (should re-green on fresh bakes), commits the editor-modified files deliberately
+- Last passing validation: 2026-06-12 post-R1 headless gate — stale detection demonstrated (`SYSTEM_FLOW_COMPARE_STALE` on both demo scenes, the v28 gate firing); rest of suite green (see validation.md newest Recorded Result); grep gate zero code refs to the deleted set
+- Known failing or unproven check: RT.3 default mode exits 1 with `SYSTEM_FLOW_COMPARE_STALE` on both demo scenes — **expected and correct post-bump** until the rebake round; two pre-existing probe quirks recorded in validation.md (ripple_debug_parity_probe is windowed-only; pillow_inspector_wiring_probe has a stale version pin of 20). Older note — none open from RT — the bake un-sharing round closed the shared-resource issue (each scene now owns its system bake; Demo's lives in `waterways_bakes/Demo_28018/` because `_get_scene_bake_folder` diverts when `Demo/` holds another scene's bakes). En route, a stale-detector false positive was found and fixed (`water_system_manager.gd`: texture-path keys flip container between editor-embedded scene saves and bake-resource binding on fresh load — no longer compared). Pre-R2 RT.3 baseline on fresh scene-owned maps: influence-zone angular p90 25.5°/27.6° vs the 20° gate and an 8.5°/12.5° control floor (the Defect-1 signature, proven against freshly generated data).
+- Next recommended action: run the R1 rebake round with the user (steps are in the latest chat message and the R1 matrix row): editor stale warning check → rebake both rivers → regenerate both system maps → save → agent runs RT.1 diff vs the v27 baseline and the full suite → commit editor-modified files → check off the R1 matrix row. Then start R2+R3 merged (the flow include is the structural fix for Defect 1; RT.3 `enforce=all` flipping green is R2's acceptance gate). The grep-everything rule caught another audit miss during R1.5: river_debug's nine `pillow_*` material-only uniforms are probe-asserted (kept, annotated).
 - Packaging/artifact hygiene status: probe overlays written to `.codex-research/probe-out/` (excluded from packaging; safe to delete)
 - Historical detail starts at: nothing archived yet
 
@@ -56,7 +56,18 @@ Then do this next:
 
 ## What Changed This Session
 
-Implementation session (2026-06-12, branch `river-refactor`, all committed):
+Phase R1 session (2026-06-12, branch `river-refactor`, commits `1ca6109`..`717fdb6` + this docs commit):
+
+- R1.1: deleted `apply_obstacle_avoidance_flow` + its shader load plumbing, the orphaned `obstacle_avoidance_flow_filter.gdshader` (+ `.uid`), the **ten** `RIVER_OBSTACLE_AVOIDANCE_*` constants (audit said nine) and their metadata/signature/settings rows; `obstacle_avoidance_algorithm` now reads `pressure_projection_free_slip_jacobi_with_normal_to_flow_blur_fallback`; Data Contract producers line fixed.
+- R1.2: signature gains `river_edge_smooth_radius`/`_iterations`, `flow_speed_factor_max`, `flow_offset_noise_texture_path` (const path, not file hash — exported builds lack the source PNG, so a hash would false-positive stale at runtime).
+- R1.3: `water_occupancy` added to property-list storage, `_enter_tree` binding, and `_has_unsaved_generated_textures`.
+- R1.4: dated reserved-for-river-height-displacement comments at the ripple riders in both river shaders and `water_ripple_field.gd` (incl. `debug_visible`); nothing deleted.
+- R1.5: dead-code sweep (see commit `eccdf73` for the full list). Key correction: river_debug's nine `pillow_*` material-only uniforms kept (asserted on the debug shader by `pillow_inspector_wiring_probe` + river-pillows spec contract); the six `wake_*` ones and `OCCUPANCY_CLIP_*` deleted; `apply_dotproduct`/`apply_foam`/`apply_normal_to_flow` lost dead resolution params (call sites updated).
+- R1.6: one-line note in validation.md for `legacy_collision_only`/`curve_only`.
+- R1.7: `RIVER_BAKE_SOURCE_SIGNATURE_VERSION` 27→28 with a dated comment; Data Contract reference updated. Stale detection demonstrated headless on both demo scenes.
+- New scratch check: `.codex-research/filter_renderer_load_check.gd` (compiles filter_renderer.gd + loads all 19 pass-shader paths headless).
+
+Previous implementation session (2026-06-12, branch `river-refactor`, all committed):
 
 - Phase R0, all nine items, one commit each: readback diagnostics in bake warnings (R0.1); foam parity re-sync in `river_debug.gdshader` (R0.2); tracked bake renderer + `_exit_tree` abort so mid-bake scene close can't stick the bake flag (R0.3); gizmo connection sweep, `_commit_handle` no-change guard, `is_instance_valid` in `_set_progress_source` (R0.4); first-tile UV2 margin clamp (R0.5); Godot-3 leftover deletions (R0.6); code-side neutral `i_distmap` texture + `hint_default_black` comments (R0.7); blank-image stats skip + `fill_rect` (R0.8); probe hardening across four probes (R0.9).
 - RT.1: new `probes/bake_hash_probe.gd` (hash + diff modes, per-channel deltas, diff-rect localization); demonstrated on known-good and known-bad pairs.
@@ -70,7 +81,7 @@ Implementation session (2026-06-12, branch `river-refactor`, all committed):
 
 ## Current Changes Summary
 
-- Phase R0 complete and validated; Phase RT complete (RT.1–RT.4); eight probe markers green; docs and dashboards current. Next: R1 (warn the user first — bake invalidation).
+- Phases R0 + RT validated; Phase R1 implemented (signature v28, all R1 boxes checked) with the headless gate passed; saved bakes intentionally stale. Next: user rebake round, then R2+R3.
 
 ## Historical Change Log
 
@@ -121,7 +132,7 @@ Validation status:
 
 ## Artifact Hygiene
 
-- Scratch folders or temporary projects created (all under `.codex-research\`, excluded from packaging, safe to delete): `capture_diff_fixture.gd` + `capture-diff-fixture/` (RT.2 known-bad demo), `capture_diff_heatmap.gd` (diff visualizer), `stale_metadata_inspect.gd` (stale-warning diagnosis), `probe-out/rt2/` (RT.2 parity capture PNGs)
+- Scratch folders or temporary projects created (all under `.codex-research\`, excluded from packaging, safe to delete): `capture_diff_fixture.gd` + `capture-diff-fixture/` (RT.2 known-bad demo), `capture_diff_heatmap.gd` (diff visualizer), `stale_metadata_inspect.gd` (stale-warning diagnosis), `probe-out/rt2/` (RT.2 parity capture PNGs), `filter_renderer_load_check.gd` (R1 filter-renderer compile/shader-path check — useful again at R5.1)
 - Generated bakes/resources created: scene-owned system bakes committed at `waterways_bakes/Demo_28018/` and `waterways_bakes/Demo_obstacle_flow_test/` (user editor rounds); the formerly shared `waterways_bakes/Demo/WaterSystem.water_system_bake.res` was removed as orphaned
 - Active files mirrored into scratch validation: n/a
 - Files/folders that must be excluded from packaging: `.codex-research\` (standing), RT.2 capture PNGs/baselines
@@ -160,7 +171,9 @@ Result summary:
 
 - [x] RT.3 — system-vs-river flow comparison probe (gates R2; headless-able). *Done 2026-06-12: `probes/system_flow_compare_probe.gd`; commands in `validation.md` Automated Checks.*
 - [x] RT.2 — pixel-parity capture harness on `debug_view_capture_probe.gd` (gates R3). *Done 2026-06-12: parity preset + diff mode + determinism fixes; 26/26 byte-identical across runs; commands in `validation.md` Automated Checks.*
-- [ ] R1 — dead-code purge + single v27→v28 signature bump (unblocked; next up). Warn the user before starting: invalidates all saved river bakes; land at a quiet point.
+- [x] R1 — dead-code purge + single v27→v28 signature bump. *Implemented 2026-06-12 with user go; headless gate passed (stale detection demonstrated).*
+- [ ] R1 human-assisted gate: user editor stale check + rebake both rivers + regenerate both system maps; agent RT.1 diff vs v27 baseline, suite re-green, commit editor files, close the R1 matrix row.
+- [ ] R2+R3 (merged) — system_flow projected-flow correctness via the shared flow include; RT.3 `enforce=all` flipping green is the acceptance gate.
 - [x] (User, editor) Un-share the system bake. *Done 2026-06-12: each scene owns its bake; old shared resource removed; RT.3 report mode exits 0 with no stale warnings; full headless suite green. Also fixed the stale detector's texture-path false positive (see validation.md).*
 
 ## Do Not Do Yet
