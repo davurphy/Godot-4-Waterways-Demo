@@ -143,11 +143,19 @@ uniform bool i_valid_flowmap = false;
 uniform int i_uv2_sides = 2;
 uniform bool i_ripple_enabled = false;
 uniform sampler2D i_ripple_simulation_texture : hint_default_black, repeat_disable, filter_linear;
+// Not sampled by this shader, but live elsewhere: river_debug.gdshader's
+// impulse/contact heat view samples it, water_ripple_field.gd sets it every
+// frame, and the ripple parity/ownership probes assert the binding (2026-06-12;
+// see river-height displacement/initial_research.md before touching).
 uniform sampler2D i_ripple_impulse_texture : hint_default_black, repeat_disable, filter_linear;
 uniform mat4 i_ripple_world_to_uv = mat4(1.0);
 uniform sampler2D i_ripple_boundary_mask : hint_default_black, repeat_disable, filter_linear;
 uniform vec2 i_ripple_texel_size = vec2(0.0);
 uniform float i_ripple_normal_strength : hint_range(0.0, 4.0) = 0.0;
+// Reserved for river-height-displacement (2026-06-12): declared interface of
+// the planned feature (see river-height displacement/initial_research.md);
+// synced from water_ripple_field.gd but not consumed here yet. Do not delete
+// without updating the river-ripples spec contract list and asserting probes.
 uniform float i_ripple_refraction_strength : hint_range(0.0, 1.0) = 0.0;
 uniform float i_ripple_displacement_strength : hint_range(0.0, 1.0) = 0.0;
 uniform float i_ripple_height_fade_distance : hint_range(0.0, 200.0) = 0.0;
@@ -829,6 +837,10 @@ float ripple_decode_height(float encoded_height) {
 	return encoded_height * 2.0 - 1.0;
 }
 
+// Reserved for river-height-displacement (2026-06-12): no callers yet by
+// design — this chain is the declared sampling interface of the planned
+// feature (see river-height displacement/initial_research.md). Do not delete
+// without updating the river-ripples spec contract list and asserting probes.
 float ripple_height_at_uv(vec2 uv) {
 	if (!ripple_sampling_ready()) {
 		return 0.0;

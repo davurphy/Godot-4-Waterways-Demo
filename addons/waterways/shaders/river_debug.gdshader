@@ -185,11 +185,17 @@ uniform bool i_valid_flowmap = false;
 uniform int i_uv2_sides = 2;
 uniform bool i_ripple_enabled = false;
 uniform sampler2D i_ripple_simulation_texture : hint_default_black, repeat_disable, filter_linear;
+// Live: sampled by the impulse/contact heat debug view below; asserted by
+// ripple_debug_parity_probe and ripple_material_ownership_probe (2026-06-12).
 uniform sampler2D i_ripple_impulse_texture : hint_default_black, repeat_disable, filter_linear;
 uniform mat4 i_ripple_world_to_uv = mat4(1.0);
 uniform sampler2D i_ripple_boundary_mask : hint_default_black, repeat_disable, filter_linear;
 uniform vec2 i_ripple_texel_size = vec2(0.0);
 uniform float i_ripple_normal_strength : hint_range(0.0, 4.0) = 0.0;
+// Reserved for river-height-displacement (2026-06-12): declared interface of
+// the planned feature (see river-height displacement/initial_research.md);
+// synced from the visible material but not consumed here yet. Do not delete
+// without updating the river-ripples spec contract list and asserting probes.
 uniform float i_ripple_refraction_strength : hint_range(0.0, 1.0) = 0.0;
 uniform float i_ripple_displacement_strength : hint_range(0.0, 1.0) = 0.0;
 uniform float i_ripple_height_fade_distance : hint_range(0.0, 200.0) = 0.0;

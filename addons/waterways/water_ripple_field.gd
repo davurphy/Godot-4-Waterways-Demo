@@ -156,6 +156,11 @@ const WaterRippleFieldPresetResource := preload("res://addons/waterways/resource
 @export_range(0.0, 8.0, 0.001) var normal_strength := 1.25
 @export_range(0.0, 200.0, 0.1) var height_fade_distance := 0.0
 
+# Reserved for river-height-displacement (2026-06-12): hidden stored fields for
+# the planned feature (see river-height displacement/initial_research.md and
+# river-ripples spec contract). debug_visible additionally awaits its Phase 10
+# re-exposure design. Do not delete without updating that contract list and the
+# asserting probes.
 @export_storage var refraction_strength := 0.0
 @export_storage var displacement_strength := 0.0
 @export_storage var debug_visible := false
