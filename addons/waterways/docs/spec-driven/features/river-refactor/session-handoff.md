@@ -15,11 +15,11 @@ Stand up the spec-driven feature folder for the hardening/refactor track derived
 
 ## Current Truth
 
-- Overall status: In progress — **Phase R0 complete and validated** (user-confirmed editor checks 2026-06-12); RT.1, RT.3, and RT.4 built and demonstrated; demo bakes rebaked and committed as the post-R0.5 baseline; demo scene UID references and probe .uid sidecars fixed
-- Highest-priority open task: RT.2 (pixel-parity capture, windowed — gates R3); R1 is unblocked by RT.1 and can start
-- Last passing validation: 2026-06-12 — RT.3 `SYSTEM_FLOW_COMPARE_OK` (known-good/known-bad/stale all demonstrated); earlier same day Phase R0 gate closed: user confirmed foam parity, mid-bake close recovery, no-op click; probes `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`
-- Known failing or unproven check: RT.2 does not exist yet (R3 gate unavailable). RT.3 found a repo-state issue: the obstacle demo scene's WaterSystem references Demo's system bake and that map is stale for it ("bake resource path changed") — regenerate the obstacle scene's own system map in the editor (R2 validation does this anyway). Pre-R2 baseline recorded: influence-zone angular p90 25.8°/26.5° vs the 15° gate (the Defect-1 signature RT.3 exists to catch).
-- Next recommended action: build RT.2, then start R1 (dead-code purge + single v27→v28 signature bump) on a fresh slice — warn the user first (invalidates all saved river bakes). Note for R1: the R0.7 lesson — debug-view visual checks are masked by the invalid-flowmap stripe indicator whenever validity fails; prefer binding/content probes for anything that also invalidates the flowmap.
+- Overall status: In progress — **Phase R0 complete and validated**; **Phase RT complete** (RT.1–RT.4 all built and demonstrated, 2026-06-12); demo bakes rebaked and committed as the post-R0.5 baseline
+- Highest-priority open task: R1 (dead-code purge + the single v27→v28 signature bump) — unblocked; warn the user before starting (invalidates all saved river bakes; land at a quiet point)
+- Last passing validation: 2026-06-12 — RT.2 `CAPTURE_DIFF_OK` (26/26 parity PNGs byte-identical across two windowed runs) and RT.3 `SYSTEM_FLOW_COMPARE_OK` (known-good/known-bad/stale all demonstrated); earlier same day Phase R0 gate closed (user editor checks + probe markers)
+- Known failing or unproven check: RT.3 found a repo-state issue: the obstacle demo scene's WaterSystem references Demo's system bake and that map is stale for it ("bake resource path changed") — regenerate the obstacle scene's own system map in the editor (R2 validation does this anyway). Pre-R2 baseline recorded: influence-zone angular p90 25.8°/26.5° vs the 15° gate (the Defect-1 signature RT.3 exists to catch).
+- Next recommended action: start R1 on a fresh slice — but warn the user first (the v28 bump invalidates every saved river bake). Operating rule: grep shaders *and* probes *and* feature specs before deleting any uniform/function (R1.4's ripple interface is live — annotate, never delete). Note for R1: the R0.7 lesson — debug-view visual checks are masked by the invalid-flowmap stripe indicator whenever validity fails; prefer binding/content probes for anything that also invalidates the flowmap.
 - Packaging/artifact hygiene status: probe overlays written to `.codex-research/probe-out/` (excluded from packaging; safe to delete)
 - Historical detail starts at: nothing archived yet
 
@@ -65,10 +65,11 @@ Implementation session (2026-06-12, branch `river-refactor`, all committed):
 - Repo hygiene: probes' `.uid` sidecars tracked; stale bake-resource UID references in `Demo.tscn`/`Demo_obstacle_flow_test.tscn` fixed; user's post-R0.5 rebakes committed as the new bake baseline (still signature v27).
 - User-validated: foam parity (R0.2), mid-bake close recovery (R0.3), no-op click (R0.4) — Phase R0 gate closed.
 - RT.3 (second implementation session, 2026-06-12): new `probes/system_flow_compare_probe.gd` — decodes river baked flow per texel, transforms to world XZ via the same per-triangle UV1 basis `system_flow.gdshader` builds, compares against `_sample_system_map` (the duck-read path); three zones (control/influence/boundary), control gate always on, influence gate (`enforce=all`) is R2's gate for `flow_projected` rivers; stale-map detection via `_get_stale_source_warning`; height-channel filter excludes cross-surface top-down samples. Demonstrated known-good (control p90 8.8° < 10°), known-bad (influence p90 25.8° > 15° flagged), and stale detection (obstacle scene). Deliberately does NOT replicate the slide/force pipeline — no third hand-synced flow copy.
+- RT.2 (same session): `probes/debug_view_capture_probe.gd` extended — `views=parity` fixed 13-view set, headless diff mode (`a=`/`b=`, byte-identity fast path, per-channel max/mean deltas, `CAPTURE_DIFF_OK`), and two determinism fixes: `Engine.time_scale=0` at `_initialize` (boot-time; freezing later pins each run at a different shader TIME) and fixed-seed mode on hterrain detail layers (grass RNG is time-randomized per load — diagnosed with a diff heatmap showing only the banks differing). Result: 26/26 parity PNGs byte-identical across two independent windowed runs, both run by the agent on this machine (windowed agent runs worked this session). R3's gate can demand byte-identity for same-session before/after pairs.
 
 ## Current Changes Summary
 
-- Phase R0 complete and validated; RT.1/RT.3/RT.4 done; seven probe markers green; docs and dashboards current. Next: RT.2, then R1.
+- Phase R0 complete and validated; Phase RT complete (RT.1–RT.4); eight probe markers green; docs and dashboards current. Next: R1 (warn the user first — bake invalidation).
 
 ## Historical Change Log
 
@@ -159,9 +160,9 @@ Result summary:
 ## Next Tasks
 
 - [x] RT.3 — system-vs-river flow comparison probe (gates R2; headless-able). *Done 2026-06-12: `probes/system_flow_compare_probe.gd`; commands in `validation.md` Automated Checks.*
-- [ ] RT.2 — pixel-parity capture harness on `debug_view_capture_probe.gd` (gates R3; windowed/human-assisted).
-- [ ] R1 — dead-code purge + single v27→v28 signature bump (unblocked). Warn the user before starting: invalidates all saved river bakes; land at a quiet point.
-- [ ] (User, editor) Generate the obstacle demo scene's own system map — its WaterSystem currently shares Demo's system bake, which RT.3 flags stale ("bake resource path changed"). Folds into R2's validation if R2 comes first. Commit the probe's `.uid` sidecar the editor generates alongside.
+- [x] RT.2 — pixel-parity capture harness on `debug_view_capture_probe.gd` (gates R3). *Done 2026-06-12: parity preset + diff mode + determinism fixes; 26/26 byte-identical across runs; commands in `validation.md` Automated Checks.*
+- [ ] R1 — dead-code purge + single v27→v28 signature bump (unblocked; next up). Warn the user before starting: invalidates all saved river bakes; land at a quiet point.
+- [ ] (User, editor) Generate the obstacle demo scene's own system map — its WaterSystem currently shares Demo's system bake, which RT.3 flags stale ("bake resource path changed"). Folds into R2's validation if R2 comes first. Commit the `.uid` sidecars the editor generates for `system_flow_compare_probe.gd` (and any other new probes) alongside.
 
 ## Do Not Do Yet
 
@@ -233,6 +234,8 @@ After the APPDATA/LOCALAPPDATA redirect from Godot Launch Instructions above:
 
 # RT.4 — cross-language pressure-seed assertion (marker: FLOW_SOLVE_SEED_ASSERT_OK)
 & $godotConsole --headless --path $root --script "res://addons/waterways/probes/flow_solve_seed_assert_probe.gd"
-```
 
-RT.2's capture harness is still to be built (windowed/human-assisted by design).
+# RT.2 — pixel-parity capture (windowed, no --headless) + diff (headless; marker: CAPTURE_DIFF_OK)
+& $godotConsole --path $root --script "res://addons/waterways/probes/debug_view_capture_probe.gd" -- views=parity stations=2 label=before out=res://.codex-research/probe-out/rt2
+& $godotConsole --headless --path $root --script "res://addons/waterways/probes/debug_view_capture_probe.gd" -- a=res://.codex-research/probe-out/rt2/before b=res://.codex-research/probe-out/rt2/after
+```

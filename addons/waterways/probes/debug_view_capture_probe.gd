@@ -11,7 +11,9 @@
 #
 # Args (all optional, key=value):
 #   views=<id | label substring | comma list | list>  default "Flow Arrows";
-#                                                     `views=list` prints all and exits
+#                                                     `views=list` prints all and exits;
+#                                                     `views=parity` = the fixed RT.2/R3 set
+#                                                     (surface + one view per shared-code family)
 #   scene=<res:// path>              default res://Demo.tscn
 #   river=<node path in scene>       default WaterSystem/Water River
 #   cameras=<comma list of camera node paths>  capture from these scene cameras
@@ -20,9 +22,23 @@
 #   height=<float> back=<float>      fly-along camera offset in meters (default 7 / 6)
 #   label=<name>                     output subfolder, e.g. before/after a change
 #   out=<res:// dir>                 default res://addons/waterways/probes/out
+#   freeze=0                         disable the default Engine.time_scale=0 freeze
+#                                    (frozen runs are deterministic: shader TIME stays ~0
+#                                    and physics never steps, so before/after captures of
+#                                    unchanged code should be byte-identical)
 #
 # Output: <out>[/<label>]/<view>_<station or camera name>.png
 # Success marker: DEBUG_VIEW_CAPTURE_OK
+#
+# RT.2 diff mode (headless OK - pure image comparison, no window):
+#   ... --headless --script res://addons/waterways/probes/debug_view_capture_probe.gd -- a=res://.../before b=res://.../after
+#   thresholds: max_delta=0.02 mean_delta=0.002 (per channel, 0..1 scale)
+# Pairs PNGs by filename across the two directories; byte-identical files
+# short-circuit; differing files get per-channel max/mean deltas. Any missing
+# file, size mismatch, or threshold breach prints CAPTURE_DIFF_MISMATCH and
+# exits 1. Success marker: CAPTURE_DIFF_OK. Consumer: R3's extraction
+# pixel-parity gate (constitution rule 8: captures themselves are
+# windowed/human-assisted; this diff runs headless on their output).
 extends SceneTree
 
 const DebugViewMenu := preload("res://addons/waterways/gui/debug_view_menu.gd")
@@ -36,14 +52,33 @@ const DEFAULT_CAMERA_BACK := 6.0
 const DEFAULT_OUT_DIR := "res://addons/waterways/probes/out"
 const SETTLE_FRAMES := 12
 const FIRST_SHOT_EXTRA_FRAMES := 30
+const DEFAULT_MAX_DELTA := 0.02
+const DEFAULT_MEAN_DELTA := 0.002
+
+# The fixed RT.2 pixel-parity set for R3's extraction gate: the visible
+# surface plus one representative view per shared-code family the includes
+# will move (flow decode/force, foam, dist/pressure, steepness, pillow stack,
+# wake/eddy, pillow height displacement).
+const PARITY_VIEW_IDS := [0, 1, 8, 9, 6, 7, 4, 5, 11, 26, 30, 31, 27]
 
 
 func _initialize() -> void:
+	# Freeze before the first frame iterates: shader TIME accumulates scaled
+	# frame deltas, so freezing here pins it at ~0 in every run. Freezing
+	# later (e.g. in _run) pins each run at a different accumulated TIME and
+	# every animated element (water, foliage, sky) carries a run-to-run phase
+	# offset that breaks capture determinism.
+	var args := _parse_args()
+	if not (args.has("a") or args.has("b")) and String(args.get("freeze", "1")) != "0":
+		Engine.time_scale = 0.0
 	call_deferred("_run")
 
 
 func _run() -> void:
 	var args := _parse_args()
+	if args.has("a") or args.has("b"):
+		_run_diff(args)
+		return
 	var views_raw := String(args.get("views", args.get("view", DEFAULT_VIEWS)))
 	if views_raw.strip_edges().to_lower() == "list":
 		_print_view_list()
@@ -64,7 +99,8 @@ func _run() -> void:
 	if not label.is_empty():
 		out_dir = out_dir.path_join(label)
 
-	print("DEBUG_VIEW_CAPTURE scene=", scene_path, " views=", view_ids, " cameras=", camera_paths.size(), " stations=", station_count)
+	var freeze := Engine.time_scale == 0.0
+	print("DEBUG_VIEW_CAPTURE scene=", scene_path, " views=", view_ids, " cameras=", camera_paths.size(), " stations=", station_count, " freeze=", freeze)
 	DisplayServer.window_set_size(Vector2i(1600, 900))
 	var packed := load(scene_path) as PackedScene
 	if packed == null:
@@ -73,11 +109,18 @@ func _run() -> void:
 		return
 	var scene := packed.instantiate()
 	scene.scene_file_path = scene_path
+	if freeze:
+		_stabilize_detail_layers(scene)
 	root.add_child(scene)
 	current_scene = scene
 	await process_frame
-	await physics_frame
-	await physics_frame
+	if freeze:
+		# physics_frame never fires at time_scale 0 - settle on render frames.
+		await process_frame
+		await process_frame
+	else:
+		await physics_frame
+		await physics_frame
 
 	var river := scene.get_node_or_null(river_path)
 	if river == null:
@@ -159,6 +202,130 @@ func _capture_one(river, view_id: int, file_stem: String, out_base: String, firs
 	return true
 
 
+# zylann.hterrain detail layers scatter their grass multimesh with a
+# time-randomized RNG on every load (hterrain_detail_layer.gd:814-818), which
+# breaks run-to-run capture determinism even with frozen time. They expose a
+# fixed-seed mode - switch it on (runtime instance only; nothing is saved).
+func _stabilize_detail_layers(scene_root: Node) -> void:
+	var stack: Array[Node] = [scene_root]
+	while not stack.is_empty():
+		var current := stack.pop_back() as Node
+		for child in current.get_children():
+			stack.push_back(child)
+		var script = current.get_script()
+		if script != null and String(script.resource_path).ends_with("hterrain_detail_layer.gd"):
+			current.set("fixed_seed", 12345)
+			current.set("fixed_seed_enabled", true)
+			print("  fixed detail-layer seed: ", current.name)
+
+
+func _run_diff(args: Dictionary) -> void:
+	var a_dir := String(args.get("a", ""))
+	var b_dir := String(args.get("b", ""))
+	if a_dir.is_empty() or b_dir.is_empty():
+		push_error("Diff mode needs both a=<dir> and b=<dir> capture directories.")
+		quit(1)
+		return
+	var max_delta_limit := float(args.get("max_delta", DEFAULT_MAX_DELTA))
+	var mean_delta_limit := float(args.get("mean_delta", DEFAULT_MEAN_DELTA))
+	var a_base := ProjectSettings.globalize_path(a_dir)
+	var b_base := ProjectSettings.globalize_path(b_dir)
+	var a_files := _list_pngs(a_base)
+	var b_files := _list_pngs(b_base)
+	if a_files.is_empty():
+		push_error("No PNG files found in " + a_base)
+		quit(1)
+		return
+	print("CAPTURE_DIFF a=", a_base, " (", a_files.size(), " files) b=", b_base, " (", b_files.size(), " files)",
+			" max_delta_limit=", max_delta_limit, " mean_delta_limit=", mean_delta_limit)
+	var names := {}
+	for file_name in a_files:
+		names[file_name] = true
+	for file_name in b_files:
+		names[file_name] = true
+	var sorted_names := names.keys()
+	sorted_names.sort()
+	var mismatches := 0
+	for name_variant in sorted_names:
+		var file_name := String(name_variant)
+		if not a_files.has(file_name) or not b_files.has(file_name):
+			mismatches += 1
+			print("CAPTURE_DIFF_MISMATCH file=", file_name, " present_a=", a_files.has(file_name), " present_b=", b_files.has(file_name))
+			continue
+		if not _diff_pair(file_name, a_base + "/" + file_name, b_base + "/" + file_name, max_delta_limit, mean_delta_limit):
+			mismatches += 1
+	if mismatches == 0:
+		print("CAPTURE_DIFF_OK files=", sorted_names.size())
+		quit(0)
+		return
+	push_error("Capture sets differ in " + str(mismatches) + " file(s); see CAPTURE_DIFF_MISMATCH lines.")
+	quit(1)
+
+
+func _diff_pair(file_name: String, a_path: String, b_path: String, max_delta_limit: float, mean_delta_limit: float) -> bool:
+	var image_a := Image.load_from_file(a_path)
+	var image_b := Image.load_from_file(b_path)
+	if image_a == null or image_b == null:
+		print("CAPTURE_DIFF_MISMATCH file=", file_name, " unreadable_a=", image_a == null, " unreadable_b=", image_b == null)
+		return false
+	if image_a.get_size() != image_b.get_size():
+		print("CAPTURE_DIFF_MISMATCH file=", file_name, " size_a=", image_a.get_size(), " size_b=", image_b.get_size())
+		return false
+	image_a.convert(Image.FORMAT_RGBA8)
+	image_b.convert(Image.FORMAT_RGBA8)
+	var data_a := image_a.get_data()
+	var data_b := image_b.get_data()
+	if data_a == data_b:
+		print("CAPTURE_DIFF_FILE file=", file_name, " identical=true")
+		return true
+	var max_delta := [0, 0, 0, 0]
+	var sum_delta := [0, 0, 0, 0]
+	var differing_pixels := 0
+	var byte_count := mini(data_a.size(), data_b.size())
+	var byte_index := 0
+	while byte_index < byte_count:
+		var pixel_differs := false
+		for channel_index in 4:
+			var delta: int = absi(int(data_a[byte_index + channel_index]) - int(data_b[byte_index + channel_index]))
+			if delta > 0:
+				pixel_differs = true
+				sum_delta[channel_index] += delta
+				if delta > int(max_delta[channel_index]):
+					max_delta[channel_index] = delta
+		if pixel_differs:
+			differing_pixels += 1
+		byte_index += 4
+	var pixel_count := byte_count / 4
+	var worst_max := 0.0
+	var worst_mean := 0.0
+	var channel_report := ""
+	for channel_index in 4:
+		var channel_max := float(max_delta[channel_index]) / 255.0
+		var channel_mean := float(sum_delta[channel_index]) / (255.0 * float(maxi(pixel_count, 1)))
+		worst_max = maxf(worst_max, channel_max)
+		worst_mean = maxf(worst_mean, channel_mean)
+		channel_report += " %s_max=%s %s_mean=%s" % ["rgba"[channel_index], snappedf(channel_max, 0.0001), "rgba"[channel_index], snappedf(channel_mean, 0.000001)]
+	var over_limit := worst_max > max_delta_limit or worst_mean > mean_delta_limit
+	print("CAPTURE_DIFF_MISMATCH file=" if over_limit else "CAPTURE_DIFF_FILE file=", file_name,
+			" differing_pixels=", differing_pixels, "/", pixel_count, channel_report)
+	return not over_limit
+
+
+func _list_pngs(base_dir: String) -> Dictionary:
+	var files := {}
+	var dir := DirAccess.open(base_dir)
+	if dir == null:
+		return files
+	dir.list_dir_begin()
+	var entry := dir.get_next()
+	while not entry.is_empty():
+		if not dir.current_is_dir() and entry.to_lower().ends_with(".png"):
+			files[entry] = true
+		entry = dir.get_next()
+	dir.list_dir_end()
+	return files
+
+
 func _parse_args() -> Dictionary:
 	var args := {}
 	for arg in OS.get_cmdline_user_args():
@@ -172,6 +339,8 @@ func _parse_args() -> Dictionary:
 # Each entry: numeric view id or case-insensitive label substring.
 # Returns [] (after printing guidance) when any entry cannot be resolved.
 func _resolve_view_ids(raw: String) -> Array:
+	if raw.strip_edges().to_lower() == "parity":
+		return PARITY_VIEW_IDS.duplicate()
 	var view_ids := []
 	for entry in raw.split(",", false):
 		var view_id := _resolve_view_id(String(entry).strip_edges())

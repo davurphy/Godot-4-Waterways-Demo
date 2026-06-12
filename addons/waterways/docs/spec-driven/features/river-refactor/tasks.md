@@ -8,10 +8,10 @@ The canonical per-item checklists live in `roadmap.md` (phases R0, RT, R1–R8) 
 ## Current Truth
 
 - Current status: In progress
-- Current implementation slice: Phase R0 complete and validated; RT.1, RT.3, and RT.4 done and demonstrated; next slice is RT.2 (pixel-parity capture, gates R3)
-- Remaining open task count: RT.2; phases R1–R8 untouched (R1 unblocked by RT.1; R2's gate probe now exists)
-- Last passing validation: 2026-06-12 — RT.3 `SYSTEM_FLOW_COMPARE_OK` (known-good/known-bad/stale demonstrated); same day Phase R0 gate fully closed (user-confirmed editor checks + probe markers; see `validation.md`)
-- Next recommended action: build RT.2, then start R1 (dead-code purge + the single v28 signature bump; warn the user first — invalidates saved river bakes)
+- Current implementation slice: Phases R0 and RT complete and demonstrated; next slice is R1 (dead-code purge + the single v28 signature bump)
+- Remaining open task count: phases R1–R8 untouched (all RT gates now exist: RT.1 for R1/R5/R6, RT.2 for R3, RT.3 for R2)
+- Last passing validation: 2026-06-12 — RT.2 `CAPTURE_DIFF_OK` (byte-identical parity runs) and RT.3 `SYSTEM_FLOW_COMPARE_OK` (known-good/known-bad/stale demonstrated); same day Phase R0 gate fully closed (see `validation.md`)
+- Next recommended action: start R1 — warn the user first (invalidates saved river bakes; land at a quiet point)
 - Known deferred work: R9 (vertex pillow stack) stays on the feature roadmap; R7 blocked on the feature-Phase-5 compute decision gate
 
 ## Open Work
@@ -20,7 +20,7 @@ Use this section as the canonical checklist for unfinished *process* work. When 
 
 - [x] Phase R0 — Defect Hotfixes, implementation (9/9 items landed on `river-refactor`, 2026-06-12). R0.2 (the R3 prerequisite) is in.
 - [x] Phase R0 — validation closed 2026-06-12: user confirmed foam parity, mid-bake close recovery, and no-op click; null-distmap covered by `distmap_neutral_binding_probe.gd` (visual check unreachable — see validation.md).
-- [ ] Phase RT — Validation Tooling (4 items; RT.1 before R1, RT.2 before R3, RT.3 before R2). Can run parallel with R0.
+- [x] Phase RT — Validation Tooling complete (RT.1–RT.4 built and demonstrated, 2026-06-12; commands in `validation.md` Automated Checks).
 - [ ] Phase R1 — Dead-Code Purge + signature v28 (needs RT.1).
 - [ ] Phase R2 — `system_flow` projected-flow correctness (needs RT.3; after R1; consider merging with R3).
 - [ ] Phase R3 — Shared shader includes (needs R0.2 + RT.2).

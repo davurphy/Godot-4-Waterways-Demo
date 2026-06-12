@@ -11,10 +11,10 @@
 
 ## Current Validation Snapshot
 
-- Overall status: Partial — Phase R0 fully validated and closed (2026-06-12); RT.1/RT.3/RT.4 built and demonstrated; RT.2 not built; R1+ not started
-- Last automated pass: 2026-06-12 — `SYSTEM_FLOW_COMPARE_OK` (RT.3, known-good/known-bad demonstrated); earlier same day: `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`
+- Overall status: Partial — Phase R0 fully validated and closed (2026-06-12); Phase RT complete (RT.1–RT.4 built and demonstrated); R1+ not started
+- Last automated pass: 2026-06-12 — `CAPTURE_DIFF_OK` (RT.2: two windowed parity runs byte-identical) and `SYSTEM_FLOW_COMPARE_OK` (RT.3, known-good/known-bad demonstrated); earlier same day: `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`
 - Last human-assisted pass: 2026-06-12 — user confirmed R0.2 foam parity, R0.3 mid-bake close recovery, R0.4 no undo entry on click-without-drag (Godot 4.6.3 windowed editor)
-- Highest-risk unproven behavior: R3 include-extraction pixel parity (RT.2 must be built and demonstrated first)
+- Highest-risk unproven behavior: R1's stale-bake detection and scoped diffs (next phase); all RT gates now exist and are demonstrated
 - Known repo-state issue found by RT.3: `Demo_obstacle_flow_test.tscn`'s WaterSystem references Demo's system bake (`WaterSystem.water_system_bake.res`) and that map is stale for the obstacle scene ("bake resource path changed") — the obstacle scene needs its own system map generated in the editor (R2's validation regenerates it anyway)
 - Known unreliable local check or environment caveat: headless rendering is unreliable per the constitution — all pixel-parity gates are windowed/human-assisted by default; headless editor-load signal is never proof of visible behavior
 
@@ -25,11 +25,12 @@ Use this as the durable map from requirements to proof. Prefer stable probe name
 | Requirement or risk | Check/probe/scene | Environment | Expected marker/result | Last result | Date | Owner |
 | --- | --- | --- | --- | --- | --- | --- |
 | R0 defect fixes hold | Roadmap R0 Validation block (rebake demo river; null-distmap binding probe; mid-bake close; click-without-drag; hardened probes) | Editor (human) + headless probes | Foam Mix matches surface; neutral distmap binding probe `*_OK`; re-bake succeeds after mid-bake close; no undo entry on no-op click; probe `*_OK` markers | Pass — all checks closed (probes + user-run editor checks) | 2026-06-12 | Agent + User |
-| RT tools work (known-good/known-bad) | RT.1 on two same-scene bakes, then on pre/post-R0.5 pair | Headless | Identical → exit 0; margin-region diff flagged → nonzero with per-channel delta | Partial — RT.1 Pass (self-diff exit 0; perturbed-rect copy flagged exactly, exit 1); RT.3 Pass (see RT.3 row); RT.2 not built | 2026-06-12 | Agent |
+| RT tools work (known-good/known-bad) | RT.1 on two same-scene bakes, then on pre/post-R0.5 pair | Headless | Identical → exit 0; margin-region diff flagged → nonzero with per-channel delta | Pass — RT.1 (self-diff exit 0; perturbed-rect copy flagged exactly), RT.2 (see RT.2 row), RT.3 (see RT.3 row), RT.4 all demonstrated | 2026-06-12 | Agent |
+| RT.2 pixel-parity capture+diff (known-good/known-bad) | `debug_view_capture_probe.gd` `views=parity` twice (windowed), then diff mode (headless) on the two runs and on a perturbed fixture | Windowed capture + headless diff | Two unchanged-code runs → all PNGs byte-identical, `CAPTURE_DIFF_OK`; perturbed/missing files → `CAPTURE_DIFF_MISMATCH`, exit 1 | Pass — 26/26 PNGs byte-identical across two independent runs (after boot-time freeze + fixed grass seed); fixture known-bad flagged | 2026-06-12 | Agent |
 | RT.3 system-vs-river flow compare (known-good/known-bad) | `system_flow_compare_probe.gd` default (control gate) vs `enforce=all` (R2 gate) on the demo scenes | Headless | Control zone p90 < 10° with fresh map → `SYSTEM_FLOW_COMPARE_OK`; `enforce=all` pre-R2 → `SYSTEM_FLOW_COMPARE_EXCEEDED zone=influence`, exit 1; stale map → `SYSTEM_FLOW_COMPARE_STALE`, exit 1 | Pass — all three modes behaved as designed (control p90 8.8°; influence p90 25.8° flagged; obstacle-scene stale map detected) | 2026-06-12 | Agent |
 | R1 stale-bake detection + scoped diffs | Pre-bump scene load; RT.1 on demo scenes; grep for deleted constants | Editor + headless | Stale warning fires; diffs only in R0.5/R1.3 regions; zero code references remain | Unrun | — | — |
 | R2 system flow respects projection | RT.3 `system_flow_compare_probe.gd` with `enforce=all` after system-map regeneration; duck-drift check | Headless probe + editor (human) | Influence-zone angular p90 under 15° (`SYSTEM_FLOW_COMPARE_OK`); ducks no longer drift into boundary-shear paths | Unrun (probe exists; pre-R2 baseline recorded: influence p90 25.8°/26.5°) | — | — |
-| R3 extraction parity | Shader compile ×3 renderers; RT.2 capture diff; system-map regen compare; inspector revert spot-checks | Windowed (human-assisted) | Compiles clean; pixel deltas under threshold; system maps match; reverts restore live shader defaults | Unrun | — | — |
+| R3 extraction parity | Shader compile ×3 renderers; RT.2 `views=parity` capture before/after in the same session + headless diff; system-map regen compare; inspector revert spot-checks | Windowed capture + headless diff (human-assisted) | Compiles clean; capture PNGs byte-identical (thresholds are the fallback, not the goal — RT.2 proved byte-identity is achievable); system maps match; reverts restore live shader defaults | Unrun (RT.2 harness ready) | — | — |
 | R4 runtime robustness | Forced 20 FPS ripple run; 2 s hitch; 60 Hz emitter; 50-point curve edit frame capture; width array diff; two-system scene; sleep check | Editor/runtime (human-assisted) | Artifact-free reduced-rate propagation (rate documented here); no step burst; waves propagate; interactive editing; identical arrays; coverage-bound binding; body sleeps | Unrun | — | — |
 | R5/R6 behavior preservation | RT.1 hash-compare; property-list dump+diff; undo round-trip probe; (R6) abort matrix + metadata dict diffs | Headless + editor | Byte-identical bakes; empty diffs; undo intact; no stuck flags/leaked renderers/orphan viewports | Unrun | — | — |
 | R7 solve correctness + perf | f16-epsilon compare vs CPU path; adversarial ordering test; wall-clock before/after | Editor | Within epsilon; fence prevents stale read when both viewports update in one frame; wall-clock recorded as regression budget | Unrun | — | — |
@@ -52,6 +53,9 @@ Use this as the durable map from requirements to proof. Prefer stable probe name
   - report mode (control gate only; passes pre-R2 when saved maps are fresh): `& $godotConsole --headless --path $root --script "res://addons/waterways/probes/system_flow_compare_probe.gd"`
   - R2 gate mode (influence zone enforced for projected rivers; expected fail pre-R2): append `-- enforce=all`
   - other args: `scene=res://X.tscn stride=4 min_flow=0.05 influence_min=0.05 max_control_deg=10 max_influence_deg=15 height_tol=1.0 allow_stale=1` (stale maps are report-only under `allow_stale=1`, a hard failure otherwise)
+- RT.2 (captures are windowed — run without `--headless`; the diff runs headless):
+  - capture: `& $godotConsole --path $root --script "res://addons/waterways/probes/debug_view_capture_probe.gd" -- views=parity stations=2 label=<before|after> out=res://.codex-research/probe-out/rt2` (deterministic by default: frozen time + fixed grass seed; `freeze=0` for animated human-review captures)
+  - diff: `& $godotConsole --headless --path $root --script "res://addons/waterways/probes/debug_view_capture_probe.gd" -- a=<dir> b=<dir>` (optional `max_delta=0.02 mean_delta=0.002`); marker `CAPTURE_DIFF_OK`
 - Expected result: stable `*_OK` markers; nonzero exit with per-channel delta summary on real mismatches.
 - Agent limitation note:
   - Local checks may include static scans, parser checks, or headless editor-load probes when they work.
@@ -115,6 +119,18 @@ When requesting this validation, the agent must put the exact request in the cha
 ## Recorded Results
 
 Record new runs here. Put the newest and most relevant result first, then move older detail under an archive marker when the section gets long.
+
+Recorded result:
+
+- Date: 2026-06-12
+- Ran by: Agent
+- Godot version/renderer/device: Godot 4.6.3 console, windowed (captures) + headless (diffs), Windows 11
+- Command, scene, or workflow: RT.2 demonstration — `debug_view_capture_probe.gd` `views=parity stations=2` run twice into `.codex-research/probe-out/rt2/parity_run1|2`, then diff mode on the pair; diff mode also demonstrated headless on a generated fixture (identical pair, perturbed-rect + missing-file pair)
+- Output or parser errors: none (final runs)
+- Visible result, if applicable: capture content verified real (normal view shows the rendered demo river; ~1.8 MB average PNGs, no uniform frames)
+- Stable result marker: `CAPTURE_DIFF_OK files=26` exit 0 — all 26 PNGs byte-identical across two independent windowed runs; fixture known-bad → `CAPTURE_DIFF_MISMATCH` lines (perturbed rect per-channel deltas, missing file) exit 1
+- Pass/partial/fail: Pass (RT.2 capture + diff demonstrated on known-good and known-bad; byte-identity achieved, so R3's gate can demand it)
+- Notes or follow-up: two determinism leaks were found and fixed en route, both diagnosed with a diff heatmap (river/rocks identical, banks differing): (1) `Engine.time_scale = 0` must be set in `_initialize` — frozen later, each run pins shader TIME at a different accumulated value and every animated element carries a phase offset; (2) hterrain detail layers re-scatter grass with a time-randomized RNG per load — the probe now enables their `fixed_seed_enabled` export on the runtime instance. Byte-identity is proven for same-session, same-machine runs; capture R3 before/after pairs in one session (driver/GPU state changes across sessions are unproven). `freeze=0` restores animated captures for human visual review. Captures live under `.codex-research/probe-out/rt2/` (excluded from packaging).
 
 Recorded result:
 
