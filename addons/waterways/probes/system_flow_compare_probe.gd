@@ -25,15 +25,21 @@
 #   R2 gate mode:
 #     ... --script res://addons/waterways/probes/system_flow_compare_probe.gd -- enforce=all
 #   args: scene=res://X.tscn  stride=4  min_flow=0.05  influence_min=0.05
-#         max_control_deg=10  max_influence_deg=15  height_tol=1.0  allow_stale=1
+#         max_control_deg=15  max_influence_deg=20  height_tol=1.0  allow_stale=1
 #
-# Noise floor (measured on the demo scenes): expected-vs-saved directions
-# carry ~3 deg median / ~8-9 deg p90 even where the slide is provably
-# inactive, from 8-bit flow quantization at low magnitudes, the half-pixel
-# offset between river texel centers and system map pixel centers, and
-# bilinear-vs-nearest sampling. Thresholds default above that floor; samples
-# whose system-map height channel disagrees with the sampled world height
-# (top-down XZ overlap / edge bleed) are excluded as height_mismatch.
+# Noise floor (measured on fresh demo-scene maps): expected-vs-saved
+# directions carry ~4 deg median / 9-12.5 deg p90 even where the slide is
+# provably inactive. Sources: 8-bit flow quantization at low magnitudes, and
+# - dominant in the tail - sharp flow structure (eddy edges, wakes) blended
+# by the shader's linear texture filtering where the probe reads one texel;
+# the obstacle scene sits at the high end because it has more such structure.
+# The control gate exists to catch gross machinery breakage (a wrong basis
+# reads as 45-90 deg p90), not stale maps - metadata staleness handles those.
+# Pre-R2 the influence zone measures 27-28 deg p90 (the Defect-1 re-bend);
+# defaults sit between the floor and that signal. Samples whose system-map
+# height channel disagrees with the sampled world height (top-down XZ
+# overlap / edge bleed) are excluded as height_mismatch; the system map is
+# paired bilinearly to remove half-pixel sampling offset.
 #
 # Success marker: SYSTEM_FLOW_COMPARE_OK. Threshold breaches print
 # SYSTEM_FLOW_COMPARE_EXCEEDED lines and exit 1. A stale saved system map
@@ -63,8 +69,8 @@ var _scene_override := ""
 var _stride := 4
 var _min_flow := 0.05
 var _influence_min := 0.05
-var _max_control_deg := 10.0
-var _max_influence_deg := 15.0
+var _max_control_deg := 15.0
+var _max_influence_deg := 20.0
 var _height_tolerance := 1.0
 var _enforce_influence := false
 var _allow_stale := false
@@ -362,7 +368,12 @@ func _compare_sample(
 		return
 	var expected_direction := expected.normalized()
 
-	var sample: Dictionary = water_system.call("_sample_system_map", world_position)
+	# Bilinear pairing over the same image get_water_flow reads: the runtime
+	# samples nearest-texel, but for this gate the half-pixel offset between
+	# our river-texel world position and the system pixel center is pure
+	# sampling noise - interpolating removes it without changing what data is
+	# being compared.
+	var sample := _sample_system_bilinear(water_system, world_position)
 	if not bool(sample.get("valid", false)):
 		counts.no_coverage += 1
 		return
@@ -411,6 +422,45 @@ func _evaluate_gates(label: String, flow_projected: bool, zone_angles: Dictionar
 	if enforced and influence_p90 > _max_influence_deg:
 		print("SYSTEM_FLOW_COMPARE_EXCEEDED river=", label, " zone=influence p90_deg=", influence_p90, " limit=", _max_influence_deg)
 		_fail(label + ": influence-zone angular delta p90 " + str(influence_p90) + " deg exceeds " + str(_max_influence_deg) + " deg - system map flow disagrees with the river's projected flow (Defect 1 / R2 gate).")
+
+
+# Bilinearly interpolates the WaterSystem's sampling image at a world
+# position (same uv mapping and coverage threshold as _sample_system_map).
+# Texels under the coverage threshold are excluded from the blend; if none of
+# the four neighbors has coverage, the sample is invalid.
+func _sample_system_bilinear(water_system: Node, world_position: Vector3) -> Dictionary:
+	var image := water_system.get("_system_img") as Image
+	if image == null:
+		return {"valid": false}
+	var uv: Vector2 = water_system.call("_world_position_to_map_uv", world_position)
+	if uv.x < 0.0 or uv.x > 1.0 or uv.y < 0.0 or uv.y > 1.0:
+		return {"valid": false}
+	var width := image.get_width()
+	var height := image.get_height()
+	if width <= 0 or height <= 0:
+		return {"valid": false}
+	var px := uv.x * float(width) - 0.5
+	var py := uv.y * float(height) - 0.5
+	var x0 := clampi(int(floor(px)), 0, width - 1)
+	var y0 := clampi(int(floor(py)), 0, height - 1)
+	var x1 := mini(x0 + 1, width - 1)
+	var y1 := mini(y0 + 1, height - 1)
+	var fx := clampf(px - float(x0), 0.0, 1.0)
+	var fy := clampf(py - float(y0), 0.0, 1.0)
+	var texels := [image.get_pixel(x0, y0), image.get_pixel(x1, y0), image.get_pixel(x0, y1), image.get_pixel(x1, y1)]
+	var weights := [(1.0 - fx) * (1.0 - fy), fx * (1.0 - fy), (1.0 - fx) * fy, fx * fy]
+	var blended := Color(0.0, 0.0, 0.0, 0.0)
+	var total_weight := 0.0
+	for texel_index in 4:
+		var texel: Color = texels[texel_index]
+		if texel.a <= 0.001:
+			continue
+		var weight: float = weights[texel_index]
+		blended += texel * weight
+		total_weight += weight
+	if total_weight <= 0.0001:
+		return {"valid": false}
+	return {"valid": true, "color": blended / total_weight}
 
 
 # Mirrors WaterHelperMethods._get_uv2_world_sample's triangle search but also
