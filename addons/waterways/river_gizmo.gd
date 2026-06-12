@@ -362,10 +362,19 @@ func _commit_handle(gizmo: EditorNode3DGizmo, index: int, _secondary: bool, rest
 		_redraw(gizmo)
 		return
 	
+	var current_curve_state := river.get_curve_state()
+	if current_curve_state == previous_curve_state:
+		# Click without drag: state is bitwise-identical, so don't push a
+		# "Change River Shape" undo entry or invalidate the bake.
+		_handle_restore_state.clear()
+		_handle_restore_bake_valid_state.clear()
+		reset()
+		_redraw(gizmo)
+		return
+
 	var ur = editor_plugin.get_undo_redo()
 	ur.create_action("Change River Shape", 0, river)
-	
-	var current_curve_state := river.get_curve_state()
+
 	var current_bake_valid_state := {
 		"valid_flowmap": false,
 		"shader_i_valid_flowmap": false
@@ -429,6 +438,15 @@ func _redraw(gizmo: EditorNode3DGizmo) -> void:
 	var river := gizmo.get_node_3d() as RiverManager
 	
 	var redraw_callable := Callable(self, "_redraw").bind(gizmo)
+	# Gizmos are freed without a plugin-side callback, so connections bound to
+	# dead gizmos accumulate on the river; sweep them before adding ours.
+	for connection in river.get_signal_connection_list("river_changed"):
+		var connected: Callable = connection["callable"]
+		if connected.get_object() != self or connected.get_method() != &"_redraw":
+			continue
+		var bound_arguments: Array = connected.get_bound_arguments()
+		if bound_arguments.size() == 1 and not is_instance_valid(bound_arguments[0]):
+			river.disconnect("river_changed", connected)
 	if not river.is_connected("river_changed", redraw_callable):
 		river.connect("river_changed", redraw_callable)
 	
