@@ -758,6 +758,11 @@ func _get_property_list() -> Array:
 			usage = PROPERTY_USAGE_STORAGE
 		},
 		{
+			name = "water_occupancy",
+			type = TYPE_OBJECT,
+			usage = PROPERTY_USAGE_STORAGE
+		},
+		{
 			name = "_material",
 			type = TYPE_OBJECT,
 			hint = PROPERTY_HINT_RESOURCE_TYPE,
@@ -1014,6 +1019,7 @@ func _enter_tree() -> void:
 	set_materials("i_obstacle_features", obstacle_features)
 	set_materials("i_terrain_contact_features", terrain_contact_features)
 	set_materials("i_bank_response_features", bank_response_features)
+	set_materials("i_water_occupancy", water_occupancy)
 	set_materials("i_texture_foam_noise", load(FOAM_NOISE_PATH) as Texture2D)
 
 
@@ -2973,7 +2979,7 @@ func _clamp_rect_to_image(image: Image, rect: Rect2i) -> Rect2i:
 
 
 func _has_unsaved_generated_textures() -> bool:
-	if flow_foam_noise == null and dist_pressure == null and obstacle_features == null and terrain_contact_features == null and bank_response_features == null:
+	if flow_foam_noise == null and dist_pressure == null and obstacle_features == null and terrain_contact_features == null and bank_response_features == null and water_occupancy == null:
 		return false
 	return not WaterHelperMethods.has_external_bake_path(bake_data)
 
