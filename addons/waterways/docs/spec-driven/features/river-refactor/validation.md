@@ -11,10 +11,10 @@
 
 ## Current Validation Snapshot
 
-- Overall status: Partial — R0 implemented (branch `river-refactor`); headless checks pass, human-assisted R0 checks pending; RT tooling not built yet
-- Last automated pass: 2026-06-12 — `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK` (all exit 0), plus `--check-only` parse pass on river_manager.gd / river_gizmo.gd / plugin.gd / rebake_probe.gd
-- Last human-assisted pass: none
-- Highest-risk unproven behavior: R0 visual/editor checks (foam parity, null-distmap neutrality, mid-bake close recovery, click-without-drag) — headless signal cannot prove these; then R3 include-extraction pixel parity (RT.2 must be built first)
+- Overall status: Partial — Phase R0 fully validated and closed (2026-06-12); RT.1/RT.4 built and demonstrated; RT.2/RT.3 not built; R1+ not started
+- Last automated pass: 2026-06-12 — `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`, plus `--check-only` parse pass on all edited scripts
+- Last human-assisted pass: 2026-06-12 — user confirmed R0.2 foam parity, R0.3 mid-bake close recovery, R0.4 no undo entry on click-without-drag (Godot 4.6.3 windowed editor)
+- Highest-risk unproven behavior: R3 include-extraction pixel parity (RT.2 must be built and demonstrated first); R2's system-flow gate (RT.3 not built)
 - Known unreliable local check or environment caveat: headless rendering is unreliable per the constitution — all pixel-parity gates are windowed/human-assisted by default; headless editor-load signal is never proof of visible behavior
 
 ## Validation Matrix
@@ -23,7 +23,7 @@ Use this as the durable map from requirements to proof. Prefer stable probe name
 
 | Requirement or risk | Check/probe/scene | Environment | Expected marker/result | Last result | Date | Owner |
 | --- | --- | --- | --- | --- | --- | --- |
-| R0 defect fixes hold | Roadmap R0 Validation block (rebake demo river; null-distmap river; mid-bake close; click-without-drag; hardened probes) | Editor (human) + headless probes | Foam Mix matches surface; neutral pillows/gates; re-bake succeeds; no undo entry; probe `*_OK` markers | Partial — probes Pass headless; editor/visual checks pending | 2026-06-12 | Agent |
+| R0 defect fixes hold | Roadmap R0 Validation block (rebake demo river; null-distmap binding probe; mid-bake close; click-without-drag; hardened probes) | Editor (human) + headless probes | Foam Mix matches surface; neutral distmap binding probe `*_OK`; re-bake succeeds after mid-bake close; no undo entry on no-op click; probe `*_OK` markers | Pass — all checks closed (probes + user-run editor checks) | 2026-06-12 | Agent + User |
 | RT tools work (known-good/known-bad) | RT.1 on two same-scene bakes, then on pre/post-R0.5 pair | Headless | Identical → exit 0; margin-region diff flagged → nonzero with per-channel delta | Partial — RT.1 Pass (self-diff exit 0; perturbed-rect copy flagged exactly, exit 1); RT.2–RT.4 not built | 2026-06-12 | Agent |
 | R1 stale-bake detection + scoped diffs | Pre-bump scene load; RT.1 on demo scenes; grep for deleted constants | Editor + headless | Stale warning fires; diffs only in R0.5/R1.3 regions; zero code references remain | Unrun | — | — |
 | R2 system flow respects projection | RT.3 probe on obstacle demo scene; duck-drift check | Headless probe + editor (human) | Angular/magnitude delta under threshold; ducks no longer drift into boundary-shear paths | Unrun | — | — |
@@ -109,6 +109,18 @@ When requesting this validation, the agent must put the exact request in the cha
 ## Recorded Results
 
 Record new runs here. Put the newest and most relevant result first, then move older detail under an archive marker when the section gets long.
+
+Recorded result:
+
+- Date: 2026-06-12
+- Ran by: User
+- Godot version/renderer/device: Godot 4.6.3 windowed editor, Windows 11
+- Command, scene, or workflow: R0.3 check — started a bake on the demo river, closed the scene mid-bake, reopened, baked again. R0.4 check — clicked a river gizmo handle without dragging, inspected undo history and bake validity.
+- Output or parser errors: none reported
+- Visible result, if applicable: second bake ran to completion (no swallowed request); no "Change River Shape" undo entry and bake stayed valid on click-without-drag
+- Stable result marker: n/a (editor behavior)
+- Pass/partial/fail: Pass (R0.3 and R0.4) — **Phase R0 gate fully closed**
+- Notes or follow-up: with R0.2 (foam parity, user), R0.7 (binding probe), and the headless probe/parse passes, all Phase R0 validation items are complete.
 
 Recorded result:
 

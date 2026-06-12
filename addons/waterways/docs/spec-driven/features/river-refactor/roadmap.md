@@ -1,6 +1,6 @@
 # River Refactor Roadmap
 
-Status: Draft — not started
+Status: In progress — Phase R0 complete and validated (2026-06-12); RT.1/RT.4 done; RT.2/RT.3 next, then R1
 Date: 2026-06-12
 Source: `docs/audit/waterways-code-audit-2026-06-12.md` (full-addon audit, bake signature v27), hardened by an adversarial code review (2026-06-12) in which every load-bearing claim below was verified against source at the cited lines. Where the audit and the code disagreed, the code won — those corrections are noted inline.
 Related: `docs/spec-driven/features/river-future/Roadmap.md` (feature roadmap, Phases 0–5), `docs/spec-driven/00-constitution.md`
@@ -41,7 +41,7 @@ Per constitution rule 12, the heavyweight phases (R6 bake-pipeline extraction, R
 
 ## Phase R0 — Defect Hotfixes (hours each, except R0.7; no signature bump)
 
-> Branch: `river-refactor` (2026-06-12). All nine items implemented, one commit each. Headless validation passed (probe markers, parse checks — see `validation.md`); the phase's human-assisted checks (foam parity, null-distmap visuals, mid-bake close, click-without-drag) are pending.
+> Branch: `river-refactor` (2026-06-12). **Phase complete and validated.** All nine items implemented (one commit each); headless probes pass; user confirmed foam parity (after rebake — committed as post-R0.5 baseline), mid-bake close recovery, and no-op click. R0.7's "pillows render neutral" visual check was unreachable (a null distmap also fails the validity gate, and the debug shader paints its invalid-indicator stripes over every view) — verified instead by `probes/distmap_neutral_binding_probe.gd`. Results in `validation.md`.
 
 Small, independent, high-confidence fixes. Each can be its own commit; none changes baked content except R0.5 (see its note). Audit refs: Prioritized Recommendations 1–8; Defects 2, 3, 4, 5, 8, 9, 10, 11.
 

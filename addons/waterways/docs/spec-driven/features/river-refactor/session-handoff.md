@@ -15,11 +15,11 @@ Stand up the spec-driven feature folder for the hardening/refactor track derived
 
 ## Current Truth
 
-- Overall status: In progress — Phase R0 implemented (9/9 items), RT.1 and RT.4 built and demonstrated (branch `river-refactor`, 2026-06-12); human-assisted R0 checks pending
-- Highest-priority open task: R0 human-assisted validation block; then RT.3 (system-vs-river flow probe, headless-able — gates R2) and RT.2 (pixel-parity capture, windowed — gates R3)
-- Last passing validation: 2026-06-12 headless — probe markers `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK` (incl. known-bad rect localization), `FLOW_SOLVE_SEED_ASSERT_OK`; `--check-only` parse pass on all edited scripts
-- Known failing or unproven check: R0's editor/visual behaviors (foam parity, null-distmap neutrality, mid-bake close, click-without-drag) — headless cannot prove them; RT.2/RT.3 do not exist yet
-- Next recommended action: user runs the R0 human-assisted checks (exact steps in roadmap R0 Validation block); agent builds RT.3 next session. R1 is now unblocked by RT.1 but should start after the R0 human-assisted checks close.
+- Overall status: In progress — **Phase R0 complete and validated** (user-confirmed editor checks 2026-06-12); RT.1 and RT.4 built and demonstrated; demo bakes rebaked and committed as the post-R0.5 baseline; demo scene UID references and probe .uid sidecars fixed
+- Highest-priority open task: RT.3 (system-vs-river flow probe, headless-able — gates R2), RT.2 (pixel-parity capture, windowed — gates R3); R1 is unblocked by RT.1 and can start
+- Last passing validation: 2026-06-12 — Phase R0 gate closed: user confirmed foam parity, mid-bake close recovery, no-op click; probes `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`
+- Known failing or unproven check: RT.2/RT.3 do not exist yet; R2/R3 gates therefore unavailable
+- Next recommended action: build RT.3, then start R1 (dead-code purge + single v27→v28 signature bump) on a fresh slice. Note for R1: the R0.7 lesson — debug-view visual checks are masked by the invalid-flowmap stripe indicator whenever validity fails; prefer binding/content probes for anything that also invalidates the flowmap.
 - Packaging/artifact hygiene status: probe overlays written to `.codex-research/probe-out/` (excluded from packaging; safe to delete)
 - Historical detail starts at: nothing archived yet
 

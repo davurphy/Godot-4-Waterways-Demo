@@ -8,10 +8,10 @@ The canonical per-item checklists live in `roadmap.md` (phases R0, RT, R1–R8) 
 ## Current Truth
 
 - Current status: In progress
-- Current implementation slice: Phase R0 code complete on branch `river-refactor` (9/9 items, one commit each); human-assisted R0 validation pending; Phase RT is next
-- Remaining open task count: R0 human-assisted validation; 4 RT items; phases R1–R8 untouched
-- Last passing validation: 2026-06-12 headless — three probe `*_OK` markers + `--check-only` parse pass on all edited scripts (see `validation.md`)
-- Next recommended action: run the R0 human-assisted checks (foam parity, null-distmap, mid-bake close, click-without-drag), then start RT.1 (bake hash-compare) — it gates R1
+- Current implementation slice: Phase R0 complete and validated; RT.1 and RT.4 done and demonstrated; next slice is RT.3 (system-vs-river flow probe, gates R2) and RT.2 (pixel-parity capture, gates R3)
+- Remaining open task count: RT.2 and RT.3; phases R1–R8 untouched (R1 unblocked by RT.1)
+- Last passing validation: 2026-06-12 — Phase R0 gate fully closed (user-confirmed editor checks + six probe markers; see `validation.md`)
+- Next recommended action: build RT.3, then start R1 (dead-code purge + the single v28 signature bump)
 - Known deferred work: R9 (vertex pillow stack) stays on the feature roadmap; R7 blocked on the feature-Phase-5 compute decision gate
 
 ## Open Work
@@ -19,7 +19,7 @@ The canonical per-item checklists live in `roadmap.md` (phases R0, RT, R1–R8) 
 Use this section as the canonical checklist for unfinished *process* work. When items close, update any stale "open" language in `spec.md`, `plan.md`, `validation.md`, `review.md`, and the latest handoff. Item-level work is tracked in `roadmap.md`.
 
 - [x] Phase R0 — Defect Hotfixes, implementation (9/9 items landed on `river-refactor`, 2026-06-12). R0.2 (the R3 prerequisite) is in.
-- [ ] Phase R0 — human-assisted validation block (foam parity, null-distmap visuals, mid-bake close recovery, click-without-drag undo check).
+- [x] Phase R0 — validation closed 2026-06-12: user confirmed foam parity, mid-bake close recovery, and no-op click; null-distmap covered by `distmap_neutral_binding_probe.gd` (visual check unreachable — see validation.md).
 - [ ] Phase RT — Validation Tooling (4 items; RT.1 before R1, RT.2 before R3, RT.3 before R2). Can run parallel with R0.
 - [ ] Phase R1 — Dead-Code Purge + signature v28 (needs RT.1).
 - [ ] Phase R2 — `system_flow` projected-flow correctness (needs RT.3; after R1; consider merging with R3).
