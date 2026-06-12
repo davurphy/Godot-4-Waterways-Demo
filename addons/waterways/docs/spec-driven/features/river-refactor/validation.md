@@ -113,6 +113,18 @@ Record new runs here. Put the newest and most relevant result first, then move o
 Recorded result:
 
 - Date: 2026-06-12
+- Ran by: User
+- Godot version/renderer/device: Godot 4.6.3 windowed editor, Windows 11
+- Command, scene, or workflow: R0.2 human-assisted check — rebaked the demo river (Generate Flow & Foam Map) and compared the Foam Mix debug view against the normal surface view
+- Output or parser errors: editor startup warnings about missing probe .uid files and stale bake-resource UIDs (diagnosed separately; fixed in commit 07545dc — not related to the foam check)
+- Visible result, if applicable: Foam Mix matches the normal view after rebake
+- Stable result marker: n/a (visual)
+- Pass/partial/fail: Pass (R0.2 foam parity)
+- Notes or follow-up: the rebake regenerated both demo bake resources; RT.1 hash-diff vs the old baseline showed changes in flow_foam_noise, dist_pressure, obstacle_features, water_occupancy (R0.5 margin fix + GPU run variance) with terrain_contact_features and bank_response_features byte-identical. Committed as the post-R0.5 baseline (29349f0). Remaining R0 human checks: null-distmap neutrality (R0.7), mid-bake scene close (R0.3), click-without-drag (R0.4).
+
+Recorded result:
+
+- Date: 2026-06-12
 - Ran by: Agent
 - Godot version/renderer/device: Godot 4.6.3 console, headless display server, Windows 11
 - Command, scene, or workflow: RT.1 demonstration — `bake_hash_probe.gd` in hash mode on the demo bake; diff mode self-vs-self; diff mode original-vs-perturbed copy (scratch fixture `.codex-research/bake_hash_known_bad_fixture.gd` adds +0.25 to flow_foam_noise.r in rect (40,50,10x6))
