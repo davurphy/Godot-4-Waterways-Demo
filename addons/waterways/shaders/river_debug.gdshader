@@ -100,13 +100,13 @@ uniform float flow_boundary_probe : hint_range(0.25, 4.0) = 1.0;
 uniform float flow_wake_damping : hint_range(0.0, 1.0) = 0.6;
 uniform float flow_max : hint_range(0.0, 8.0) = 4.0;
 
-uniform float foam_amount : hint_range(0.0, 4.0) = 1.0;
+uniform float foam_amount : hint_range(0.0, 4.0) = 2.0;
 uniform float foam_steepness : hint_range(0.0, 8.0) = 2.0;
 uniform float foam_energy_bias : hint_range(0.0, 8.0) = 0.5;
 uniform float foam_bank_friction_bias : hint_range(0.0, 2.0) = 0.35;
 uniform float foam_pillow_anchor_bias : hint_range(0.0, 2.0) = 0.35;
 uniform float foam_pillow_visual_bias : hint_range(0.0, 2.0) = 0.35;
-uniform float foam_smoothness : hint_range(0.0, 1.0) = 1.0;
+uniform float foam_smoothness : hint_range(0.0, 1.0) = 0.3;
 uniform vec3 uv_scale = vec3(1.0, 1.0, 1.0);
 
 uniform float pillow_strength : hint_range(0.0, 4.0) = 1.15;
@@ -1455,7 +1455,7 @@ if (i_valid_flowmap) {
 		foam_mask += pillow_visual_foam_contribution;
 		foam_mask += pillow_material_visual * pillow_foam_bias * grade_energy_channel * normalized_flow_force * foam_randomness * smoothstep(0.35, 0.8, water_foamFBM);
 		foam_mask += wake_visual * wake_foam_fleck_bias * grade_energy_channel * normalized_flow_force * wake_fleck_noise * smoothstep(0.45, 0.85, water_foamFBM);
-		foam_mask += eddy_line_visual * wake_eddy_line_foam_bias * max(grade_energy_channel, normalized_flow_force) * eddy_fleck_noise * smoothstep(0.35, 0.85, water_foamFBM);
+		foam_mask += eddy_line_visual * wake_eddy_line_foam_bias * max(grade_energy_channel, normalized_flow_force) * (0.25 + eddy_fleck_noise * 0.75) * smoothstep(0.25, 0.78, water_foamFBM);
 		foam_mask = clamp(foam_mask, 0.0, 1.0);
 		
 		float safe_foam_amount = max(foam_amount, EPSILON);
