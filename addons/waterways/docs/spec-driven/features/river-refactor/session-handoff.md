@@ -15,11 +15,11 @@ Stand up the spec-driven feature folder for the hardening/refactor track derived
 
 ## Current Truth
 
-- Overall status: In progress — **Phase R0 complete and validated** (user-confirmed editor checks 2026-06-12); RT.1 and RT.4 built and demonstrated; demo bakes rebaked and committed as the post-R0.5 baseline; demo scene UID references and probe .uid sidecars fixed
-- Highest-priority open task: RT.3 (system-vs-river flow probe, headless-able — gates R2), RT.2 (pixel-parity capture, windowed — gates R3); R1 is unblocked by RT.1 and can start
-- Last passing validation: 2026-06-12 — Phase R0 gate closed: user confirmed foam parity, mid-bake close recovery, no-op click; probes `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`
-- Known failing or unproven check: RT.2/RT.3 do not exist yet; R2/R3 gates therefore unavailable
-- Next recommended action: build RT.3, then start R1 (dead-code purge + single v27→v28 signature bump) on a fresh slice. Note for R1: the R0.7 lesson — debug-view visual checks are masked by the invalid-flowmap stripe indicator whenever validity fails; prefer binding/content probes for anything that also invalidates the flowmap.
+- Overall status: In progress — **Phase R0 complete and validated** (user-confirmed editor checks 2026-06-12); RT.1, RT.3, and RT.4 built and demonstrated; demo bakes rebaked and committed as the post-R0.5 baseline; demo scene UID references and probe .uid sidecars fixed
+- Highest-priority open task: RT.2 (pixel-parity capture, windowed — gates R3); R1 is unblocked by RT.1 and can start
+- Last passing validation: 2026-06-12 — RT.3 `SYSTEM_FLOW_COMPARE_OK` (known-good/known-bad/stale all demonstrated); earlier same day Phase R0 gate closed: user confirmed foam parity, mid-bake close recovery, no-op click; probes `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`
+- Known failing or unproven check: RT.2 does not exist yet (R3 gate unavailable). RT.3 found a repo-state issue: the obstacle demo scene's WaterSystem references Demo's system bake and that map is stale for it ("bake resource path changed") — regenerate the obstacle scene's own system map in the editor (R2 validation does this anyway). Pre-R2 baseline recorded: influence-zone angular p90 25.8°/26.5° vs the 15° gate (the Defect-1 signature RT.3 exists to catch).
+- Next recommended action: build RT.2, then start R1 (dead-code purge + single v27→v28 signature bump) on a fresh slice — warn the user first (invalidates all saved river bakes). Note for R1: the R0.7 lesson — debug-view visual checks are masked by the invalid-flowmap stripe indicator whenever validity fails; prefer binding/content probes for anything that also invalidates the flowmap.
 - Packaging/artifact hygiene status: probe overlays written to `.codex-research/probe-out/` (excluded from packaging; safe to delete)
 - Historical detail starts at: nothing archived yet
 
@@ -64,10 +64,11 @@ Implementation session (2026-06-12, branch `river-refactor`, all committed):
 - R0.7 follow-up: new `probes/distmap_neutral_binding_probe.gd` after the visual check proved unreachable (invalid-indicator stripes mask all debug views when validity fails).
 - Repo hygiene: probes' `.uid` sidecars tracked; stale bake-resource UID references in `Demo.tscn`/`Demo_obstacle_flow_test.tscn` fixed; user's post-R0.5 rebakes committed as the new bake baseline (still signature v27).
 - User-validated: foam parity (R0.2), mid-bake close recovery (R0.3), no-op click (R0.4) — Phase R0 gate closed.
+- RT.3 (second implementation session, 2026-06-12): new `probes/system_flow_compare_probe.gd` — decodes river baked flow per texel, transforms to world XZ via the same per-triangle UV1 basis `system_flow.gdshader` builds, compares against `_sample_system_map` (the duck-read path); three zones (control/influence/boundary), control gate always on, influence gate (`enforce=all`) is R2's gate for `flow_projected` rivers; stale-map detection via `_get_stale_source_warning`; height-channel filter excludes cross-surface top-down samples. Demonstrated known-good (control p90 8.8° < 10°), known-bad (influence p90 25.8° > 15° flagged), and stale detection (obstacle scene). Deliberately does NOT replicate the slide/force pipeline — no third hand-synced flow copy.
 
 ## Current Changes Summary
 
-- Phase R0 complete and validated; RT.1/RT.4 done; six probe markers green; docs and dashboards current. Next: RT.3, RT.2, then R1.
+- Phase R0 complete and validated; RT.1/RT.3/RT.4 done; seven probe markers green; docs and dashboards current. Next: RT.2, then R1.
 
 ## Historical Change Log
 
@@ -157,9 +158,10 @@ Result summary:
 
 ## Next Tasks
 
-- [ ] RT.3 — system-vs-river flow comparison probe (gates R2; headless-able). Check `river-flowmap-seams/probes/river_flowmap_world_sample_probe.gd` for existing world→atlas sampling machinery first.
+- [x] RT.3 — system-vs-river flow comparison probe (gates R2; headless-able). *Done 2026-06-12: `probes/system_flow_compare_probe.gd`; commands in `validation.md` Automated Checks.*
 - [ ] RT.2 — pixel-parity capture harness on `debug_view_capture_probe.gd` (gates R3; windowed/human-assisted).
 - [ ] R1 — dead-code purge + single v27→v28 signature bump (unblocked). Warn the user before starting: invalidates all saved river bakes; land at a quiet point.
+- [ ] (User, editor) Generate the obstacle demo scene's own system map — its WaterSystem currently shares Demo's system bake, which RT.3 flags stale ("bake resource path changed"). Folds into R2's validation if R2 comes first. Commit the probe's `.uid` sidecar the editor generates alongside.
 
 ## Do Not Do Yet
 
@@ -216,4 +218,21 @@ $godotEditor = "C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win6
 
 ## Validation Commands
 
-No track-specific validation commands exist yet — RT.1–RT.4 will define them. When they land, record the exact PowerShell invocations and their stable pass/fail markers here and in `validation.md`.
+After the APPDATA/LOCALAPPDATA redirect from Godot Launch Instructions above:
+
+```powershell
+# RT.1 — bake content hash/diff (markers: BAKE_HASH_PROBE_OK / BAKE_HASH_COMPARE_OK)
+& $godotConsole --headless --path $root --script "res://addons/waterways/probes/bake_hash_probe.gd" -- bake=res://waterways_bakes/Demo/Water_River.river_bake.res
+& $godotConsole --headless --path $root --script "res://addons/waterways/probes/bake_hash_probe.gd" -- a=res://path_a.res b=res://path_b.res
+
+# RT.3 — system-vs-river flow compare (marker: SYSTEM_FLOW_COMPARE_OK)
+# report mode (control gate only; green pre-R2 when saved maps are fresh):
+& $godotConsole --headless --path $root --script "res://addons/waterways/probes/system_flow_compare_probe.gd"
+# R2 gate mode (influence zone enforced for projected rivers; red pre-R2 by design):
+& $godotConsole --headless --path $root --script "res://addons/waterways/probes/system_flow_compare_probe.gd" -- enforce=all
+
+# RT.4 — cross-language pressure-seed assertion (marker: FLOW_SOLVE_SEED_ASSERT_OK)
+& $godotConsole --headless --path $root --script "res://addons/waterways/probes/flow_solve_seed_assert_probe.gd"
+```
+
+RT.2's capture harness is still to be built (windowed/human-assisted by design).

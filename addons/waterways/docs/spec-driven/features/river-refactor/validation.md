@@ -11,10 +11,11 @@
 
 ## Current Validation Snapshot
 
-- Overall status: Partial — Phase R0 fully validated and closed (2026-06-12); RT.1/RT.4 built and demonstrated; RT.2/RT.3 not built; R1+ not started
-- Last automated pass: 2026-06-12 — `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`, plus `--check-only` parse pass on all edited scripts
+- Overall status: Partial — Phase R0 fully validated and closed (2026-06-12); RT.1/RT.3/RT.4 built and demonstrated; RT.2 not built; R1+ not started
+- Last automated pass: 2026-06-12 — `SYSTEM_FLOW_COMPARE_OK` (RT.3, known-good/known-bad demonstrated); earlier same day: `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`
 - Last human-assisted pass: 2026-06-12 — user confirmed R0.2 foam parity, R0.3 mid-bake close recovery, R0.4 no undo entry on click-without-drag (Godot 4.6.3 windowed editor)
-- Highest-risk unproven behavior: R3 include-extraction pixel parity (RT.2 must be built and demonstrated first); R2's system-flow gate (RT.3 not built)
+- Highest-risk unproven behavior: R3 include-extraction pixel parity (RT.2 must be built and demonstrated first)
+- Known repo-state issue found by RT.3: `Demo_obstacle_flow_test.tscn`'s WaterSystem references Demo's system bake (`WaterSystem.water_system_bake.res`) and that map is stale for the obstacle scene ("bake resource path changed") — the obstacle scene needs its own system map generated in the editor (R2's validation regenerates it anyway)
 - Known unreliable local check or environment caveat: headless rendering is unreliable per the constitution — all pixel-parity gates are windowed/human-assisted by default; headless editor-load signal is never proof of visible behavior
 
 ## Validation Matrix
@@ -24,9 +25,10 @@ Use this as the durable map from requirements to proof. Prefer stable probe name
 | Requirement or risk | Check/probe/scene | Environment | Expected marker/result | Last result | Date | Owner |
 | --- | --- | --- | --- | --- | --- | --- |
 | R0 defect fixes hold | Roadmap R0 Validation block (rebake demo river; null-distmap binding probe; mid-bake close; click-without-drag; hardened probes) | Editor (human) + headless probes | Foam Mix matches surface; neutral distmap binding probe `*_OK`; re-bake succeeds after mid-bake close; no undo entry on no-op click; probe `*_OK` markers | Pass — all checks closed (probes + user-run editor checks) | 2026-06-12 | Agent + User |
-| RT tools work (known-good/known-bad) | RT.1 on two same-scene bakes, then on pre/post-R0.5 pair | Headless | Identical → exit 0; margin-region diff flagged → nonzero with per-channel delta | Partial — RT.1 Pass (self-diff exit 0; perturbed-rect copy flagged exactly, exit 1); RT.2–RT.4 not built | 2026-06-12 | Agent |
+| RT tools work (known-good/known-bad) | RT.1 on two same-scene bakes, then on pre/post-R0.5 pair | Headless | Identical → exit 0; margin-region diff flagged → nonzero with per-channel delta | Partial — RT.1 Pass (self-diff exit 0; perturbed-rect copy flagged exactly, exit 1); RT.3 Pass (see RT.3 row); RT.2 not built | 2026-06-12 | Agent |
+| RT.3 system-vs-river flow compare (known-good/known-bad) | `system_flow_compare_probe.gd` default (control gate) vs `enforce=all` (R2 gate) on the demo scenes | Headless | Control zone p90 < 10° with fresh map → `SYSTEM_FLOW_COMPARE_OK`; `enforce=all` pre-R2 → `SYSTEM_FLOW_COMPARE_EXCEEDED zone=influence`, exit 1; stale map → `SYSTEM_FLOW_COMPARE_STALE`, exit 1 | Pass — all three modes behaved as designed (control p90 8.8°; influence p90 25.8° flagged; obstacle-scene stale map detected) | 2026-06-12 | Agent |
 | R1 stale-bake detection + scoped diffs | Pre-bump scene load; RT.1 on demo scenes; grep for deleted constants | Editor + headless | Stale warning fires; diffs only in R0.5/R1.3 regions; zero code references remain | Unrun | — | — |
-| R2 system flow respects projection | RT.3 probe on obstacle demo scene; duck-drift check | Headless probe + editor (human) | Angular/magnitude delta under threshold; ducks no longer drift into boundary-shear paths | Unrun | — | — |
+| R2 system flow respects projection | RT.3 `system_flow_compare_probe.gd` with `enforce=all` after system-map regeneration; duck-drift check | Headless probe + editor (human) | Influence-zone angular p90 under 15° (`SYSTEM_FLOW_COMPARE_OK`); ducks no longer drift into boundary-shear paths | Unrun (probe exists; pre-R2 baseline recorded: influence p90 25.8°/26.5°) | — | — |
 | R3 extraction parity | Shader compile ×3 renderers; RT.2 capture diff; system-map regen compare; inspector revert spot-checks | Windowed (human-assisted) | Compiles clean; pixel deltas under threshold; system maps match; reverts restore live shader defaults | Unrun | — | — |
 | R4 runtime robustness | Forced 20 FPS ripple run; 2 s hitch; 60 Hz emitter; 50-point curve edit frame capture; width array diff; two-system scene; sleep check | Editor/runtime (human-assisted) | Artifact-free reduced-rate propagation (rate documented here); no step burst; waves propagate; interactive editing; identical arrays; coverage-bound binding; body sleeps | Unrun | — | — |
 | R5/R6 behavior preservation | RT.1 hash-compare; property-list dump+diff; undo round-trip probe; (R6) abort matrix + metadata dict diffs | Headless + editor | Byte-identical bakes; empty diffs; undo intact; no stuck flags/leaked renderers/orphan viewports | Unrun | — | — |
@@ -46,6 +48,10 @@ Use this as the durable map from requirements to proof. Prefer stable probe name
 ## Automated Checks
 
 - Command or procedure: headless console probes under `probes/` (hardened with `*_OK` markers and `out=` support by R0.9); RT.1 hash-compare; RT.3 flow comparison; RT.4 seed assertion. Exact commands recorded here as the tools land.
+- RT.3 (after the APPDATA/LOCALAPPDATA redirect from Godot Launch Instructions):
+  - report mode (control gate only; passes pre-R2 when saved maps are fresh): `& $godotConsole --headless --path $root --script "res://addons/waterways/probes/system_flow_compare_probe.gd"`
+  - R2 gate mode (influence zone enforced for projected rivers; expected fail pre-R2): append `-- enforce=all`
+  - other args: `scene=res://X.tscn stride=4 min_flow=0.05 influence_min=0.05 max_control_deg=10 max_influence_deg=15 height_tol=1.0 allow_stale=1` (stale maps are report-only under `allow_stale=1`, a hard failure otherwise)
 - Expected result: stable `*_OK` markers; nonzero exit with per-channel delta summary on real mismatches.
 - Agent limitation note:
   - Local checks may include static scans, parser checks, or headless editor-load probes when they work.
@@ -109,6 +115,18 @@ When requesting this validation, the agent must put the exact request in the cha
 ## Recorded Results
 
 Record new runs here. Put the newest and most relevant result first, then move older detail under an archive marker when the section gets long.
+
+Recorded result:
+
+- Date: 2026-06-12
+- Ran by: Agent
+- Godot version/renderer/device: Godot 4.6.3 console, headless display server, Windows 11
+- Command, scene, or workflow: RT.3 demonstration — `probes/system_flow_compare_probe.gd` on `Demo.tscn` + `Demo_obstacle_flow_test.tscn` in three modes: (A) `allow_stale=1` report mode, (B) `enforce=all allow_stale=1` R2-gate mode, (C) default (no args)
+- Output or parser errors: two type-inference parse errors on first load (Dictionary-member `:=` inference), fixed with explicit `float` types; all subsequent runs clean
+- Visible result, if applicable: n/a (headless)
+- Stable result marker: (A) `SYSTEM_FLOW_COMPARE_OK` exit 0 — control zone p90 8.8° < 10° on the fresh Demo map proves the sampling/transform machinery; (B) exit 1 with `SYSTEM_FLOW_COMPARE_EXCEEDED zone=influence p90_deg=25.758 limit=15.0` — the Defect-1 known-bad caught by the R2 gate, as expected pre-R2; (C) exit 1 with `SYSTEM_FLOW_COMPARE_STALE` on the obstacle scene — its WaterSystem references Demo's system bake, whose stored river metadata names `Water_River.river_bake.res` while the scene's river uses `Water_River_obstacle_test.river_bake.res`
+- Pass/partial/fail: Pass (RT.3 gate demonstrated on known-good and known-bad; stale-map detection demonstrated on a real repo-state issue)
+- Notes or follow-up: measured noise floor on fresh maps: control zone ~2.7° median / ~8.8° p90 (8-bit flow quantization at low magnitudes, half-system-pixel offset, bilinear-vs-nearest) — default thresholds `max_control_deg=10`, `max_influence_deg=15` sit above it with the pre-R2 influence signal (25.8°) well separated. Samples whose system-map height channel disagrees with the world sample by >1.0 are excluded (`height_mismatch`; 46 such cross-surface/edge-bleed samples in the obstacle scene). The obstacle scene needs its own system map generated in the editor before its numbers gate anything; R2's validation regenerates it anyway. Probe `.uid` sidecar not yet generated (headless runs don't import) — commit it after the next editor session.
 
 Recorded result:
 

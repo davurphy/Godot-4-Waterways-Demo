@@ -8,10 +8,10 @@ The canonical per-item checklists live in `roadmap.md` (phases R0, RT, R1–R8) 
 ## Current Truth
 
 - Current status: In progress
-- Current implementation slice: Phase R0 complete and validated; RT.1 and RT.4 done and demonstrated; next slice is RT.3 (system-vs-river flow probe, gates R2) and RT.2 (pixel-parity capture, gates R3)
-- Remaining open task count: RT.2 and RT.3; phases R1–R8 untouched (R1 unblocked by RT.1)
-- Last passing validation: 2026-06-12 — Phase R0 gate fully closed (user-confirmed editor checks + six probe markers; see `validation.md`)
-- Next recommended action: build RT.3, then start R1 (dead-code purge + the single v28 signature bump)
+- Current implementation slice: Phase R0 complete and validated; RT.1, RT.3, and RT.4 done and demonstrated; next slice is RT.2 (pixel-parity capture, gates R3)
+- Remaining open task count: RT.2; phases R1–R8 untouched (R1 unblocked by RT.1; R2's gate probe now exists)
+- Last passing validation: 2026-06-12 — RT.3 `SYSTEM_FLOW_COMPARE_OK` (known-good/known-bad/stale demonstrated); same day Phase R0 gate fully closed (user-confirmed editor checks + probe markers; see `validation.md`)
+- Next recommended action: build RT.2, then start R1 (dead-code purge + the single v28 signature bump; warn the user first — invalidates saved river bakes)
 - Known deferred work: R9 (vertex pillow stack) stays on the feature roadmap; R7 blocked on the feature-Phase-5 compute decision gate
 
 ## Open Work
