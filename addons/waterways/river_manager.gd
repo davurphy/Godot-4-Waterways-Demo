@@ -237,16 +237,6 @@ const RIVER_FLOW_GENERATION_BEHAVIOR_DOWNSTREAM_BASELINE := "downstream_baseline
 const RIVER_FLOW_GENERATION_BEHAVIOR_CURVE_ONLY := "curve_only"
 const RIVER_FLOW_GENERATION_BEHAVIOR_LEGACY_COLLISION_ONLY := "legacy_collision_only"
 const RIVER_DOWNSTREAM_BASELINE_STRENGTH := 0.25
-const RIVER_OBSTACLE_AVOIDANCE_STRENGTH := 0.85
-const RIVER_OBSTACLE_AVOIDANCE_INFLUENCE_START := 0.08
-const RIVER_OBSTACLE_AVOIDANCE_INFLUENCE_FULL := 0.85
-const RIVER_OBSTACLE_AVOIDANCE_SDF_RADIUS_TILES := 0.45
-const RIVER_OBSTACLE_AVOIDANCE_SDF_BLUR_TILES := 0.02
-const RIVER_OBSTACLE_AVOIDANCE_UPSTREAM_LOOKAHEAD_TILES := 0.08
-const RIVER_OBSTACLE_AVOIDANCE_UPSTREAM_STRENGTH := 0.30
-const RIVER_OBSTACLE_AVOIDANCE_MIN_DOWNSTREAM_ALIGNMENT := 0.65
-const RIVER_OBSTACLE_AVOIDANCE_BANK_FRICTION_SUPPRESSION := 0.85
-const RIVER_OBSTACLE_AVOIDANCE_HARD_BOUNDARY_STEERING_GATE := 0.55
 # Water occupancy mask (crisp solid interiors + speed-ramp proximity field).
 const RIVER_OCCUPANCY_RAMP_TILES := 0.12
 # Only terrain that protrudes essentially its full reference height above the
@@ -3367,17 +3357,8 @@ func _write_bake_data(texture_size: Vector2i, source_texture_size: Vector2i, con
 		"water_occupancy_protrusion_confidence_min": RIVER_OCCUPANCY_PROTRUSION_CONFIDENCE_MIN,
 		"flow_projection_strides": RIVER_FLOW_PROJECTION_STRIDES.duplicate(),
 		"flow_projection_iterations_per_stride": RIVER_FLOW_PROJECTION_ITERATIONS_PER_STRIDE,
-		"obstacle_avoidance_strength": RIVER_OBSTACLE_AVOIDANCE_STRENGTH,
-		"obstacle_avoidance_algorithm": "pressure_projection_free_slip_jacobi_with_legacy_sdf_steering_fallback",
-		"obstacle_avoidance_influence_start": RIVER_OBSTACLE_AVOIDANCE_INFLUENCE_START,
-		"obstacle_avoidance_influence_full": RIVER_OBSTACLE_AVOIDANCE_INFLUENCE_FULL,
-		"obstacle_avoidance_sdf_radius_tiles": RIVER_OBSTACLE_AVOIDANCE_SDF_RADIUS_TILES,
-		"obstacle_avoidance_sdf_blur_tiles": RIVER_OBSTACLE_AVOIDANCE_SDF_BLUR_TILES,
-		"obstacle_avoidance_upstream_lookahead_tiles": RIVER_OBSTACLE_AVOIDANCE_UPSTREAM_LOOKAHEAD_TILES,
-		"obstacle_avoidance_upstream_strength": RIVER_OBSTACLE_AVOIDANCE_UPSTREAM_STRENGTH,
-		"obstacle_avoidance_min_downstream_alignment": RIVER_OBSTACLE_AVOIDANCE_MIN_DOWNSTREAM_ALIGNMENT,
-		"obstacle_avoidance_bank_friction_suppression": RIVER_OBSTACLE_AVOIDANCE_BANK_FRICTION_SUPPRESSION,
-		"obstacle_avoidance_hard_boundary_steering_gate": RIVER_OBSTACLE_AVOIDANCE_HARD_BOUNDARY_STEERING_GATE,
+		# Fallback when obstacle-avoidance generation is off: normal_to_flow + blur.
+		"obstacle_avoidance_algorithm": "pressure_projection_free_slip_jacobi_with_normal_to_flow_blur_fallback",
 		"obstacle_avoidance_uses_bank_response_context": true,
 		"obstacle_features_baked": true,
 		"obstacle_features_algorithm": "direct_terrain_contact_anchored_pillow_tight_support_bank_context_flow_feature_classification_debug_only",
@@ -3544,16 +3525,6 @@ func get_bake_source_signature() -> Dictionary:
 		"baking_foam_blur": _signature_float(baking_foam_blur),
 		"bake_generation_behavior": _sanitize_bake_generation_behavior(bake_generation_behavior),
 		"downstream_baseline_strength": _signature_float(RIVER_DOWNSTREAM_BASELINE_STRENGTH),
-		"obstacle_avoidance_strength": _signature_float(RIVER_OBSTACLE_AVOIDANCE_STRENGTH),
-		"obstacle_avoidance_influence_start": _signature_float(RIVER_OBSTACLE_AVOIDANCE_INFLUENCE_START),
-		"obstacle_avoidance_influence_full": _signature_float(RIVER_OBSTACLE_AVOIDANCE_INFLUENCE_FULL),
-		"obstacle_avoidance_sdf_radius_tiles": _signature_float(RIVER_OBSTACLE_AVOIDANCE_SDF_RADIUS_TILES),
-		"obstacle_avoidance_sdf_blur_tiles": _signature_float(RIVER_OBSTACLE_AVOIDANCE_SDF_BLUR_TILES),
-		"obstacle_avoidance_upstream_lookahead_tiles": _signature_float(RIVER_OBSTACLE_AVOIDANCE_UPSTREAM_LOOKAHEAD_TILES),
-		"obstacle_avoidance_upstream_strength": _signature_float(RIVER_OBSTACLE_AVOIDANCE_UPSTREAM_STRENGTH),
-		"obstacle_avoidance_min_downstream_alignment": _signature_float(RIVER_OBSTACLE_AVOIDANCE_MIN_DOWNSTREAM_ALIGNMENT),
-		"obstacle_avoidance_bank_friction_suppression": _signature_float(RIVER_OBSTACLE_AVOIDANCE_BANK_FRICTION_SUPPRESSION),
-		"obstacle_avoidance_hard_boundary_steering_gate": _signature_float(RIVER_OBSTACLE_AVOIDANCE_HARD_BOUNDARY_STEERING_GATE),
 		"obstacle_feature_support_start": _signature_float(RIVER_OBSTACLE_FEATURE_SUPPORT_START),
 		"obstacle_feature_support_full": _signature_float(RIVER_OBSTACLE_FEATURE_SUPPORT_FULL),
 		"obstacle_feature_facing_start": _signature_float(RIVER_OBSTACLE_FEATURE_FACING_START),
@@ -3770,16 +3741,6 @@ func _get_bake_settings(source_texture_size: Vector2i, texture_size: Vector2i, c
 		"baking_foam_blur": baking_foam_blur,
 		"bake_generation_behavior": _sanitize_bake_generation_behavior(bake_generation_behavior),
 		"downstream_baseline_strength": RIVER_DOWNSTREAM_BASELINE_STRENGTH,
-		"obstacle_avoidance_strength": RIVER_OBSTACLE_AVOIDANCE_STRENGTH,
-		"obstacle_avoidance_influence_start": RIVER_OBSTACLE_AVOIDANCE_INFLUENCE_START,
-		"obstacle_avoidance_influence_full": RIVER_OBSTACLE_AVOIDANCE_INFLUENCE_FULL,
-		"obstacle_avoidance_sdf_radius_tiles": RIVER_OBSTACLE_AVOIDANCE_SDF_RADIUS_TILES,
-		"obstacle_avoidance_sdf_blur_tiles": RIVER_OBSTACLE_AVOIDANCE_SDF_BLUR_TILES,
-		"obstacle_avoidance_upstream_lookahead_tiles": RIVER_OBSTACLE_AVOIDANCE_UPSTREAM_LOOKAHEAD_TILES,
-		"obstacle_avoidance_upstream_strength": RIVER_OBSTACLE_AVOIDANCE_UPSTREAM_STRENGTH,
-		"obstacle_avoidance_min_downstream_alignment": RIVER_OBSTACLE_AVOIDANCE_MIN_DOWNSTREAM_ALIGNMENT,
-		"obstacle_avoidance_bank_friction_suppression": RIVER_OBSTACLE_AVOIDANCE_BANK_FRICTION_SUPPRESSION,
-		"obstacle_avoidance_hard_boundary_steering_gate": RIVER_OBSTACLE_AVOIDANCE_HARD_BOUNDARY_STEERING_GATE,
 		"obstacle_feature_support_start": RIVER_OBSTACLE_FEATURE_SUPPORT_START,
 		"obstacle_feature_support_full": RIVER_OBSTACLE_FEATURE_SUPPORT_FULL,
 		"obstacle_feature_facing_start": RIVER_OBSTACLE_FEATURE_FACING_START,

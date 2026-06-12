@@ -16,7 +16,7 @@
 
 | Ch | Meaning | Encoding / units | Producers | Consumers |
 |---|---|---|---|---|
-| R | Flow X, **local mesh-UV space** (+X across width) | Packed signed, neutral 0.5. Dimensionless UV-velocity; downstream baseline magnitude = `RIVER_DOWNSTREAM_BASELINE_STRENGTH` (0.25), then scaled by the authored per-point `flow_speeds` factor (0–`RIVER_FLOW_SPEED_FACTOR_MAX`=2, neutral 1.0) as a final post-projection pass — magnitude only, direction untouched, so the v·n=0 guarantee survives. `source_metadata.flow_speed_scaled` records whether the pass ran. **Not m/s.** Runtime magnitude = decoded value × `contextual_flow_force()` (flow_speed, drags, gates). | Downstream baseline → pressure projection (divergence/Jacobi/gradient-subtract/tangency) or legacy SDF steering → per-point speed scale (`flow_speed_scale_pass.gdshader`) | `river.gdshader` advection (`FlowUVW`), debug arrows, system-map combine |
+| R | Flow X, **local mesh-UV space** (+X across width) | Packed signed, neutral 0.5. Dimensionless UV-velocity; downstream baseline magnitude = `RIVER_DOWNSTREAM_BASELINE_STRENGTH` (0.25), then scaled by the authored per-point `flow_speeds` factor (0–`RIVER_FLOW_SPEED_FACTOR_MAX`=2, neutral 1.0) as a final post-projection pass — magnitude only, direction untouched, so the v·n=0 guarantee survives. `source_metadata.flow_speed_scaled` records whether the pass ran. **Not m/s.** Runtime magnitude = decoded value × `contextual_flow_force()` (flow_speed, drags, gates). | Downstream baseline → pressure projection (divergence/Jacobi/gradient-subtract/tangency), or normal-to-flow + blur when obstacle-avoidance generation is off → per-point speed scale (`flow_speed_scale_pass.gdshader`) | `river.gdshader` advection (`FlowUVW`), debug arrows, system-map combine |
 | G | Flow Y, local UV (+Y = downstream, toward +V) | as R | as R | as R |
 | B | Foam mask | 0–1, neutral 0 | foam pass + blur | fragment foam shading |
 | A | Phase noise | 0–1, spatial offset for advection cycle decorrelation | tiled noise texture | `FlowUVW` phase offset |
@@ -52,7 +52,7 @@ R = bank friction/drag · G = outside-bend wet pressure / bank pillow candidate 
 
 ### Key metadata fields
 
-`source_signature` (version `RIVER_BAKE_SOURCE_SIGNATURE_VERSION`, currently 27) — staleness detection; bump the version whenever same-inputs bake output changes. Each point entry carries `width` and `flow_speed`. `source_metadata.obstacle_avoidance_algorithm` = `"pressure_projection_free_slip_jacobi"` + solve params; `flow_projected = true` disables the runtime contextual slide (re-bending a projected field would corrupt it).
+`source_signature` (version `RIVER_BAKE_SOURCE_SIGNATURE_VERSION`, currently 27) — staleness detection; bump the version whenever same-inputs bake output changes. Each point entry carries `width` and `flow_speed`. `source_metadata.obstacle_avoidance_algorithm` = `"pressure_projection_free_slip_jacobi_with_normal_to_flow_blur_fallback"` + solve params; `flow_projected = true` disables the runtime contextual slide (re-bending a projected field would corrupt it).
 
 ## System bake (`WaterSystemBakeData.system_map`)
 

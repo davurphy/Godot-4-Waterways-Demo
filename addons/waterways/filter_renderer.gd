@@ -8,7 +8,6 @@ const DILATE_PASS2_PATH = "res://addons/waterways/shaders/filters/dilate_filter_
 const DILATE_PASS3_PATH = "res://addons/waterways/shaders/filters/dilate_filter_pass3.gdshader"
 const NORMAL_MAP_PASS_PATH = "res://addons/waterways/shaders/filters/normal_map_pass.gdshader"
 const NORMAL_TO_FLOW_PASS_PATH = "res://addons/waterways/shaders/filters/normal_to_flow_filter.gdshader"
-const OBSTACLE_AVOIDANCE_FLOW_PASS_PATH = "res://addons/waterways/shaders/filters/obstacle_avoidance_flow_filter.gdshader"
 const OBSTACLE_FEATURE_MASK_PASS_PATH = "res://addons/waterways/shaders/filters/obstacle_feature_mask_filter.gdshader"
 const BANK_RESPONSE_FEATURE_MASK_PASS_PATH = "res://addons/waterways/shaders/filters/bank_response_feature_mask_filter.gdshader"
 const BLUR_PASS1_PATH = "res://addons/waterways/shaders/filters/blur_pass1.gdshader"
@@ -30,7 +29,6 @@ var dilate_pass_2_shader : Shader
 var dilate_pass_3_shader : Shader
 var normal_map_pass_shader : Shader
 var normal_to_flow_pass_shader : Shader
-var obstacle_avoidance_flow_pass_shader : Shader
 var obstacle_feature_mask_pass_shader : Shader
 var bank_response_feature_mask_pass_shader : Shader
 var blur_pass1_shader : Shader
@@ -58,7 +56,6 @@ func _enter_tree() -> void:
 	dilate_pass_3_shader = load(DILATE_PASS3_PATH) as Shader
 	normal_map_pass_shader = load(NORMAL_MAP_PASS_PATH) as Shader
 	normal_to_flow_pass_shader = load(NORMAL_TO_FLOW_PASS_PATH) as Shader
-	obstacle_avoidance_flow_pass_shader = load(OBSTACLE_AVOIDANCE_FLOW_PASS_PATH) as Shader
 	obstacle_feature_mask_pass_shader = load(OBSTACLE_FEATURE_MASK_PASS_PATH) as Shader
 	bank_response_feature_mask_pass_shader = load(BANK_RESPONSE_FEATURE_MASK_PASS_PATH) as Shader
 	blur_pass1_shader = load(BLUR_PASS1_PATH) as Shader
@@ -203,40 +200,6 @@ func apply_normal_to_flow(input_texture : Texture2D, resolution : float) -> Imag
 	await get_tree().process_frame
 	await get_tree().process_frame
 	return _create_output_texture("normal_to_flow")
-
-
-func apply_obstacle_avoidance_flow(baseline_flow_texture : Texture2D, normal_texture : Texture2D, support_texture : Texture2D, bank_response_texture : Texture2D, strength : float, influence_start : float, influence_full : float, upstream_lookahead_uv : float = 0.0, upstream_strength : float = 0.0, min_downstream_alignment : float = 0.0, bank_friction_suppression : float = 0.85, hard_boundary_steering_gate : float = 0.55, atlas_columns : float = 1.0) -> ImageTexture:
-	if not _has_valid_reference_texture(baseline_flow_texture, "obstacle_avoidance baseline_flow_texture"):
-		return null
-	if normal_texture == null:
-		last_readback_error = "obstacle_avoidance normal_texture is null"
-		return null
-	if support_texture == null:
-		last_readback_error = "obstacle_avoidance support_texture is null"
-		return null
-	if bank_response_texture == null:
-		bank_response_texture = _get_default_black_texture()
-	filter_mat.shader = obstacle_avoidance_flow_pass_shader
-	size = baseline_flow_texture.get_size()
-	$ColorRect.position = Vector2(0, 0)
-	$ColorRect.size = size
-	$ColorRect.material.set_shader_parameter("baseline_flow_texture", baseline_flow_texture)
-	$ColorRect.material.set_shader_parameter("normal_texture", normal_texture)
-	$ColorRect.material.set_shader_parameter("support_texture", support_texture)
-	$ColorRect.material.set_shader_parameter("bank_response_texture", bank_response_texture)
-	$ColorRect.material.set_shader_parameter("strength", strength)
-	$ColorRect.material.set_shader_parameter("influence_start", influence_start)
-	$ColorRect.material.set_shader_parameter("influence_full", influence_full)
-	$ColorRect.material.set_shader_parameter("upstream_lookahead_uv", upstream_lookahead_uv)
-	$ColorRect.material.set_shader_parameter("upstream_strength", upstream_strength)
-	$ColorRect.material.set_shader_parameter("min_downstream_alignment", min_downstream_alignment)
-	$ColorRect.material.set_shader_parameter("bank_friction_suppression", bank_friction_suppression)
-	$ColorRect.material.set_shader_parameter("hard_boundary_steering_gate", hard_boundary_steering_gate)
-	$ColorRect.material.set_shader_parameter("atlas_columns", atlas_columns)
-	render_target_update_mode = SubViewport.UPDATE_ONCE
-	await get_tree().process_frame
-	await get_tree().process_frame
-	return _create_output_texture("obstacle_avoidance")
 
 
 func apply_obstacle_feature_mask(baseline_flow_texture: Texture2D, normal_texture: Texture2D, support_texture: Texture2D, bank_response_texture: Texture2D, support_start: float, support_full: float, facing_start: float, facing_full: float, wake_length_uv: float, wake_width_uv: float, side_width_uv: float, wake_start: float, wake_full: float, bank_friction_suppression: float, hard_boundary_wake_gate: float, confidence_start: float, confidence_full: float, terrain_contact_texture: Texture2D = null, grade_energy_texture: Texture2D = null, eddy_line_edge_start: float = 0.04, eddy_line_edge_full: float = 0.22, eddy_line_wake_start: float = 0.06, eddy_line_wake_full: float = 0.28, eddy_line_hard_gate_start: float = 0.06, eddy_line_hard_gate_full: float = 0.40, eddy_line_energy_gate_start: float = 0.03, eddy_line_energy_gate_full: float = 0.35, eddy_line_support_reject_start: float = 0.62, eddy_line_support_reject_full: float = 0.92, pillow_support_start: float = 0.40, pillow_support_full: float = 0.88, pillow_contact_search_uv: float = 0.01, pillow_contact_gate_start: float = 0.08, pillow_contact_gate_full: float = 0.38, atlas_columns: float = 1.0) -> ImageTexture:
