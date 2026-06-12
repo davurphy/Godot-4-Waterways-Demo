@@ -1737,9 +1737,15 @@ static func _add_uv2_column_continuation_margins(padded: Image, source: Image, r
 		if row == 0:
 			var previous_step: int = max(0, step_index - 1)
 			var previous_tile := _uv2_tile_rect(previous_step, side, resolution)
+			# The first tile clamps to itself: copy its own *top* strip (mirror of
+			# the last-tile case below), not its bottom strip, so the upstream
+			# river end cannot bleed wrapped content into its top margin.
+			var previous_strip_y := previous_tile.position.y + max(0, previous_tile.size.y - margin)
+			if previous_step == step_index:
+				previous_strip_y = previous_tile.position.y
 			var previous_strip := Rect2i(
 				previous_tile.position.x,
-				previous_tile.position.y + max(0, previous_tile.size.y - margin),
+				previous_strip_y,
 				previous_tile.size.x,
 				min(margin, previous_tile.size.y)
 			)
