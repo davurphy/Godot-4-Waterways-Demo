@@ -20,6 +20,10 @@ Run pattern: Godot 4.6.3 console at `C:\Users\pc\Desktop\Godot_v4.6.3-stable\God
 1. **Phase 0 merge gate**: the user has not yet done the visual pass over the screenshot locations (implementation plan §4.4) — required before merging the branch to `main`.
 2. **Commit strategy**: everything is uncommitted; the user must decide whether roadmap Phases 1–2 ride along in the branch merge or get split out.
 
+## Code Audit (2026-06-12)
+
+A full audit of the shipping code lives at `../audit/waterways-code-audit-2026-06-12.md`: 11 verified defects (worst: `system_flow.gdshader` re-bends pressure-projected flow in the system map the ducks read; foam debug view renders different math than the surface; stuck bake flag on mid-bake scene close), a prioritized 18-item fix list, and a verified-healthy list. The dominant systemic risk is hand-synchronized mirrors (river↔debug shaders, constants echoed into 3 metadata dicts, flow packing in 10 places) — four mirrors have already drifted. Start any cleanup session from that doc's "Prioritized Recommendations".
+
 ## Recommended Next Moves
 
 - Phase 2 remainder: generalize `widths`/`flow_speeds` into a named per-point channel table with the override-vs-weight convention (Roadmap Phase 2 bullets 2–3); gizmo handles for `flow_speeds` are also deferred (inspector-only today).
