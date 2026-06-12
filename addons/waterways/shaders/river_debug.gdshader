@@ -119,6 +119,11 @@ uniform float pillow_energy_gate : hint_range(0.01, 1.0) = 0.35;
 uniform float pillow_flow_gate_start : hint_range(0.0, 1.0) = 0.03;
 uniform float pillow_flow_gate : hint_range(0.01, 1.0) = 0.28;
 uniform float pillow_bank_suppression : hint_range(0.0, 1.0) = 0.85;
+// The nine surface-shading uniforms below are not read by this debug shader,
+// but they are part of the pillow inspector contract: declared here so the
+// debug material carries the same parameter set as the visible material
+// (river-pillows spec.md; asserted on this shader by
+// pillow_inspector_wiring_probe). Do not delete as dead code (2026-06-12).
 uniform float pillow_pressure_strength : hint_range(0.0, 2.0) = 0.50;
 uniform float pillow_highlight_strength : hint_range(0.0, 2.0) = 0.60;
 uniform vec4 pillow_pressure_color : source_color = vec4(0.34, 0.68, 0.78, 1.0);
@@ -157,12 +162,6 @@ uniform float wake_eddy_edge_gate_full : hint_range(0.0, 1.0) = 0.18;
 uniform float wake_eddy_near_wake_gate_start : hint_range(0.0, 1.0) = 0.04;
 uniform float wake_eddy_near_wake_gate_full : hint_range(0.0, 1.0) = 0.25;
 uniform float wake_eddy_line_strength : hint_range(0.0, 2.0) = 1.85;
-uniform float wake_normal_strength : hint_range(0.0, 2.0) = 0.22;
-uniform float wake_eddy_line_normal_strength : hint_range(0.0, 2.0) = 0.85;
-uniform float wake_roughness_boost : hint_range(0.0, 1.0) = 0.22;
-uniform float wake_specular_reduction : hint_range(0.0, 1.0) = 0.12;
-uniform float wake_albedo_breakup_strength : hint_range(0.0, 1.0) = 0.18;
-uniform vec4 wake_breakup_color : source_color = vec4(0.42, 0.72, 0.78, 1.0);
 uniform float wake_foam_fleck_bias : hint_range(0.0, 1.0) = 0.055;
 uniform float wake_eddy_line_foam_bias : hint_range(0.0, 1.0) = 0.18;
 uniform float wake_fleck_noise_scale : hint_range(1.0, 96.0) = 42.0;
@@ -218,9 +217,9 @@ const float FLOW_ARROW_GLYPH_SCALE = 0.55;
 // full-confidence glyph with a noisy direction.
 const float FLOW_ARROW_FULL_SPEED_REFERENCE = 0.25;
 const float FLOW_ARROW_MIN_GLYPH_FRACTION = 0.45;
-// Mirrors river.gdshader occupancy constants.
-const float OCCUPANCY_CLIP_START = 0.35;
-const float OCCUPANCY_CLIP_FULL = 0.75;
+// Mirrors river.gdshader's occupancy speed ramp. The OCCUPANCY_CLIP_* alpha
+// constants are not mirrored: the debug shader renders solids opaquely instead
+// of clipping.
 const float OCCUPANCY_SPEED_RAMP_FULL = 0.45;
 
 vec2 water_occupancy_at(vec2 uv) {
@@ -661,10 +660,6 @@ float wake_gated_seed_at(vec2 uv, float local_grade_energy, float normalized_flo
 	vec4 bank_response_features = textureLod(i_bank_response_features, safe_uv, 0.0);
 	float grade_energy_map = max(local_grade_energy, textureLod(i_distmap, safe_uv, 0.0).b);
 	return wake_gated_seed(obstacle_features, terrain_contact_features, bank_response_features, grade_energy_map, normalized_flow_force);
-}
-
-float wake_visual_mask(vec4 obstacle_features, vec4 terrain_contact_features, vec4 bank_response_features, float grade_energy_map, float normalized_flow_force) {
-	return clamp(wake_gated_seed(obstacle_features, terrain_contact_features, bank_response_features, grade_energy_map, normalized_flow_force) * wake_strength, 0.0, 1.0);
 }
 
 float wake_edge_thinness_at(vec2 uv, vec2 source_tile_uv_size, float local_grade_energy, float normalized_flow_force, float center_wake_seed) {

@@ -1,6 +1,5 @@
 shader_type canvas_item;
 
-uniform float size = 512.0;
 uniform sampler2D input_texture : repeat_disable, filter_nearest;
 
 vec3 nm2flow(vec2 x) {

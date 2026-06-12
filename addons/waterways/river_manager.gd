@@ -516,10 +516,8 @@ var _runtime_ripple_original_debug_material: ShaderMaterial = null
 
 # river_changed used to update handles when values are changed on script side
 # progress_notified used to up progress bar when baking maps
-# albedo_set is needed since the gradient is a custom inspector that needs a signal to update from script side
 signal river_changed
 signal progress_notified
-#signal albedo_set
 
 # Internal Methods
 func _get_property_list() -> Array:
@@ -848,35 +846,11 @@ func _should_use_easing_curve_hint(property_info: Dictionary) -> bool:
 	return int(property_info.get("hint", PROPERTY_HINT_NONE)) == PROPERTY_HINT_NONE
 
 
+# Only dynamic mat_<shader param> properties reach _set/_get: every other
+# inspector property is a declared script var (with setter), and Godot resolves
+# declared properties before calling these.
 func _set(property: StringName, value: Variant) -> bool:
 	var property_name := String(property)
-	if property_name == "bake_data":
-		bake_data = value
-		return true
-	if property_name == "bake_generation_behavior":
-		set_bake_generation_behavior(String(value))
-		return true
-	match property_name:
-		"shape_step_length_divs":
-			set_step_length_divs(int(value))
-			return true
-		"shape_step_width_divs":
-			set_step_width_divs(int(value))
-			return true
-		"shape_smoothness":
-			set_smoothness(float(value))
-			return true
-		"mat_shader_type":
-			set_shader_type(int(value))
-			return true
-		"mat_custom_shader":
-			set_custom_shader(value as Shader)
-			return true
-		"lod_lod0_distance":
-			set_lod0_distance(float(value))
-			return true
-	if property_name.begins_with("baking_"):
-		return _set_baking_property(property_name, value)
 	if property_name.begins_with("mat_"):
 		var param_name := property_name.trim_prefix("mat_")
 		_material.set_shader_parameter(param_name, value)
@@ -891,25 +865,6 @@ func _set(property: StringName, value: Variant) -> bool:
 
 func _get(property: StringName) -> Variant:
 	var property_name := String(property)
-	if property_name == "bake_data":
-		return bake_data
-	if property_name == "bake_generation_behavior":
-		return bake_generation_behavior
-	match property_name:
-		"shape_step_length_divs":
-			return shape_step_length_divs
-		"shape_step_width_divs":
-			return shape_step_width_divs
-		"shape_smoothness":
-			return shape_smoothness
-		"mat_shader_type":
-			return mat_shader_type
-		"mat_custom_shader":
-			return mat_custom_shader
-		"lod_lod0_distance":
-			return lod_lod0_distance
-	if property_name.begins_with("baking_"):
-		return _get_baking_property(property_name)
 	if property_name.begins_with("mat_"):
 		var param_name := property_name.trim_prefix("mat_")
 		return  _material.get_shader_parameter(param_name)
@@ -2147,14 +2102,14 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 			obstacle_avoidance_applied = true
 			flow_projected_applied = true
 		else:
-			var flow_map = await renderer_instance.apply_normal_to_flow(normal_map, flowmap_resolution)
+			var flow_map = await renderer_instance.apply_normal_to_flow(normal_map)
 			if not _filter_output_is_valid(flow_map, "flow map", renderer_instance):
 				return
 			var blurred_flow_map = await renderer_instance.apply_blur(flow_map, flowmap_blur_amount, flowmap_resolution, bake_atlas_columns)
 			if not _filter_output_is_valid(blurred_flow_map, "blurred flow map", renderer_instance):
 				return
 			primary_flow_map = blurred_flow_map
-		var foam_map = await renderer_instance.apply_foam(dilated_texture, foam_offset_amount, baking_foam_cutoff, flowmap_resolution)
+		var foam_map = await renderer_instance.apply_foam(dilated_texture, foam_offset_amount, baking_foam_cutoff)
 		if not _filter_output_is_valid(foam_map, "foam map", renderer_instance):
 			return
 		blurred_foam_map = await renderer_instance.apply_blur(foam_map, foam_blur_amount, flowmap_resolution, bake_atlas_columns)
@@ -2984,13 +2939,6 @@ func _has_unsaved_generated_textures() -> bool:
 	return not WaterHelperMethods.has_external_bake_path(bake_data)
 
 
-func _is_unsaved_texture_resource(texture: Texture2D) -> bool:
-	if texture == null:
-		return false
-	var path := texture.resource_path
-	return path.is_empty() or path.find("::") != -1
-
-
 func _print_bake_save_notice(texture_size: Vector2i, storage_result: Dictionary = {}) -> void:
 	if not Engine.is_editor_hint():
 		return
@@ -3224,11 +3172,11 @@ func validate_filter_renderer() -> void:
 	var source_texture := _make_filter_validation_texture()
 	var combine_result: Texture2D = await renderer_instance.apply_combine(source_texture, source_texture, source_texture, source_texture)
 	_append_filter_texture_validation("combine", combine_result, failures, notes)
-	var dot_result: Texture2D = await renderer_instance.apply_dotproduct(source_texture, 8.0)
+	var dot_result: Texture2D = await renderer_instance.apply_dotproduct(source_texture)
 	_append_filter_texture_validation("dotproduct", dot_result, failures, notes)
 	var flow_pressure_result: Texture2D = await renderer_instance.apply_flow_pressure(source_texture, 8.0, 2.0)
 	_append_filter_texture_validation("flow_pressure", flow_pressure_result, failures, notes)
-	var foam_result: Texture2D = await renderer_instance.apply_foam(source_texture, 0.1, 0.9, 8.0)
+	var foam_result: Texture2D = await renderer_instance.apply_foam(source_texture, 0.1, 0.9)
 	_append_filter_texture_validation("foam", foam_result, failures, notes)
 	var blur_result: Texture2D = await renderer_instance.apply_blur(source_texture, 0.0, 8.0)
 	_append_filter_texture_validation("blur_zero", blur_result, failures, notes)
@@ -3236,7 +3184,7 @@ func validate_filter_renderer() -> void:
 	_append_filter_texture_validation("vertical_blur_zero", vertical_blur_result, failures, notes)
 	var normal_result: Texture2D = await renderer_instance.apply_normal(source_texture, 0.0)
 	_append_filter_texture_validation("normal_zero_size", normal_result, failures, notes)
-	var normal_to_flow_result: Texture2D = await renderer_instance.apply_normal_to_flow(normal_result, 0.0)
+	var normal_to_flow_result: Texture2D = await renderer_instance.apply_normal_to_flow(normal_result)
 	_append_filter_texture_validation("normal_to_flow", normal_to_flow_result, failures, notes)
 	var dilate_result: Texture2D = await renderer_instance.apply_dilate(source_texture, 0.0, 0.0, 0.0, source_texture)
 	_append_filter_texture_validation("dilate_zero", dilate_result, failures, notes)
@@ -3666,50 +3614,6 @@ func _invalidate_generated_bake(regenerate_geometry: bool, notify_river: bool) -
 		_generate_river()
 	if notify_river:
 		emit_signal("river_changed")
-
-
-func _set_baking_property(property_name: String, value: Variant) -> bool:
-	match property_name:
-		"baking_resolution":
-			baking_resolution = int(value)
-		"baking_raycast_distance":
-			baking_raycast_distance = float(value)
-		"baking_raycast_layers":
-			baking_raycast_layers = int(value)
-		"baking_dilate":
-			baking_dilate = float(value)
-		"baking_flowmap_blur":
-			baking_flowmap_blur = float(value)
-		"baking_foam_cutoff":
-			baking_foam_cutoff = float(value)
-		"baking_foam_offset":
-			baking_foam_offset = float(value)
-		"baking_foam_blur":
-			baking_foam_blur = float(value)
-		_:
-			return false
-	return true
-
-
-func _get_baking_property(property_name: String) -> Variant:
-	match property_name:
-		"baking_resolution":
-			return baking_resolution
-		"baking_raycast_distance":
-			return baking_raycast_distance
-		"baking_raycast_layers":
-			return baking_raycast_layers
-		"baking_dilate":
-			return baking_dilate
-		"baking_flowmap_blur":
-			return baking_flowmap_blur
-		"baking_foam_cutoff":
-			return baking_foam_cutoff
-		"baking_foam_offset":
-			return baking_foam_offset
-		"baking_foam_blur":
-			return baking_foam_blur
-	return null
 
 
 func _calculate_step_count() -> int:

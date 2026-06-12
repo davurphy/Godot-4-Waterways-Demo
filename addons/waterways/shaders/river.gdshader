@@ -597,27 +597,6 @@ float wake_gated_seed_at(vec2 uv, float local_grade_energy, float normalized_flo
 	return wake_gated_seed(obstacle_features, terrain_contact_features, bank_response_features, grade_energy_map, normalized_flow_force);
 }
 
-float wake_visual_mask(vec4 obstacle_features, vec4 terrain_contact_features, vec4 bank_response_features, float grade_energy_map, float normalized_flow_force) {
-	return clamp(wake_gated_seed(obstacle_features, terrain_contact_features, bank_response_features, grade_energy_map, normalized_flow_force) * wake_strength, 0.0, 1.0);
-}
-
-float wake_edge_thinness_at(vec2 uv, vec2 source_tile_uv_size, float local_grade_energy, float normalized_flow_force, float center_wake_seed) {
-	float sample_tiles = max(wake_edge_sample_tiles, 0.0);
-	if (sample_tiles <= EPSILON) {
-		return 1.0;
-	}
-	vec2 sample_offset = source_tile_uv_size * sample_tiles;
-	vec2 dx = vec2(sample_offset.x, 0.0);
-	vec2 dy = vec2(0.0, sample_offset.y);
-	float left = wake_gated_seed_at(uv - dx, local_grade_energy, normalized_flow_force);
-	float right = wake_gated_seed_at(uv + dx, local_grade_energy, normalized_flow_force);
-	float up = wake_gated_seed_at(uv - dy, local_grade_energy, normalized_flow_force);
-	float down = wake_gated_seed_at(uv + dy, local_grade_energy, normalized_flow_force);
-	float edge_gradient = max(max(abs(left - right), abs(up - down)), max(max(abs(left - center_wake_seed), abs(right - center_wake_seed)), max(abs(up - center_wake_seed), abs(down - center_wake_seed))));
-	float nearby_wake = max(max(max(left, right), max(up, down)), center_wake_seed);
-	return smooth_gate(wake_eddy_edge_gate_start, wake_eddy_edge_gate_full, edge_gradient) * smooth_gate(wake_eddy_near_wake_gate_start, wake_eddy_near_wake_gate_full, nearby_wake);
-}
-
 float raw_wake_seed_at(vec2 uv) {
 	vec2 safe_uv = clamp(uv, vec2(0.0), vec2(1.0));
 	return textureLod(i_obstacle_features, safe_uv, 0.0).g;

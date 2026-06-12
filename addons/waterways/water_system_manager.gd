@@ -952,15 +952,6 @@ func _warn_on_system_map_coverage(system_map_diagnostics: Dictionary) -> void:
 		push_warning("WaterSystem system map coverage channel is full; check whether the alpha render/combine pass is covering the whole map.")
 
 
-func _find_covered_sample_near_river(river) -> Dictionary:
-	var samples := _find_covered_samples_near_river(river, 1)
-	if not samples.is_empty():
-		return samples[0]
-	return {
-		valid = false
-	}
-
-
 func _find_covered_samples_near_river(river, target_count: int) -> Array:
 	target_count = max(target_count, 1)
 	var mesh_samples := _find_covered_samples_on_river_mesh(river, target_count)
