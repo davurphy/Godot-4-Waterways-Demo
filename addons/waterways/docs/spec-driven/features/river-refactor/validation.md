@@ -123,6 +123,18 @@ Record new runs here. Put the newest and most relevant result first, then move o
 Recorded result:
 
 - Date: 2026-06-12
+- Ran by: User (bake un-sharing editor round) + Agent (defect fix + full probe sweep)
+- Godot version/renderer/device: Godot 4.6.3 windowed editor (user) + console headless (agent), Windows 11
+- Command, scene, or workflow: User cleared `bake_data` per scene and regenerated — Demo.tscn → `waterways_bakes/Demo_28018/` (folder suffixed by design: `Demo/` holds the obstacle river's bake, so `_get_scene_bake_folder` diverts), obstacle scene → `waterways_bakes/Demo_obstacle_flow_test/`. Agent re-ran RT.3 both modes plus the full headless suite.
+- Output or parser errors: none (after fix below)
+- Visible result, if applicable: n/a
+- Stable result marker: `SYSTEM_FLOW_COMPARE_OK` exit 0 (report mode, no stale warnings; control p90 8.5°/12.5° < 15°); `enforce=all` → both rivers flagged (influence p90 25.5°/27.6° > 20°, the expected pre-R2 state); full sweep green: `BAKE_HASH_PROBE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`, `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`
+- Pass/partial/fail: Pass — both system maps fresh and scene-owned; one **defect found and fixed** en route: the stale detector compared `flow_foam_noise_path`/`dist_pressure_path` as raw strings, but those textures' container flips between contexts (editor sessions save scene-embedded copies, `res://<scene>::ImageTexture_x`; fresh loads bind the bake resource's subresources) and rebakes regenerate subresource ids — so the comparison reported stale falsely on every fresh load of an editor-generated map. Fixed in `water_system_manager.gd` `_get_source_river_metadata_changed_key`: the two path keys are collected for diagnostics but no longer compared (signatures/sizes/bake-resource-path cover real staleness).
+- Notes or follow-up: orphaned `waterways_bakes/Demo/WaterSystem.water_system_bake.res` removed (grep found one code consumer — the obstacle-constraints inspect probe — repointed to the obstacle scene's bake). R2's `enforce=all` gate baseline stands at influence p90 25.5°/27.6° on fresh scene-owned maps.
+
+Recorded result:
+
+- Date: 2026-06-12
 - Ran by: User (system-map regeneration, commit `fed4967a`) + Agent (probe re-runs)
 - Godot version/renderer/device: Godot 4.6.3 windowed editor (user) + console headless (agent), Windows 11
 - Command, scene, or workflow: User regenerated the obstacle scene's system map and committed the probe `.uid`. RT.3 re-run in report and `enforce=all` modes.

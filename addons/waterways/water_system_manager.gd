@@ -786,6 +786,14 @@ func _get_source_river_metadata_mismatch(stored_metadata: Array, current_metadat
 
 
 func _get_source_river_metadata_changed_key(stored_entry: Dictionary, current_entry: Dictionary) -> String:
+	# flow_foam_noise_path / dist_pressure_path are collected for diagnostics
+	# but deliberately NOT compared (2026-06-12): the textures' container
+	# flips between contexts - an editor session saves scene-embedded copies
+	# (res://<scene>::ImageTexture_x) while a fresh load binds the bake
+	# resource's subresources (res://<bake>.res::ImageTexture_x) - and every
+	# rebake regenerates subresource ids, so a raw path comparison reports
+	# stale either falsely (context flip) or redundantly (rebakes already
+	# change the compared signatures/sizes).
 	var keys := PackedStringArray([
 		"bake_resource_path",
 		"has_external_bake_path",
@@ -793,8 +801,6 @@ func _get_source_river_metadata_changed_key(stored_entry: Dictionary, current_en
 		"bake_data_source_signature",
 		"flow_foam_noise_size",
 		"dist_pressure_size",
-		"flow_foam_noise_path",
-		"dist_pressure_path",
 		"texture_size",
 		"source_texture_size",
 		"uv2_sides",
