@@ -1,8 +1,9 @@
-# Regenerates the Demo.tscn WaterSystem combined map from the current river
+# Regenerates a scene's WaterSystem combined map from the current river
 # bakes (generate_system_maps saves the bake resource itself).
 #
 # Run (NOT headless - the system map render needs viewport readback):
 #   & $godotConsole --path $root --script res://addons/waterways/docs/spec-driven/features/river-obstacle-flow-constraints/probes/water_system_rebake_probe.gd
+# Optional arg: -- scene=res://Demo_obstacle_flow_test.tscn (default Demo.tscn)
 extends SceneTree
 
 const SCENE_PATH := "res://Demo.tscn"
@@ -13,13 +14,18 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var packed := load(SCENE_PATH) as PackedScene
+	var scene_path := SCENE_PATH
+	for arg_variant in OS.get_cmdline_user_args():
+		var arg := String(arg_variant)
+		if arg.begins_with("scene="):
+			scene_path = arg.trim_prefix("scene=")
+	var packed := load(scene_path) as PackedScene
 	if packed == null:
-		push_error("Could not load scene: " + SCENE_PATH)
+		push_error("Could not load scene: " + scene_path)
 		quit(1)
 		return
 	var scene := packed.instantiate()
-	scene.scene_file_path = SCENE_PATH
+	scene.scene_file_path = scene_path
 	root.add_child(scene)
 	current_scene = scene
 	await process_frame
@@ -28,7 +34,7 @@ func _run() -> void:
 
 	var system := scene.get_node_or_null("WaterSystem")
 	if system == null:
-		push_error("Could not find WaterSystem in " + SCENE_PATH)
+		push_error("Could not find WaterSystem in " + scene_path)
 		quit(1)
 		return
 	print("WATER_SYSTEM_REBAKE start")

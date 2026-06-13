@@ -16,16 +16,15 @@
 #
 # Gates: the control zone p90 angular delta is always enforced. The influence
 # zone p90 is enforced only with enforce=all and only for rivers whose bake
-# metadata says flow_projected=true - that is Phase R2's gate (Defect 1:
-# system_flow re-bends pressure-projected flow). Expected to FAIL pre-R2 and
-# pass after R2 + system map regeneration.
+# metadata says flow_projected=true.
 #
-#   report mode (control gate only - passes pre-R2):
+#   report mode (control gate only):
 #     & $godotConsole --headless --path $root --script res://addons/waterways/probes/system_flow_compare_probe.gd
-#   R2 gate mode:
+#   influence gate mode:
 #     ... --script res://addons/waterways/probes/system_flow_compare_probe.gd -- enforce=all
 #   args: scene=res://X.tscn  stride=4  min_flow=0.05  influence_min=0.05
-#         max_control_deg=15  max_influence_deg=20  height_tol=1.0  allow_stale=1
+#         max_control_deg=15  max_influence_deg=35  sharp_deg=20
+#         height_tol=1.0  allow_stale=1
 #
 # Noise floor (measured on fresh demo-scene maps): expected-vs-saved
 # directions carry ~4 deg median / 9-12.5 deg p90 even where the slide is
@@ -35,11 +34,23 @@
 # the obstacle scene sits at the high end because it has more such structure.
 # The control gate exists to catch gross machinery breakage (a wrong basis
 # reads as 45-90 deg p90), not stale maps - metadata staleness handles those.
-# Pre-R2 the influence zone measures 27-28 deg p90 (the Defect-1 re-bend);
-# defaults sit between the floor and that signal. Samples whose system-map
-# height channel disagrees with the sampled world height (top-down XZ
-# overlap / edge bleed) are excluded as height_mismatch; the system map is
-# paired bilinearly to remove half-pixel sampling offset.
+# Samples whose system-map height channel disagrees with the sampled world
+# height (top-down XZ overlap / edge bleed) are excluded as height_mismatch;
+# the system map is paired bilinearly to remove half-pixel sampling offset;
+# samples whose direction a single-neighbor blend would already rotate past
+# sharp_deg are excluded as sharp_structure.
+#
+# ATTRIBUTION CORRECTION (2026-06-12, R2 execution): the pre-R2 influence
+# p90 of 25.5/28.9 deg was recorded as "the Defect-1 signature", but direct
+# A/B rendering (gated vs slide forced on) showed the slide contributes 0
+# differing texels on Demo and 4.6k texels at mean 3.3 deg on the obstacle
+# scene - the 23-27 deg influence floor is sampling/quantization noise of
+# the stilled low-magnitude ring, NOT the slide, and survives the R2 fix.
+# Consequences: max_influence_deg default recalibrated from 20 to 35
+# (floor 23.3/26.9 measured post-R2 with sharp_deg=20; same floor-plus-margin
+# philosophy as the control gate), and the influence gate now guards against
+# GROSS systematic divergence only. The R2 slide-gate mechanism itself is
+# gated directly by system_flow_projected_gate_probe.gd (windowed).
 #
 # Success marker: SYSTEM_FLOW_COMPARE_OK. Threshold breaches print
 # SYSTEM_FLOW_COMPARE_EXCEEDED lines and exit 1. A stale saved system map
@@ -70,8 +81,9 @@ var _stride := 4
 var _min_flow := 0.05
 var _influence_min := 0.05
 var _max_control_deg := 15.0
-var _max_influence_deg := 20.0
+var _max_influence_deg := 35.0
 var _height_tolerance := 1.0
+var _sharp_deg := 20.0
 var _enforce_influence := false
 var _allow_stale := false
 
@@ -118,6 +130,8 @@ func _parse_args() -> void:
 			_max_influence_deg = maxf(0.1, float(arg.trim_prefix("max_influence_deg=")))
 		elif arg.begins_with("height_tol="):
 			_height_tolerance = maxf(0.01, float(arg.trim_prefix("height_tol=")))
+		elif arg.begins_with("sharp_deg="):
+			_sharp_deg = maxf(0.1, float(arg.trim_prefix("sharp_deg=")))
 		elif arg == "enforce=all":
 			_enforce_influence = true
 		elif arg == "allow_stale=1":
@@ -256,6 +270,7 @@ func _compare_river(system_label: String, water_system: Node, river: Node, gates
 		"visited": 0,
 		"solid": 0,
 		"low_flow": 0,
+		"sharp_structure": 0,
 		"no_triangle": 0,
 		"degenerate": 0,
 		"no_coverage": 0,
@@ -316,6 +331,20 @@ func _compare_sample(
 	var flow_magnitude := flow_uv.length()
 	if flow_magnitude < _min_flow:
 		counts.low_flow += 1
+		return
+
+	# Sharp-structure exclusion (2026-06-12, post-R2 finding): the system
+	# render samples the flow atlas bilinearly at fragment positions, so where
+	# the baked field changes sharply texel-to-texel (the occupancy stilling
+	# ring, solid rims, eddy edges) the saved map holds a neighbor blend that
+	# no single-texel expectation can match - measured at up to 25-29 deg p90
+	# in influence zones with the slide provably inactive. If a 50/50 blend
+	# with any 8-neighbor would already rotate this texel's direction by more
+	# than sharp_deg, the comparison is meaningless here; exclude the sample.
+	# A slide-class systematic re-bend varies smoothly across neighbors and is
+	# NOT excluded by this filter.
+	if _is_sharp_structure(flow_image, atlas_pixel, flow_uv):
+		counts.sharp_structure += 1
 		return
 
 	var terrain := terrain_image.get_pixelv(atlas_pixel)
@@ -421,7 +450,7 @@ func _evaluate_gates(label: String, flow_projected: bool, zone_angles: Dictionar
 			" limit=", _max_influence_deg, " flow_projected=", flow_projected, " enforced=", enforced)
 	if enforced and influence_p90 > _max_influence_deg:
 		print("SYSTEM_FLOW_COMPARE_EXCEEDED river=", label, " zone=influence p90_deg=", influence_p90, " limit=", _max_influence_deg)
-		_fail(label + ": influence-zone angular delta p90 " + str(influence_p90) + " deg exceeds " + str(_max_influence_deg) + " deg - system map flow disagrees with the river's projected flow (Defect 1 / R2 gate).")
+		_fail(label + ": influence-zone angular delta p90 " + str(influence_p90) + " deg exceeds " + str(_max_influence_deg) + " deg - gross systematic divergence between the system map and the river's projected flow (the slide-gate mechanism itself is covered by system_flow_projected_gate_probe).")
 
 
 # Bilinearly interpolates the WaterSystem's sampling image at a world
@@ -491,6 +520,25 @@ func _find_uv2_triangle(uv2: PackedVector2Array, source_size: Vector2i, side: in
 				"bary": bary,
 			}
 	return {}
+
+
+func _is_sharp_structure(flow_image: Image, atlas_pixel: Vector2i, flow_uv: Vector2) -> bool:
+	for offset_y in range(-1, 2):
+		for offset_x in range(-1, 2):
+			if offset_x == 0 and offset_y == 0:
+				continue
+			var neighbor_pixel := atlas_pixel + Vector2i(offset_x, offset_y)
+			if neighbor_pixel.x < 0 or neighbor_pixel.y < 0 \
+					or neighbor_pixel.x >= flow_image.get_width() or neighbor_pixel.y >= flow_image.get_height():
+				continue
+			var neighbor_color := flow_image.get_pixelv(neighbor_pixel)
+			var neighbor_uv := Vector2(neighbor_color.r, neighbor_color.g) * 2.0 - Vector2.ONE
+			var blend := (flow_uv + neighbor_uv) * 0.5
+			if blend.length() <= 0.000001:
+				return true
+			if absf(rad_to_deg(flow_uv.angle_to(blend))) > _sharp_deg:
+				return true
+	return false
 
 
 # CPU mirror of system_flow.gdshader's boundary_context_at/boundary_gradient_at
