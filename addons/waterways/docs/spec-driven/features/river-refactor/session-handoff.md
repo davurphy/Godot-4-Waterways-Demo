@@ -6,7 +6,7 @@
 
 ## Current Focus
 
-Execute the hardening/refactor track derived from the 2026-06-12 full-addon code audit. Phases R0, RT, R1, **R2, and R3** are complete and **fully closed** (R2+R3 landed merged 2026-06-12 on `river-refactor`: three shared shader includes, the system_flow Defect-1 fix, the system-map version int, regenerated v1 system maps; all automated gates green; user editor round confirmed scenes/debug views/duck behavior same day). Next: **R8 (docs coherence)**; R4/R5 absorb idle time. R6/R7 stay blocked on their own spec/plan/validation files.
+Execute the hardening/refactor track derived from the 2026-06-12 full-addon code audit. Phases R0, RT, R1, **R2, R3, and R8** are complete and **fully closed** (R2+R3 landed merged 2026-06-12 on `river-refactor`: three shared shader includes, the system_flow Defect-1 fix, the system-map version int, regenerated v1 system maps; all automated gates green; user editor round confirmed scenes/debug views/duck behavior same day. R8 docs coherence landed the same day: `architecture-and-features.md` rewritten, Data Contract neutrals + `system_flow_map_version`, obstacle-constraints spec/validation/review backfilled, probe folders consolidated, vertex-cost figure corrected; code grep gates clean). Next: **R4/R5 absorb idle time**. R6/R7 stay blocked on their own spec/plan/validation files.
 
 - Feature folder:
   - `addons\waterways\docs\spec-driven\features\river-refactor\`
@@ -15,8 +15,8 @@ Execute the hardening/refactor track derived from the 2026-06-12 full-addon code
 
 ## Current Truth
 
-- Overall status: In progress — **Phases R0, RT, R1, R2, and R3 complete and validated**. R2+R3 (commits `c34b136`..`a2ec75c` + docs, 2026-06-12, all agent-run including the windowed rounds) landed: `river_flow_common.gdshaderinc` (flow family, consumed by river/debug/system_flow), `river_surface_common.gdshaderinc` (~620 shared surface lines, river/debug only), `flow_pack.gdshaderinc` (canonical flow codec, ten clones converted), the Defect-1 fix (system_flow gates the slide on `i_flow_projected` + stagnation fade + shared force), R2.4's `SYSTEM_FLOW_MAP_VERSION` staleness int, R3.3 revert-table deletion (reverts now read live shader defaults), R3.4 filter-default alignment, R3.5 occupancy-const centralization, regenerated v1 system maps
-- Highest-priority open task: R8 (docs coherence — `architecture-and-features.md` rewrite, Data Contract gains `system_flow_map_version` per R8.2); R4/R5 absorb idle time. The post-R2+R3 user editor round is done (2026-06-12: scenes/debug views/ducks all passed; `.uid` sidecars committed `1d9c91a`)
+- Overall status: In progress — **Phases R0, RT, R1, R2, R3, and R8 complete and validated**. R2+R3 (commits `c34b136`..`a2ec75c` + docs, 2026-06-12, all agent-run including the windowed rounds) landed: `river_flow_common.gdshaderinc` (flow family, consumed by river/debug/system_flow), `river_surface_common.gdshaderinc` (~620 shared surface lines, river/debug only), `flow_pack.gdshaderinc` (canonical flow codec, ten clones converted), the Defect-1 fix (system_flow gates the slide on `i_flow_projected` + stagnation fade + shared force), R2.4's `SYSTEM_FLOW_MAP_VERSION` staleness int, R3.3 revert-table deletion (reverts now read live shader defaults), R3.4 filter-default alignment, R3.5 occupancy-const centralization, regenerated v1 system maps. R8 (docs) landed same day: `architecture-and-features.md` rewritten from current code, Data Contract neutrals + `system_flow_map_version`, obstacle-constraints spec/validation/review backfilled, two superseded flow-arrow probe copies deleted + RT tools indexed, vertex-cost figure corrected; code grep gates clean
+- Highest-priority open task: R4 / R5 (independent items, absorb idle time; R5.3 pairs with the done R3.5). R6/R7 stay blocked on their own spec/plan/validation files. The post-R2+R3 user editor round is done (2026-06-12: scenes/debug views/ducks all passed; `.uid` sidecars committed `1d9c91a`)
 - Last passing validation: 2026-06-12 post-R2+R3 — full suite green **including** RT.3 `enforce=all` (23.3°/26.9° < recalibrated 35°), `SYSTEM_FLOW_PROJECTED_GATE_OK` (the new R2 mechanism gate), `CAPTURE_DIFF_OK files=26` (whole-phase byte-identity), 3-renderer smoke, `REVERT_DEFAULT_CHECK_OK`, `PILLOW_INSPECTOR_WIRING_PROBE_OK` (era pin 20→28, first full green)
 - **Major execution finding (attribution correction):** the "Defect-1 signature" (pre-R2 influence p90 25.5°/28.9°) was NOT the slide — A/B rendering (slide gated vs forced) measures the slide at 0 differing texels on Demo and 4.6k texels at mean 3.3° on the obstacle scene; the 23–27° floor is sampling/quantization noise of the stilled low-magnitude ring and survives the (correct, landed) fix. RT.3's influence gate is now a 35° gross-divergence guard; the mechanism is gated by `probes/system_flow_projected_gate_probe.gd` (windowed A/B). Full detail in validation.md's 2026-06-12 R2+R3 entry
 - Second execution finding: `ShaderMaterial.property_can_revert/get_revert` never worked for the internal river material (remap cache only fills when the material itself is inspected) — the deleted revert table was the only working source; replacement calls `RenderingServer.shader_get_parameter_default` directly. That API returns null under the headless dummy renderer, so revert checks are windowed
@@ -50,12 +50,21 @@ Read these first:
 
 Then do this next:
 
-- Pick up R8 (docs coherence) per the roadmap — the stale `architecture-and-features.md` rewrite, the Data Contract updates (R1.1 string fix, `water_occupancy`/`dist_pressure` neutrals, `system_flow_map_version`), and probe-folder hygiene. R4/R5 items absorb idle time.
+- R8 (docs coherence) is **done** (2026-06-12). Pick up R4 (runtime/editor robustness) or the GDScript halves of R5 per the roadmap — both independent of the shader work and able to absorb idle time (R5.3 pairs with the done R3.5). R6/R7 stay blocked on their own spec/plan/validation files (R7 also on the recorded compute decision).
 - For Godot-specific implementation work, search current official Godot documentation and API references online before patching. Prefer official docs first, and record any source that affects implementation in `research.md` or `addons\waterways\docs\research\river-research-citations.md`.
 - If this requires human-assisted Godot validation, include the exact scene path, plugin state, steps, expected visible result, and Output/console text to relay. The next agent should paste those steps into its user-facing message instead of telling the user to read `validation.md`. The per-phase steps live in each roadmap phase's **Validation** block.
 - If the next action might be based on a false premise or overlooked context, tell the user before patching. The adversarial review already overturned several audit claims (see `spec.md` Resolved Questions); the standing rule from that miss: before deleting any shader uniform or function, grep shaders *and* probes *and* feature specs.
 
 ## What Changed This Session
+
+Phase R8 docs-coherence session (2026-06-12, branch `river-refactor`):
+
+- R8.1: rewrote the stale `docs/architecture-and-features.md` — obstacle mechanism is now the pressure-projection solve (was SDF steering); added `water_occupancy`/`i_water_occupancy`/`i_flow_projected`; FilterRenderer pass list expanded to the full 19 passes grouped by purpose (from `filter_renderer.gd`'s const table); new **Shared Shader Includes** section (`flow_pack` / `river_flow_common` / `river_surface_common` with their consumer sets); WaterSystem section gained the `SYSTEM_FLOW_MAP_VERSION` staleness note.
+- R8.2: the `obstacle_avoidance_algorithm` string + projection producers line were already correct (R1.1); added `neutral_dist_pressure = Color(0.75, 0.25, 0.0, 0.5)` and `neutral_water_occupancy` to `river_bake_data.gd` `DEFAULT_IMPORT_PROFILE`; documented the dist_pressure per-channel neutrals (R=0.75/G=0.25) and the `system_flow_map_version` field in `river-future/Data Contract.md`.
+- R8.3: backfilled `spec.md` / `validation.md` / `review.md` into `river-obstacle-flow-constraints/` per the rule-12 template (the folder previously had only implementation-plan + research). They record the as-built feature and the R2 attribution correction.
+- R8.4: deleted the two superseded feature-folder flow-arrow probe copies (`flow_arrow_neutral_cells_probe.gd`, `flow_arrow_direction_outlier_probe.gd` + `.uid`s — they had no arg parsing; the hardened shared `probes/` versions with `key=value` args supersede). Added a pointer README in the feature probes folder; indexed the five RT tools (`bake_hash`, `distmap_neutral_binding`, `flow_solve_seed_assert`, `system_flow_compare`, `system_flow_projected_gate`) in `probes/README.md`. Grep confirmed no code/scene consumer before removal; re-ran the shared probe headless (`ARROW_NEUTRAL_CELLS_PROBE_OK`).
+- R8.5: corrected the "~200+" vertex-cost figure to the audited ~622 worst / ~94 defaults in `river-future/Roadmap.md` and `Crest Reuse and Portability Feasibility.md` (audit + refactor-roadmap occurrences were already correct).
+- Stale-constant cleanup: annotated `river-obstacle-flow-constraints/implementation-plan.md` (as-designed vs as-landed: stride schedule, algorithm-string suffix, the legacy filter was deleted not kept). CHANGELOG + audit + the dated river-improvements-roadmap/river-pillows records left as history. Final code grep gate: zero stale mechanism refs in any `.gd` or shader.
 
 Phase R2+R3 merged session (2026-06-12, branch `river-refactor`, commits `c34b136`..`a2ec75c` + docs):
 
@@ -94,7 +103,7 @@ Previous implementation session (2026-06-12, branch `river-refactor`, all commit
 
 ## Current Changes Summary
 
-- Phases R0 + RT + R1 + R2 + R3 complete and fully closed (signature v28; system maps v1; three shared shader includes; all gates green incl. the 2026-06-12 user editor round). Next: R8; R4/R5 absorb idle time.
+- Phases R0 + RT + R1 + R2 + R3 + R8 complete and fully closed (signature v28; system maps v1; three shared shader includes; docs coherent with code; all gates green incl. the 2026-06-12 user editor round). Next: R4/R5 absorb idle time.
 
 ## Historical Change Log
 
@@ -119,9 +128,9 @@ Spec/plan status:
 - Research: Complete (audit + adversarial review; `research.md` records the outcome)
 - Spec: Accepted in practice (R0 executed against it); Resolved Questions table grew the R0.7 reachability finding
 - Plan: Current — Adversarial Plan Review section still not formally completed with the user (work proceeded with per-item user validation instead)
-- Tasks: R0 and RT closed; see `tasks.md` Current Truth
-- Validation: Matrix live — R0 row Pass, RT rows Pass (RT.1–RT.4 all demonstrated), R2 row carries the recorded pre-R2 baseline; recorded results current
-- Review: No formal phase review held yet; `review.md` still scaffold + premise review
+- Tasks: R0, RT, R1, R2, R3, R8 closed; see `tasks.md` Current Truth
+- Validation: Matrix live — R0/RT/R1/R2/R3/R8 rows Pass; recorded results current
+- Review: No formal full-track phase review held yet; `review.md` still scaffold + premise review (the `river-obstacle-flow-constraints` folder got its own review.md in R8.3)
 
 Validation status:
 
@@ -188,7 +197,7 @@ Result summary:
 - [x] R2+R3 (merged) — shared includes + system_flow projected-flow fix + system-map version int. *Done 2026-06-12; original RT.3 numeric gate found misattributed and restructured (see validation.md); all gates green.*
 - [x] (User, editor) Un-share the system bake. *Done 2026-06-12.*
 - [x] (User, editor) Post-R2+R3 round. *Done 2026-06-12: scenes and debug views passed inspection, ducks unremarkable near the rocks; only the two expected `.uid` sidecars generated (committed `1d9c91a`); scenes/bakes byte-unchanged.*
-- [ ] R8 — docs coherence (architecture-and-features rewrite; Data Contract gains `system_flow_map_version`, R8.2).
+- [x] R8 — docs coherence (architecture-and-features rewrite; Data Contract neutrals + `system_flow_map_version`; obstacle-constraints spec/validation/review backfill; probe consolidation + RT index; vertex-cost figure). *Done 2026-06-12; code grep gates clean, shared probe re-run green.*
 - [ ] R4 / R5 — independent items as time allows (R5.3 pairs with the now-done R3.5).
 
 ## Do Not Do Yet

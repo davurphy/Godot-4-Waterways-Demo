@@ -11,11 +11,11 @@ Not yet held — no implementation to review. The pre-implementation review that
 
 ## Current Truth
 
-- Overall review status: In progress — Phases R0, RT, R1, R2, R3 implemented, validated, and closed against their gates (2026-06-12); no formal phase-review session held yet (per-item validation + user confirmations stood in, recorded in `validation.md`)
+- Overall review status: In progress — Phases R0, RT, R1, R2, R3, R8 implemented, validated, and closed against their gates (2026-06-12); no formal full-track phase-review session held yet (per-item validation + user confirmations stood in, recorded in `validation.md`). The `river-obstacle-flow-constraints` folder got its own `review.md` in R8.3
 - Blocking issues remaining: none in landed code; process gates open: R6/R7 spec-plan-validation files not yet written; R7 compute decision not recorded; the formal Adversarial Plan Review in `plan.md` was never held (work proceeded with per-item user validation by accepted practice)
-- Important issues remaining: two execution findings recorded in `spec.md` Resolved Questions (Defect-1 signature misattribution; dead ShaderMaterial revert fallback) — both resolved in code, kept here as review context for R8's doc rewrite
-- Last validation relied on: 2026-06-12 post-R2+R3 full suite (see `validation.md` matrix and recorded results)
-- Next action: R8 docs coherence; fold the two execution findings into the architecture docs where relevant
+- Important issues remaining: two execution findings recorded in `spec.md` Resolved Questions (Defect-1 signature misattribution; dead ShaderMaterial revert fallback) — both resolved in code, and both now folded into the architecture docs by R8 (the obstacle mechanism rewrite + the revert behavior)
+- Last validation relied on: 2026-06-12 R8 docs-coherence pass (code grep gates clean, docs spot-checked against source) on top of the post-R2+R3 full suite (see `validation.md` matrix and recorded results)
+- Next action: R4 (runtime/editor robustness) or the GDScript halves of R5; R6/R7 need their own spec/plan/validation files first
 - Historical detail starts at: nothing archived yet
 
 ## Findings

@@ -1,6 +1,6 @@
 # River Refactor Roadmap
 
-Status: In progress — Phases R0, RT, R1, R2, and R3 complete and validated (2026-06-12; R2+R3 landed merged on `river-refactor`: shared flow/surface/flow_pack includes, system_flow Defect-1 fix, system-map version int, v1 system maps regenerated). R2's original numeric gate was found misattributed during execution — see the R2 heading note. Next: R8 (docs coherence) can interleave; R4/R5 absorb idle time
+Status: In progress — Phases R0, RT, R1, R2, R3, and **R8** complete and validated (2026-06-12; R2+R3 landed merged on `river-refactor`: shared flow/surface/flow_pack includes, system_flow Defect-1 fix, system-map version int, v1 system maps regenerated; R8 brought the docs back into coherence). R2's original numeric gate was found misattributed during execution — see the R2 heading note. Next: R4/R5 absorb idle time; R6/R7 stay blocked on their own spec/plan/validation files
 Date: 2026-06-12
 Source: `docs/audit/waterways-code-audit-2026-06-12.md` (full-addon audit, bake signature v27), hardened by an adversarial code review (2026-06-12) in which every load-bearing claim below was verified against source at the cited lines. Where the audit and the code disagreed, the code won — those corrections are noted inline.
 Related: `docs/spec-driven/features/river-future/Roadmap.md` (feature roadmap, Phases 0–5), `docs/spec-driven/00-constitution.md`
@@ -172,13 +172,16 @@ Audit refs: §5, Recommendation 17. Sequenced after R6 so it modifies the extrac
 
 ## Phase R8 — Documentation Coherence (days; can run parallel to any phase after R1)
 
+> Branch: `river-refactor` (2026-06-12). **Phase complete.** All five items landed plus the deferred R1 stale-constant doc cleanup. Code grep gates clean (zero `RIVER_OBSTACLE_AVOIDANCE_*` / `legacy_sdf_steering` / `apply_obstacle_avoidance_flow` in any `.gd` or shader); remaining doc references are all in historical records (CHANGELOG, audit, the dated river-improvements-roadmap Phase 5B notes, the river-pillows signature-20 result, the now-annotated obstacle-constraints implementation-plan) or this folder. Shared flow-arrow probe re-run clean post-consolidation (`ARROW_NEUTRAL_CELLS_PROBE_OK`). Results in `validation.md`.
+
 Audit refs: §8, Recommendation 15. R1 changes what the docs must say, so this follows R1.
 
-- [ ] **R8.1 Rewrite the stale `architecture-and-features.md` sections** from current code: obstacle mechanism is the projection solve (not SDF steering); document `water_occupancy`, `i_water_occupancy`, `i_flow_projected`; FilterRenderer pass list gains the seven missing passes.
-- [ ] **R8.2 Data Contract:** fix the `obstacle_avoidance_algorithm` string and the "legacy SDF steering" producer line (falls out of R1.1); add `water_occupancy` and `dist_pressure` R/G neutrals to `DEFAULT_IMPORT_PROFILE` — use the verified per-channel neutrals from R0.7 (≈ R=0.75, G=0.25), not 0.5 across the board; document the system-map version field if R2.4 added one.
-- [ ] **R8.3 Constitution compliance backfill:** the `river-obstacle-flow-constraints` folder gets its spec/validation/review per the template (rule 12); this folder gets `validation.md` as phases complete.
-- [ ] **R8.4 Probe folder hygiene** (audit §9): make the diverged feature-folder copies of the flow-arrow probes pointers to the shared ones (or delete them); unify the two divergent probe arg-parsing schemes; index the RT tools alongside.
-- [ ] **R8.5 Correct the vertex-cost figure** wherever "~200+" appears: audited worst case is ~622 `textureLod`/vertex, defaults ~94 — this re-scopes feature-roadmap Phase 5 (see R9).
+- [x] **R8.1 Rewrite the stale `architecture-and-features.md` sections** from current code: obstacle mechanism is the projection solve (not SDF steering); document `water_occupancy`, `i_water_occupancy`, `i_flow_projected`; FilterRenderer pass list gains the missing passes (now the full 19-pass list, grouped by purpose). Also added the Shared Shader Includes section (`flow_pack` / `river_flow_common` / `river_surface_common`) — the track's main structural change — and the `SYSTEM_FLOW_MAP_VERSION` system-map staleness note.
+- [x] **R8.2 Data Contract:** the `obstacle_avoidance_algorithm` string and projection producers line were already correct (landed in R1.1). Added `neutral_dist_pressure` (0.75, 0.25, 0.0, 0.5) and `neutral_water_occupancy` to `DEFAULT_IMPORT_PROFILE` (`river_bake_data.gd`); documented the dist_pressure per-channel neutrals and the `system_flow_map_version` field (R2.4) in the contract.
+- [x] **R8.3 Constitution compliance backfill:** the `river-obstacle-flow-constraints` folder gained `spec.md`/`validation.md`/`review.md` per the template (rule 12); this folder's `validation.md` half was already done.
+- [x] **R8.4 Probe folder hygiene** (audit §9): deleted the two superseded feature-folder flow-arrow probe copies (the hardened shared `probes/` versions with the standard `key=value` arg scheme supersede them) and added a pointer README in the feature probes folder; indexed the five RT tools (incl. `system_flow_projected_gate_probe.gd`) in `probes/README.md`.
+- [x] **R8.5 Correct the vertex-cost figure** wherever "~200+" appears in prose: audited worst case ~622 `textureLod`/vertex, defaults ~94 — fixed in `river-future/Roadmap.md` and `Crest Reuse and Portability Feasibility.md` (the audit and refactor-roadmap occurrences were already-correct citations).
+- [x] **Stale-constant doc cleanup** (deferred from the R1 grep gate): `architecture-and-features.md` rewritten; CHANGELOG kept as history; obstacle-constraints `implementation-plan.md` annotated (as-designed vs as-landed). Audit + river-refactor records left intentionally.
 
 ## Phase R9 — Vertex Pillow Stack → Baked/Compute (deferred)
 

@@ -6,9 +6,9 @@ Turn the 2026-06-12 full-addon code audit (`docs/audit/waterways-code-audit-2026
 
 ## Current Truth
 
-- Status: Accepted and in execution — Phases R0, RT, R1, R2, R3 complete and fully closed (2026-06-12); R4/R5/R8 open; R6/R7 gated on their own docs
+- Status: Accepted and in execution — Phases R0, RT, R1, R2, R3, R8 complete and fully closed (2026-06-12); R4/R5 open; R6/R7 gated on their own docs
 - Source of truth for open work: `roadmap.md` phase checklists (R0, RT, R1–R8); `tasks.md` mirrors only the cross-phase process items
-- Last meaningful decision: R2's acceptance gate restructured on measured evidence (2026-06-12) — the recorded "Defect-1 signature" was misattributed sampling noise; the mechanism is now gated by `system_flow_projected_gate_probe.gd` and RT.3's influence threshold recalibrated to a 35° gross-divergence guard (see Resolved Questions and `validation.md`)
+- Last meaningful decision: R8 restored doc–code coherence (2026-06-12) — `architecture-and-features.md` rewritten to the projection mechanism + shared includes, Data Contract neutrals + `system_flow_map_version`, obstacle-constraints folder backfilled per rule 12, probe folders consolidated; code grep gates clean. (Prior: R2's gate restructured on measured evidence — the "Defect-1 signature" was misattributed sampling noise; mechanism gated by `system_flow_projected_gate_probe.gd`, RT.3 at a 35° gross-divergence guard.)
 - Known deferred items: R9 (vertex pillow stack → baked/compute) stays on the feature roadmap (`river-future/Roadmap.md` Phase 5); R7 has a decision gate against that same Phase 5 before any work starts
 - Current non-goals that are easy to accidentally reopen: deleting the ripple-displacement interface (R1.4 — it is *not* dead); changing data-contract channel semantics; "improving" areas the audit verified clean (audit §10)
 

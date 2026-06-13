@@ -53,7 +53,12 @@ const DEFAULT_IMPORT_PROFILE := {
 	"neutral_bend_bias": 0.5,
 	"neutral_obstacle_features": Color(0.0, 0.0, 0.0, 0.0),
 	"neutral_terrain_contact_features": Color(0.0, 0.0, 0.0, 0.0),
-	"neutral_bank_response_features": Color(0.0, 0.0, 0.0, 0.0)
+	"neutral_bank_response_features": Color(0.0, 0.0, 0.0, 0.0),
+	# Must match river_manager.gd RIVER_NEUTRAL_DISTMAP_COLOR (the code-side
+	# neutral texture bound to i_distmap when dist_pressure is null). Not 0.5
+	# across the board: R decodes as distance = (1 - R) * 2.
+	"neutral_dist_pressure": Color(0.75, 0.25, 0.0, 0.5),
+	"neutral_water_occupancy": Color(0.0, 0.0, 0.0, 1.0)
 }
 
 const TEXTURE_LAYOUT_PADDED_UV2_ATLAS := "padded_uv2_atlas_with_one_tile_margin"

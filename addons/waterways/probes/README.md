@@ -95,3 +95,41 @@ keep in sync if the arrow logic changes.)
 Flags FLOW_ARROWS cells whose displayed direction deviates strongly from
 flowing neighbors and attributes each to bake data vs sub-cell fallback.
 `bake=` selects the river bake. (Copy, same mirroring caveat as above.)
+
+### `bake_hash_probe.gd` — bake content hash / diff (headless OK)
+
+River-refactor RT.1. Hash mode emits a per-texture content hash for a
+`RiverBakeData` (or system bake); diff mode (`a=`/`b=`) compares two bakes and
+exits nonzero on mismatch with a per-channel delta summary and the bounding
+rect of differing pixels. Consumers: R1 ("metadata-only"), R5/R6 ("byte-identical").
+Markers: `BAKE_HASH_PROBE_OK` / `BAKE_HASH_COMPARE_OK` (mismatch: `BAKE_HASH_MISMATCH`).
+
+### `distmap_neutral_binding_probe.gd` — null-distmap neutral binding (headless OK)
+
+River-refactor R0.7. A fresh RiverManager binds the neutral `dist_pressure`
+texel ≈ (0.75, 0.25, 0.0, 0.5) to `i_distmap` on both materials when
+`dist_pressure` is null. Marker: `DISTMAP_NEUTRAL_BINDING_OK`.
+
+### `flow_solve_seed_assert_probe.gd` — cross-language seed invariant (headless OK)
+
+River-refactor RT.4. Asserts the neutral pressure seed `RIVER_FLOW_PRESSURE_SEED_COLOR`
+(`river_manager.gd`) equals enc(0) in all three `flow_solve_common.gdshaderinc`
+encodings. Marker: `FLOW_SOLVE_SEED_ASSERT_OK`.
+
+### `system_flow_compare_probe.gd` — system-vs-river flow gate (headless OK)
+
+River-refactor RT.3. Decodes the river's baked flow per texel, transforms to
+world XZ via the same per-triangle UV1 basis `system_flow.gdshader` builds, and
+compares against the duck-read system-map sample across control/influence/boundary
+zones. Default = report mode (control gate); `enforce=all` is R2's gross-divergence
+guard (35°). Detects stale system maps. Key args: `scene= stride= min_flow=
+max_control_deg=15 max_influence_deg=35 sharp_deg=20 allow_stale=1`.
+Markers: `SYSTEM_FLOW_COMPARE_OK` / `SYSTEM_FLOW_COMPARE_EXCEEDED` / `SYSTEM_FLOW_COMPARE_STALE`.
+
+### `system_flow_projected_gate_probe.gd` — slide-gate mechanism gate (window required)
+
+River-refactor R2. A/B system-flow renders (slide gated vs forced) prove the
+`i_flow_projected` slide gate is active: gated and forced renders differ where
+content exercises the slide, and repeat renders are identical. The mechanism
+gate for the Defect-1 fix (the angular RT.3 threshold cannot see a correct
+low-magnitude fix on saved maps). Marker: `SYSTEM_FLOW_PROJECTED_GATE_OK`.

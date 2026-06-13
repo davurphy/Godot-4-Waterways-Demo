@@ -8,10 +8,10 @@ The canonical per-item checklists live in `roadmap.md` (phases R0, RT, R1–R8) 
 ## Current Truth
 
 - Current status: In progress
-- Current implementation slice: Phases R0, RT, R1, R2, and R3 complete and validated (R2+R3 landed merged 2026-06-12); next slice is R8 (docs coherence — can interleave) and/or R4/R5
-- Remaining open task count: R4, R5, R8 ready; R6/R7 blocked on their own spec/plan/validation files (R7 also on the compute decision)
-- Last passing validation: 2026-06-12 post-R2+R3 — full suite green including RT.3 `enforce=all` (recalibrated; see validation.md attribution correction), `SYSTEM_FLOW_PROJECTED_GATE_OK`, `CAPTURE_DIFF_OK files=26` whole-phase byte-identity, 3-renderer smoke, windowed revert checks
-- Next recommended action: R8 (docs coherence); the post-R2+R3 user editor round is done (2026-06-12, all passed, `.uid` sidecars committed)
+- Current implementation slice: Phases R0, RT, R1, R2, R3, and R8 complete and validated (R2+R3 landed merged 2026-06-12; R8 docs coherence landed same day); next slice is R4/R5
+- Remaining open task count: R4, R5 ready; R6/R7 blocked on their own spec/plan/validation files (R7 also on the compute decision)
+- Last passing validation: 2026-06-12 R8 docs-coherence pass (code grep gates clean, shared probe re-run `ARROW_NEUTRAL_CELLS_PROBE_OK`, docs spot-checked vs source) on top of the post-R2+R3 full suite
+- Next recommended action: R4 (runtime/editor robustness) or the GDScript halves of R5; the post-R2+R3 user editor round is done (2026-06-12, all passed, `.uid` sidecars committed)
 - Known deferred work: R9 (vertex pillow stack) stays on the feature roadmap; R7 blocked on the feature-Phase-5 compute decision gate; optional user decision logged in validation.md — whether system_flow should also apply occupancy stilling/wake damping to match duck-read magnitudes to the river surface
 
 ## Open Work
@@ -31,7 +31,7 @@ Use this section as the canonical checklist for unfinished *process* work. When 
 - [ ] Record the R7-vs-feature-Phase-5 compute decision in this folder — gate before R7 starts.
 - [ ] Write R7's own `spec.md`/`plan.md`/`validation.md` — gate before R7 starts.
 - [ ] Phase R7 — GPU-resident solve (after R6).
-- [ ] Phase R8 — Documentation coherence (interleave anywhere after R1).
+- [x] Phase R8 — Documentation coherence (R8.1–R8.5 + stale-constant cleanup, 2026-06-12). architecture-and-features rewrite, Data Contract neutrals + system_flow_map_version, obstacle-constraints spec/validation/review backfill, probe consolidation + RT index, vertex-cost figure; code grep gates clean.
 - [ ] Complete the Adversarial Plan Review section of `plan.md` with the user before implementation starts.
 
 ## Setup
@@ -76,7 +76,7 @@ Use this section as the canonical checklist for unfinished *process* work. When 
 - [ ] Confirm packaging excludes disposable folders, generated bakes, editor caches, validation fixtures, and local probe outputs.
 - [ ] Add or refine comments for non-obvious code, Godot quirks, shader math, performance-sensitive paths, and architectural boundaries (the R1.4 annotations, R0.7's hint comment, RT.4's seed comment pair, R4.5's intent comment).
 - [ ] Update docs for any changed decisions (spec.md Decision Log; roadmap inline notes).
-- [ ] Update feature or architecture documentation for changed behavior, data flow, module boundaries, or validation procedures (Phase R8 owns the bulk of this).
+- [x] Update feature or architecture documentation for changed behavior, data flow, module boundaries, or validation procedures (Phase R8, 2026-06-12: architecture-and-features.md, Data Contract, obstacle-constraints folder backfill). Per-phase doc updates for R4–R7 still land with those phases.
 - [ ] Confirm generated data and resources are explicit and inspectable (v28 signature contents, system-map version field).
 - [ ] Confirm editor-only state did not leak into runtime-only code (especially across the R6 extraction seams).
 - [ ] Confirm no obsolete Godot 3 APIs were introduced into active Godot 4.6+ code.
