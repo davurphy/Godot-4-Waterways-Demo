@@ -8,6 +8,7 @@ const MODE_CONTINUOUS := 1
 const MODE_ONE_SHOT := 2
 const MODE_MOVING := 3
 const DEFAULT_FIELD_GROUP := "water_ripple_fields"
+const ONE_SHOT_MAX_ROUTE_RETRIES := 8
 const WaterRippleEmitterPresetResource := preload("res://addons/waterways/resources/water_ripple_emitter_preset.gd")
 
 @export_group("Routing")
@@ -21,12 +22,16 @@ const WaterRippleEmitterPresetResource := preload("res://addons/waterways/resour
 	set(value):
 		target_field_path = value
 		_cached_field = null
+		_one_shot_route_retries = 0
+		_sync_processing()
 		if is_inside_tree():
 			update_configuration_warnings()
 @export var field_group_name := DEFAULT_FIELD_GROUP:
 	set(value):
 		field_group_name = String(value)
 		_cached_field = null
+		_one_shot_route_retries = 0
+		_sync_processing()
 		if is_inside_tree():
 			update_configuration_warnings()
 
@@ -43,6 +48,7 @@ const WaterRippleEmitterPresetResource := preload("res://addons/waterways/resour
 		emitter_mode = sanitized
 		_pulse_accumulator = 0.0
 		_one_shot_emitted = false
+		_one_shot_route_retries = 0
 		if is_inside_tree():
 			_sync_processing()
 			update_configuration_warnings()
@@ -61,6 +67,7 @@ var _last_emit_position := Vector3.ZERO
 var _has_last_emit_position := false
 var _emit_count := 0
 var _rejected_count := 0
+var _one_shot_route_retries := 0
 
 
 func _ready() -> void:
@@ -78,6 +85,8 @@ func _process(delta: float) -> void:
 		MODE_ONE_SHOT:
 			if not _one_shot_emitted:
 				emit_once()
+		MODE_CONTINUOUS:
+			emit_once()
 		MODE_MOVING:
 			_process_moving(delta)
 		_:
@@ -161,13 +170,21 @@ func emit_once() -> bool:
 	var field := _resolve_field()
 	if field == null:
 		_rejected_count += 1
+		if emitter_mode == MODE_ONE_SHOT:
+			_one_shot_route_retries += 1
+			if _one_shot_route_retries >= ONE_SHOT_MAX_ROUTE_RETRIES:
+				_one_shot_emitted = true
+				_sync_processing()
 		return false
 	var accepted := bool(field.call("queue_impulse_world", global_position, radius, intensity, falloff, priority, self))
 	if accepted:
 		_emit_count += 1
 		_one_shot_emitted = true
+		_one_shot_route_retries = 0
 		_last_emit_position = global_position
 		_has_last_emit_position = true
+		if emitter_mode == MODE_ONE_SHOT:
+			_sync_processing()
 	else:
 		_rejected_count += 1
 	return accepted
@@ -179,6 +196,7 @@ func get_emitter_snapshot() -> Dictionary:
 		"mode": emitter_mode,
 		"emit_count": _emit_count,
 		"rejected_count": _rejected_count,
+		"one_shot_route_retries": _one_shot_route_retries,
 		"has_cached_field": _cached_field != null and is_instance_valid(_cached_field),
 		"target_field_path": target_field_path,
 		"field_group_name": field_group_name,
@@ -245,7 +263,10 @@ func _get_ancestor_field() -> Node:
 
 
 func _sync_processing() -> void:
-	set_process(enabled and _should_run_runtime())
+	var should_process := enabled and _should_run_runtime()
+	if emitter_mode == MODE_ONE_SHOT and _one_shot_emitted:
+		should_process = false
+	set_process(should_process)
 
 
 func _should_run_runtime() -> bool:

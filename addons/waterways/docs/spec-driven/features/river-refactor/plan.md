@@ -10,10 +10,10 @@ A dependency-aware phase sequence (R0 hotfixes → RT tooling → R1 dead-code p
 
 ## Current Truth
 
-- Implementation status: Phases R0, RT, R1, R2, R3, R8 complete and fully closed (2026-06-12); R4/R5 open; R6/R7 gated on their own docs
+- Implementation status: Phases R0, RT, R1, R2, R3, R4, and R8 complete and fully closed. R4 implementation landed with automated/headless guard coverage passing (2026-06-13), the first visible ripple review failed, the impulse scheduling fix landed, and the full user-visible R4 suite later passed. R5 open; R6/R7 gated on their own docs
 - Open architectural decisions: R7-vs-feature-Phase-5 compute decision (gate before R7). Resolved: R2/R3 landed merged (2026-06-12), as the roadmap recommended. New optional decision logged in `validation.md`: whether system_flow should also apply occupancy stilling/wake damping so duck-read magnitudes match the river surface's runtime advection
-- Last validation that proves the plan still works: 2026-06-12 R8 docs-coherence pass (code grep gates clean, docs spot-checked against source) on top of the post-R2+R3 full suite (see `validation.md` matrix); the plan's R2 gate assumption was corrected during execution (Defect-1 signature misattribution — see `spec.md` Resolved Questions)
-- Next planned implementation slice: R4 (runtime/editor robustness) or the GDScript halves of R5 as time allows
+- Last validation that proves the plan still works: 2026-06-13 R4 full suite (`R4_RUNTIME_ROBUSTNESS_PROBE_OK`, existing ripple review/diagnostic markers, `R4_VISIBLE_AUTO_REVIEW_DONE`, post-fix agent captures showing localized rings, user-visible Checks 2-7 passed, and `git diff --check` clean) on top of the post-R2+R3 full suite (see `validation.md` matrix); the plan's R2 gate assumption was corrected during execution (Defect-1 signature misattribution — see `spec.md` Resolved Questions)
+- Next planned slice: the GDScript halves of R5, or the required phase docs before R6/R7
 - Branch safety before implementation: all work to date on `river-refactor` with the user's acquiescence (deviation from the one-branch-per-phase rule, recorded in the handoff)
 - Sections below that are historical or superseded: the R2 acceptance-gate description (RT.3 `enforce=all` < 20°) is superseded by the restructured gate (mechanism probe + 35° gross-divergence guard)
 
@@ -78,7 +78,7 @@ Legacy reference layer:
 1. River material samples baked textures; with null `dist_pressure`, the code-bound neutral distmap keeps pillows/gates neutral (R0.7).
 2. `system_flow.gdshader` receives `i_flow_projected` per river from bake metadata and skips `apply_contextual_flow_slide` for projected fields, with the stagnation-centerline fade ported (R2).
 3. `buoyant_manager` binds to a WaterSystem by coverage bounds, samples without per-query allocations, and lets settled bodies sleep (R4.3).
-4. `water_ripple_field` steps at most once per `_process`, accumulating delta even when impulses are queued; below `simulation_update_rate` the sim runs proportionally slower by design (R4.1).
+4. `water_ripple_field` steps at most once per `_process`, accumulating delta even when impulses are queued; impulse render, simulation step, and impulse clear are separated across frames so visible impulses survive sampling. Below `simulation_update_rate` the sim runs proportionally slower by design (R4.1).
 
 ## Bake Flow
 

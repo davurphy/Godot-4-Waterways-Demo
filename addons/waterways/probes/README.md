@@ -133,3 +133,34 @@ River-refactor R2. A/B system-flow renders (slide gated vs forced) prove the
 content exercises the slide, and repeat renders are identical. The mechanism
 gate for the Defect-1 fix (the angular RT.3 threshold cannot see a correct
 low-magnitude fix on saved maps). Marker: `SYSTEM_FLOW_PROJECTED_GATE_OK`.
+
+### `r4_runtime_robustness_probe.gd` â€” R4 runtime guard probe (headless OK)
+
+River-refactor R4. Exercises the non-visual runtime fixes: ripple stepping is
+clamped to one simulation step per `_process`, high-frequency impulses do not
+starve propagation, late group-routed targets refresh, `cleanup_runtime()`
+preserves API-registered targets, off-tree field group changes remove stale
+membership, one-shot emitters stop after the route retry cap, width generation
+stays within the legacy 1/100-segment tolerance, buoyancy binds by WaterSystem
+coverage, and settled bodies are not forcibly woken. Marker:
+`R4_RUNTIME_ROBUSTNESS_PROBE_OK`.
+
+### `r4_ripple_visible_auto_review.gd` - R4 ripple visible review (window required)
+
+River-refactor R4. Opens the ripple field/emitter review scene and cycles the
+normal view plus the raw-height, impulse/contact, and visible-influence debug
+views without requiring keyboard input in a captured mouse window. Use this for
+the human-visible ripple part of the R4 gate. Expected result: localized impulse
+marks and influence rings appear around the emitter markers, the field disable
+step returns the river to baseline, and the re-enable step restores the effect.
+Marker: `R4_VISIBLE_AUTO_REVIEW_DONE`.
+
+### `r4_buoyancy_visible_review.tscn` - R4 buoyancy visible review (window required)
+
+River-refactor R4. Self-contained human-visible scene for the two-WaterSystem
+coverage and settled-body sleep checks. It builds one nearby red WaterSystem
+whose coverage does not contain the bodies and one farther green WaterSystem
+whose coverage does contain them. The overlay reports that the buoyant body binds
+to the green coverage system even though the red origin is closer, then watches a
+settled sleeping body for wake/twitch regressions. Press `R` to restart the sleep
+watch.

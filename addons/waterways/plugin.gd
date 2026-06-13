@@ -454,7 +454,6 @@ func _clear_editing_state() -> void:
 	_edited_node = null
 	_set_progress_source(null)
 	river_gizmo.reset()
-	ripple_inspector.clear_transient_state()
 	_hide_river_control_panel()
 	_hide_water_system_control_panel()
 

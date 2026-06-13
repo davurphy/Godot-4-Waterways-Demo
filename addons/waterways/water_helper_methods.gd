@@ -767,7 +767,7 @@ static func _empty_flow_vector_stats(near_neutral_threshold: float, alpha_thresh
 	}
 
 
-static func generate_river_width_values(curve : Curve3D, steps : int, step_length_divs : int, step_width_divs : int, widths : Array) -> Array:
+static func generate_river_width_values(curve : Curve3D, steps : int, step_length_divs : int, _step_width_divs : int, widths : Array) -> Array:
 	var river_width_values := []
 	if curve.get_point_count() < 2 or widths.size() < 2:
 		river_width_values.append(1.0)
@@ -775,8 +775,9 @@ static func generate_river_width_values(curve : Curve3D, steps : int, step_lengt
 	var safe_steps := max(1, steps)
 	var safe_step_length_divs: int = clamp(step_length_divs, SHAPE_STEP_DIVS_MIN, SHAPE_STEP_DIVS_MAX)
 	var sample_count: int = safe_steps * safe_step_length_divs
-	var length = curve.get_baked_length()
+	var length := curve.get_baked_length()
 	var last_width_index: int = min(curve.get_point_count(), widths.size()) - 1
+	var offset_samples := _get_curve_width_offset_samples(curve, last_width_index)
 	for step in sample_count + 1:
 		if step == 0:
 			river_width_values.append(_safe_width_value(widths, 0))
@@ -784,25 +785,55 @@ static func generate_river_width_values(curve : Curve3D, steps : int, step_lengt
 		if step == sample_count:
 			river_width_values.append(_safe_width_value(widths, last_width_index))
 			continue
-		var target_pos = curve.sample_baked((float(step) / float(sample_count)) * length)
-		var closest_dist := 4096.0
-		var closest_interpolate := 0.0
-		var closest_point := 0
-		for c_point in last_width_index:
-			for i in 101:
-				var interpolate := float(i) / 100.0
-				var pos = curve.sample(c_point, interpolate)
-				var dist = pos.distance_to(target_pos)
-				if dist < closest_dist:
-					closest_dist = dist
-					closest_interpolate = interpolate
-					closest_point = c_point
-		# Smoothstep-eased interpolation keeps the width derivative continuous
-		# across curve points (no visible kinks in the bank lines).
-		var eased_interpolate := smoothstep(0.0, 1.0, closest_interpolate)
-		river_width_values.append(max(MIN_RIVER_WIDTH, lerp(_safe_width_value(widths, closest_point), _safe_width_value(widths, closest_point + 1), eased_interpolate)))
+		var target_offset := curve.get_closest_offset(curve.sample_baked((float(step) / float(sample_count)) * length))
+		river_width_values.append(_sample_width_at_offset(target_offset, offset_samples, widths))
 	
 	return river_width_values
+
+
+static func _get_curve_width_offset_samples(curve: Curve3D, last_width_index: int) -> Array:
+	var samples := []
+	for point_index in last_width_index:
+		for sub_index in 101:
+			var interpolate := float(sub_index) / 100.0
+			samples.append({
+				"offset": curve.get_closest_offset(curve.sample(point_index, interpolate)),
+				"point": point_index,
+				"interpolate": interpolate,
+			})
+	samples.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a.get("offset", 0.0)) < float(b.get("offset", 0.0))
+	)
+	return samples
+
+
+static func _sample_width_at_offset(distance: float, offset_samples: Array, widths: Array) -> float:
+	if offset_samples.is_empty():
+		return max(MIN_RIVER_WIDTH, _safe_width_value(widths, 0))
+	var sample_index := _find_nearest_width_offset_sample(distance, offset_samples)
+	var sample: Dictionary = offset_samples[sample_index]
+	var segment_index := int(sample.get("point", 0))
+	var interpolate := float(sample.get("interpolate", 0.0))
+	# Smoothstep-eased interpolation keeps the width derivative continuous
+	# across curve points (no visible kinks in the bank lines).
+	var eased_interpolate := smoothstep(0.0, 1.0, interpolate)
+	return max(MIN_RIVER_WIDTH, lerpf(_safe_width_value(widths, segment_index), _safe_width_value(widths, segment_index + 1), eased_interpolate))
+
+
+static func _find_nearest_width_offset_sample(distance: float, offset_samples: Array) -> int:
+	var low := 0
+	var high := offset_samples.size() - 1
+	while low < high:
+		var mid := int((low + high) / 2)
+		if float(offset_samples[mid].get("offset", 0.0)) < distance:
+			low = mid + 1
+		else:
+			high = mid
+	var right := low
+	var left := max(0, right - 1)
+	var left_delta := absf(float(offset_samples[left].get("offset", 0.0)) - distance)
+	var right_delta := absf(float(offset_samples[right].get("offset", 0.0)) - distance)
+	return left if left_delta <= right_delta else right
 
 
 static func generate_river_mesh(curve : Curve3D, steps : int, step_length_divs : int, step_width_divs : int, smoothness : float, river_width_values : Array, uv2_source_resolution : int = 0) -> Mesh:
@@ -1796,5 +1827,3 @@ static func _copy_scaled_region(destination: Image, destination_rect: Rect2i, so
 			var source_x := source_rect.position.x + int(floor((float(x) + 0.5) * float(source_rect.size.x) / float(destination_rect.size.x)))
 			source_x = clamp(source_x, source_rect.position.x, source_rect.position.x + source_rect.size.x - 1)
 			destination.set_pixel(destination_rect.position.x + x, destination_rect.position.y + y, source.get_pixel(source_x, source_y))
-
-

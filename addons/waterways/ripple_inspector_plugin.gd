@@ -294,9 +294,11 @@ func _remember_captured_preset(object: Object, preset: Resource) -> void:
 
 
 func _get_captured_preset(object: Object) -> Resource:
-	var preset = _captured_presets.get(_get_object_key(object))
+	var object_key := _get_object_key(object)
+	var preset = _captured_presets.get(object_key)
 	if preset is Resource and _preset_apply_model.can_apply_preset(object, preset):
 		return preset
+	_captured_presets.erase(object_key)
 	return null
 
 

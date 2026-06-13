@@ -7,11 +7,12 @@ The canonical per-item checklists live in `roadmap.md` (phases R0, RT, R1–R8) 
 
 ## Current Truth
 
+- Latest update, 2026-06-13: User passed R4 Checks 6-7 in `res://addons/waterways/probes/r4_buoyancy_visible_review.tscn`; Checks 1-5 had already passed earlier the same session. R4 is now closed.
 - Current status: In progress
-- Current implementation slice: Phases R0, RT, R1, R2, R3, and R8 complete and validated (R2+R3 landed merged 2026-06-12; R8 docs coherence landed same day); next slice is R4/R5
-- Remaining open task count: R4, R5 ready; R6/R7 blocked on their own spec/plan/validation files (R7 also on the compute decision)
-- Last passing validation: 2026-06-12 R8 docs-coherence pass (code grep gates clean, shared probe re-run `ARROW_NEUTRAL_CELLS_PROBE_OK`, docs spot-checked vs source) on top of the post-R2+R3 full suite
-- Next recommended action: R4 (runtime/editor robustness) or the GDScript halves of R5; the post-R2+R3 user editor round is done (2026-06-12, all passed, `.uid` sidecars committed)
+- Current implementation slice: Phases R0, RT, R1, R2, R3, R4, and R8 complete and validated. R4 implementation landed 2026-06-13 with automated/headless guard coverage passing; the first visible ripple review failed, the impulse scheduling fix landed, and the full user-visible R4 suite later passed.
+- Remaining open task count: R5 ready; R6/R7 blocked on their own spec/plan/validation files (R7 also on the compute decision)
+- Last passing validation: 2026-06-13 R4 human-visible suite closed by user confirmation of Checks 6-7, on top of earlier same-day R4 passes (`R4_RUNTIME_ROBUSTNESS_PROBE_OK`, existing ripple review/diagnostic markers, `R4_VISIBLE_AUTO_REVIEW_DONE`, hitch/60 Hz/curve/inspector checks, and post-fix agent captures showing localized rings)
+- Next recommended action: move to the GDScript halves of R5, or write the required phase docs before R6/R7
 - Known deferred work: R9 (vertex pillow stack) stays on the feature roadmap; R7 blocked on the feature-Phase-5 compute decision gate; optional user decision logged in validation.md — whether system_flow should also apply occupancy stilling/wake damping to match duck-read magnitudes to the river surface
 
 ## Open Work
@@ -24,7 +25,7 @@ Use this section as the canonical checklist for unfinished *process* work. When 
 - [x] Phase R1 — Dead-Code Purge + signature v28 (gate closed 2026-06-12; user rebake round committed as the v28 baseline).
 - [x] Phase R2 — `system_flow` projected-flow correctness (landed merged with R3, 2026-06-12; original numeric gate found misattributed — see roadmap R2 banner and validation.md).
 - [x] Phase R3 — Shared shader includes (landed merged with R2, 2026-06-12; RT.2 byte-identity across the whole phase).
-- [ ] Phase R4 — Runtime/editor robustness (any time after R0).
+- [x] Phase R4 — Runtime/editor robustness (implementation landed 2026-06-13; automated/headless guard pass recorded; first visible ripple run failed, the impulse scheduling fix landed, and the full user-visible suite passed later the same session).
 - [ ] Phase R5 — Structural dedup (R5.1/R5.4/R5.5 any time after R0; gates need RT.1).
 - [ ] Write R6's own `spec.md`/`plan.md`/`validation.md` (constitution rule 12) — gate before R6 starts; must include the Lifecycle/Cleanup/Re-entry section (21 abort points).
 - [ ] Phase R6 — `river_manager.gd` decomposition (after R1/R3/R5).
@@ -65,8 +66,8 @@ Use this section as the canonical checklist for unfinished *process* work. When 
 - [ ] Open the visual test scene, if applicable, through human-assisted validation (pixel-parity gates are windowed/human-assisted by default — constitution rule 8).
 - [ ] Check shader output/debug views through human-assisted validation (Foam Mix parity for R0.2, neutral pillows/gates for R0.7, RT.2 captures for R3).
 - [ ] Check editor workflow through human-assisted validation (no-undo on click-without-drag for R0.4, inspector revert for R3.3).
-- [ ] Check runtime sampling/API behavior through human-assisted validation or a proven non-crashing runtime check (duck drift for R2, buoyancy binding and sleep for R4.3, ripple low-FPS behavior for R4.1).
-- [ ] Record results in `review.md`.
+- [x] Check runtime sampling/API behavior through human-assisted validation or a proven non-crashing runtime check (duck drift for R2, buoyancy binding and sleep for R4.3, ripple low-FPS behavior for R4.1).
+- [x] Record results in `review.md`.
 
 ## Cleanup
 
@@ -76,7 +77,7 @@ Use this section as the canonical checklist for unfinished *process* work. When 
 - [ ] Confirm packaging excludes disposable folders, generated bakes, editor caches, validation fixtures, and local probe outputs.
 - [ ] Add or refine comments for non-obvious code, Godot quirks, shader math, performance-sensitive paths, and architectural boundaries (the R1.4 annotations, R0.7's hint comment, RT.4's seed comment pair, R4.5's intent comment).
 - [ ] Update docs for any changed decisions (spec.md Decision Log; roadmap inline notes).
-- [x] Update feature or architecture documentation for changed behavior, data flow, module boundaries, or validation procedures (Phase R8, 2026-06-12: architecture-and-features.md, Data Contract, obstacle-constraints folder backfill). Per-phase doc updates for R4–R7 still land with those phases.
+- [x] Update feature or architecture documentation for changed behavior, data flow, module boundaries, or validation procedures (Phase R8, 2026-06-12: architecture-and-features.md, Data Contract, obstacle-constraints folder backfill; R4 implementation/validation docs updated 2026-06-13). Per-phase doc updates for R5–R7 still land with those phases.
 - [ ] Confirm generated data and resources are explicit and inspectable (v28 signature contents, system-map version field).
 - [ ] Confirm editor-only state did not leak into runtime-only code (especially across the R6 extraction seams).
 - [ ] Confirm no obsolete Godot 3 APIs were introduced into active Godot 4.6+ code.

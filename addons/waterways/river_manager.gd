@@ -1058,7 +1058,8 @@ func remove_point(index : int) -> void:
 	if curve.get_point_count() <= 2:
 		return
 	curve.remove_point(index)
-	widths.remove_at(index)
+	if index < widths.size():
+		widths.remove_at(index)
 	if index < flow_speeds.size():
 		flow_speeds.remove_at(index)
 	_invalidate_generated_bake(true, true)
@@ -3109,7 +3110,13 @@ func validate_filter_renderer() -> void:
 	if not is_inside_tree():
 		push_warning("FILTER_RENDERER_TEST: River must be inside the edited scene tree")
 		return
+	if not (_filter_renderer is PackedScene):
+		push_warning("FILTER_RENDERER_TEST: filter renderer scene could not be loaded")
+		return
 	var renderer_instance = _filter_renderer.instantiate()
+	if renderer_instance == null:
+		push_warning("FILTER_RENDERER_TEST: filter renderer scene could not be instantiated")
+		return
 	add_child(renderer_instance)
 	await get_tree().process_frame
 	var source_texture := _make_filter_validation_texture()
@@ -3540,12 +3547,16 @@ func _get_valid_flowmap_shader_state(default_value: bool) -> bool:
 
 
 func _on_geometry_property_changed(notify_river: bool) -> void:
+	# Runtime set_widths()/set_flow_speeds() are data-only API calls; geometry
+	# regeneration and bake invalidation remain editor-authoring behavior.
 	if _first_enter_tree:
 		return
 	_invalidate_generated_bake(true, notify_river)
 
 
 func _on_bake_property_changed() -> void:
+	# Runtime set_widths()/set_flow_speeds() are data-only API calls; geometry
+	# regeneration and bake invalidation remain editor-authoring behavior.
 	if _first_enter_tree:
 		return
 	_invalidate_generated_bake(false, false)

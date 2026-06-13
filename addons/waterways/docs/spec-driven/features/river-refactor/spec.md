@@ -6,9 +6,9 @@ Turn the 2026-06-12 full-addon code audit (`docs/audit/waterways-code-audit-2026
 
 ## Current Truth
 
-- Status: Accepted and in execution — Phases R0, RT, R1, R2, R3, R8 complete and fully closed (2026-06-12); R4/R5 open; R6/R7 gated on their own docs
+- Status: Accepted and in execution — Phases R0, RT, R1, R2, R3, R4, and R8 complete and fully closed. R4 implementation landed with automated/headless guard coverage passing (2026-06-13), then the first visible ripple review failed and the impulse scheduling fix landed. The user-visible auto-review rerun and the remaining R4 human-visible suite passed; R5 open; R6/R7 gated on their own docs
 - Source of truth for open work: `roadmap.md` phase checklists (R0, RT, R1–R8); `tasks.md` mirrors only the cross-phase process items
-- Last meaningful decision: R8 restored doc–code coherence (2026-06-12) — `architecture-and-features.md` rewritten to the projection mechanism + shared includes, Data Contract neutrals + `system_flow_map_version`, obstacle-constraints folder backfilled per rule 12, probe folders consolidated; code grep gates clean. (Prior: R2's gate restructured on measured evidence — the "Defect-1 signature" was misattributed sampling noise; mechanism gated by `system_flow_projected_gate_probe.gd`, RT.3 at a 35° gross-divergence guard.)
+- Last meaningful decision: R4 separates impulse render, simulation step, and impulse clear across frames after the first visible review proved the same-frame ordering could hide all ripples (2026-06-13). R4 still accepts slower-but-correct ripple propagation below `simulation_update_rate` rather than multiple same-frame ping-pong steps, and keeps the `Curve3D.get_closest_offset` offset-to-segment lookup layer because the API is not a segment-index replacement. Prior: R8 restored doc–code coherence (2026-06-12), and R2's gate was restructured on measured evidence.
 - Known deferred items: R9 (vertex pillow stack → baked/compute) stays on the feature roadmap (`river-future/Roadmap.md` Phase 5); R7 has a decision gate against that same Phase 5 before any work starts
 - Current non-goals that are easy to accidentally reopen: deleting the ripple-displacement interface (R1.4 — it is *not* dead); changing data-contract channel semantics; "improving" areas the audit verified clean (audit §10)
 
@@ -34,7 +34,7 @@ Turn the 2026-06-12 full-addon code audit (`docs/audit/waterways-code-audit-2026
 
 - Shared works-cited index: `addons/waterways/docs/research/river-research-citations.md`. Future sessions should use it as the project-level source list and update it when new external research informs this feature.
 - Known scene/data/context facts: current bake signature is v27; `river_manager.gd` is 3,807 lines; ~700 copy-mirrored lines exist between `river.gdshader` and `river_debug.gdshader`, synced only by comments, with four observed drift failures; system maps have no staleness/signature mechanism.
-- User-reported observations: none — this track is audit-driven, not bug-report-driven.
+- User-reported observations: R4 visible ripple review initially showed no visible ripple or ripple influence, with the overlay stuck at `Queued 3 emitter impulses`; this became the R4 visible-failure follow-up recorded in `validation.md`. Earlier phases were audit-driven, not bug-report-driven.
 - Agent confidence in the premise: high. Every load-bearing audit claim was re-verified against source at the cited lines in an adversarial review (2026-06-12); where audit and code disagreed, the code won and the roadmap notes the correction inline.
 - Possible expected-behavior explanations to rule out before patching: per-item premise checks are recorded in `roadmap.md` where they applied (e.g., R0.6 `reorder_params` is a silent no-op so ordering does not actually change; R4.2's "fails on large rivers" concern was withdrawn; R1.4's "dead" interface is live).
 - Clarification or challenge already raised with the user: none outstanding; the R7-vs-feature-Phase-5 decision gate is the one open call that needs a deliberate user-visible decision before R7 starts.
@@ -77,7 +77,7 @@ Acceptance criteria:
 - Visual quality: no visual regressions — RT.2 pixel-parity capture gates R3; debug views match the surface after R0.2.
 - Godot 4.6+ compatibility: shader compiles across Forward+/Mobile/Compatibility are part of R3's gate; no obsolete Godot 3 APIs reintroduced (R0.6 deletes the leftovers).
 - Editor usability: editor remains responsive during bake (R7 gate); click-without-drag no longer pushes undo entries or invalidates bakes (R0.4).
-- Runtime usability: ripple sim degrades to slower-but-correct under load, explicitly documented (R4.1); settled floating bodies are allowed to sleep (R4.3).
+- Runtime usability: ripple sim degrades to slower-but-correct under load, explicitly documented (R4.1); impulse/contact frames remain visible to the ripple shader after queued emitter impulses; settled floating bodies are allowed to sleep (R4.3).
 - Extensibility: R5.2's channel-descriptor helper is the feature roadmap's "named per-point channel table" item — landing it here unblocks a third per-point channel without a sixth clone set.
 
 ## Add-on Boundary
@@ -123,7 +123,7 @@ Shared systems must not hard-code:
 - R1: stale-bake detection fires on a pre-bump scene; RT.1 shows changes only in regions explained by R0.5/R1.3; grep proves zero remaining code references to deleted constants.
 - R2: RT.3 shows system-map flow matching river baked flow inside obstacle influence zones; human-assisted duck-drift check.
 - R3: shader compile on all three renderers; RT.2 pixel parity before/after; system-map regeneration parity; inspector revert spot-checks.
-- R4: ripple sim artifact-free at forced 20 FPS at the documented reduced rate; 2 s hitch recovery without step burst; width arrays identical to brute-force on demo rivers (array diff); two-system buoyancy binds by coverage; settled body sleeps.
+- R4: visible ripple auto-review shows localized impulse/contact marks and influence rings at forced 20 FPS; ripple sim remains artifact-free at the documented reduced rate; 2 s hitch recovery without step burst; width arrays identical to brute-force on demo rivers (array diff); two-system buoyancy binds by coverage; settled body sleeps.
 - R5/R6: RT.1 byte-identical bake output; inspector property list unchanged (dump+diff); undo round-trip; R6 abort matrix leaves no stuck flags/leaked renderers/orphan viewports; metadata/signature/settings dictionaries diff empty.
 - R7: solve within f16 epsilon of CPU path; adversarial ordering test proves the Defect-6 fence; bake wall-clock recorded.
 
@@ -131,7 +131,7 @@ Shared systems must not hard-code:
 
 - Per constitution rule 8, visual validation is human-assisted: each phase's roadmap checklist names the exact scene, steps, and expected visuals; results recorded in this folder's `validation.md`.
 - Rendered-pixel capture probes (RT.2 and its consumers) require a window — headless rendering is unreliable per the constitution's own caveat; treat all pixel-parity gates as windowed/human-assisted by default.
-- Key human-visible checks: Foam Mix debug parity (R0.2), neutral pillows/gates with null distmap (R0.7), duck drift near obstacles (R2), before/after surface parity on the demo scene (R3), ripple propagation under forced low FPS (R4.1).
+- Key human-visible checks: Foam Mix debug parity (R0.2), neutral pillows/gates with null distmap (R0.7), duck drift near obstacles (R2), before/after surface parity on the demo scene (R3), localized ripple impulse/contact and visible-influence rings under forced low FPS (R4.1).
 
 ## Performance Requirements
 
@@ -167,4 +167,5 @@ Shared systems must not hard-code:
 | 2026-06-12 | Single signature bump v27 → v28, owned by R1; all bake-content changes ride it | Avoid repeated bake invalidation; make staleness deliberate and reviewable |
 | 2026-06-12 | Build validation tooling (RT) before the phases that gate on it | The hash/parity/comparison probes the gates name do not exist today (verified against `probes/`) |
 | 2026-06-12 | R4.1 accepts slower-but-correct ripple stepping under load | One step per `_process` fixes the stale ping-pong read and unbounded catch-up queue; full-rate-under-load deferred |
+| 2026-06-13 | R4.1 separates impulse render, sim step, and impulse clear across frames | User visible review showed no ripple/influence because same-frame ordering could clear or miss the impulse texture before sampling; frame separation preserves shader-visible impulses |
 | 2026-06-12 | R5 before R6; R6 before R7 | Extract already-deduplicated code, not duplicated code; optimize the extracted baker, not the god object |

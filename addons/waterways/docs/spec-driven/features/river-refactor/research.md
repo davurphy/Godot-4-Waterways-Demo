@@ -38,7 +38,10 @@ Not applicable as external research — this track changes no channel semantics 
 - Shader includes: `shader_type spatial` includes carrying uniform declarations are proven in-repo (`atlas_column_clamp.gdshaderinc`, included by 5+ filters, declares the `atlas_columns` uniform) — R3.1's design rests on this.
 - Texture hints: Godot offers only `hint_default_white/black/transparent`; none can express the distmap neutral ≈ (0.75, 0.25, 0.0, 0.5) derived from the decode at `river.gdshader:950-953` — hence R0.7's code-side neutral ImageTexture.
 - `RenderingServer.shader_get_parameter_default` is already used at `river_manager.gd:1413` and replaces the hand-maintained revert table (R3.3) and `system_map_renderer.gd`'s re-hardcoded fallback literals (R3.5).
-- `Curve3D.get_closest_offset` returns one baked-length scalar in curve-local space — not the (segment index, interpolate) pair the width code needs; R4.2 maps offset → segment+t via a precomputed per-control-point offset table + binary search.
+- `Curve3D.get_closest_offset` returns one baked-length scalar in curve-local space — not the (segment index, interpolate) pair the width code needs; R4.2 maps offset → segment+t via a precomputed 1/100-per-segment offset sample table + binary search to preserve the legacy width-array tolerance.
+- 2026-06-13 R4 docs refresh: the official `Curve3D.get_closest_offset(to_point)` docs confirm the query point is in curve-local space and the return value is the baked offset usable with `sample_baked`, so R4.2 keeps the offset→segment lookup layer instead of treating it as a segment index.
+- 2026-06-13 R4 docs refresh: the official `SubViewport.UPDATE_ONCE` docs confirm one-shot render-target updates switch back to disabled after the update; R4.1 therefore performs at most one ripple sim step per `_process` and accepts slower propagation under low FPS rather than queueing multiple ping-pong writes in one frame.
+- 2026-06-13 R4 docs refresh: the official `RigidBody3D.sleeping` docs describe sleeping bodies as inactive until woken by collision/force/impulse, so R4.3 stops forcing `sleeping = false` every buoyancy tick and lets settled bodies remain asleep.
 - Headless rendering is unreliable per the constitution's own caveat — all pixel-parity gates are windowed/human-assisted by default.
 
 ## Legacy Waterways Reference
@@ -102,3 +105,6 @@ The adversarial review *was* the context challenge, and it overturned audit clai
 - Adversarial code review (2026-06-12): verification pass over the audit; corrections noted inline in `roadmap.md`.
 - `docs/spec-driven/features/river-future/Roadmap.md`: feature roadmap (Phases 0–5) — interaction points: R5.2 = its channel-table item; R7 decision gate vs its Phase 5; R8.5 re-scopes its vertex-cost figure.
 - `docs/spec-driven/features/river-height displacement/initial_research.md:113,188,355`: declared consumer of the ripple-displacement interface (R1.4 evidence).
+- Godot Engine stable docs, `Curve3D.get_closest_offset`: https://docs.godotengine.org/en/stable/classes/class_curve3d.html#class-curve3d-method-get-closest-offset
+- Godot Engine stable docs, `SubViewport.UPDATE_ONCE`: https://docs.godotengine.org/en/stable/classes/class_subviewport.html#enum-subviewport-updatemode
+- Godot Engine stable docs, `RigidBody3D.sleeping`: https://docs.godotengine.org/en/stable/classes/class_rigidbody3d.html#class-rigidbody3d-property-sleeping

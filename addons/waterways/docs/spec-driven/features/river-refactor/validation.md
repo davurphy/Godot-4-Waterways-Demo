@@ -11,11 +11,12 @@
 
 ## Current Validation Snapshot
 
-- Overall status: Partial (track) — **Phases R0, RT, R1, R2, R3, and R8 complete and validated** (R2+R3 landed merged 2026-06-12: shared includes, system_flow Defect-1 fix, system-map version int, v1 maps regenerated; R8 docs coherence landed same day — grep gates clean, docs match source). Next open territory: R4 (runtime stress)
-- Last automated pass: 2026-06-12 post-R2+R3 — full suite green: RT.3 default AND `enforce=all` exit 0 on the regenerated v1 maps (influence p90 23.3°/26.9° < recalibrated 35° — see the attribution correction below), `SYSTEM_FLOW_PROJECTED_GATE_OK` (new R2 mechanism gate, windowed), `CAPTURE_DIFF_OK files=26` (RT.2 byte-identity across the whole R3 extraction), `REVERT_DEFAULT_CHECK_OK params=14` (windowed), `PILLOW_INSPECTOR_WIRING_PROBE_OK` (windowed; era pin updated 20→28), 3-renderer render smoke (Forward+/Mobile/Compatibility), `BAKE_HASH_PROBE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`, both arrow probes, seam probe, `FILTER_RENDERER_LOAD_OK`
-- Last human-assisted pass: 2026-06-12 — post-R2+R3 editor round (user): both demo scenes and the debug views inspected, all passed; duck behavior near the obstacle rocks unremarkable; scenes saved with no content changes (only the two expected `.uid` sidecars, committed). The R2+R3 windowed runs (captures, system-map regeneration, revert checks) were agent-run windowed console sessions
+- Overall status: Partial (track) — **Phases R0, RT, R1, R2, R3, R4, and R8 complete and validated**. R5 is ready; R6/R7 remain blocked on their own spec/plan/validation files and the R7 compute decision.
+- Last automated/windowed pass: 2026-06-13 R4 post-visible-failure sweep — Godot 4.6.3 console: parser/check-only on changed scripts, `r4_runtime_robustness_probe.gd` (`R4_RUNTIME_ROBUSTNESS_PROBE_OK`), existing ripple review/diagnostic probes, new visible auto-review (`R4_VISIBLE_AUTO_REVIEW_DONE`), and `git diff --check` passed after the impulse render/step/clear scheduling fix. The prior post-R2+R3 full suite remains the last full visual/shader/editor validation basis.
+- Last human-assisted pass: 2026-06-13 — user passed R4 Checks 6-7 in `r4_buoyancy_visible_review.tscn`. Checks 2-5 also passed earlier the same session, closing the R4 human-visible suite.
+- Most recent R4 human-assisted failure/fix: 2026-06-13 — the first visible ripple review reported no visible ripple or ripple influence in normal/debug views; the window captured the mouse and showed `Queued 3 emitter impulses`. The `Demo.tscn` invalid-UID warning is a known fallback warning and was not the cause. Agent frame captures reproduced the missing localized impulse/contact and influence rings. Fix applied: `water_ripple_field.gd` now separates impulse render, simulation step, and impulse clear across frames so the shader-visible impulse texture survives long enough to be sampled.
 - **Attribution correction (2026-06-12, R2 execution):** the recorded pre-R2 "Defect-1 signature" (influence p90 25.5°/28.9°) was NOT the slide — direct A/B rendering (slide gated vs forced) measures the slide's contribution at 0 differing texels on Demo and 4,641 texels at mean 3.3°/max 42° on the obstacle scene; the 23–27° influence floor is sampling/quantization noise of the stilled low-magnitude ring (8-bit flow quantization scales as 1/|v|) and survives the fix. The fix is correct and gated by `system_flow_projected_gate_probe.gd`; RT.3's influence threshold was recalibrated to 35° as a gross-divergence guard (floor-plus-margin, control-gate precedent)
-- Highest-risk unproven behavior: none open for R0–R3 — the post-R2+R3 user round closed the visual/duck checks. Next unproven territory is R4 (runtime stress checks) and R8's doc-accuracy review
+- Highest-risk unproven behavior: R4's visible stress gate is now closed; the remaining high-risk unproven work belongs to future phases R6/R7, which require their own docs before implementation.
 - Known unreliable local check or environment caveat: headless rendering is unreliable per the constitution; additionally `RenderingServer.shader_get_parameter_default` returns null under the headless dummy renderer, so revert checks (`revert_default_check`, `pillow_inspector_wiring_probe`) are windowed. **Hazard:** `river_obstacle_projection_rebake_probe.gd` rebakes and saves both river bakes in place — never run it casually (a stray headless run did exactly that this session; bakes restored from HEAD and verified by hash)
 
 ## Validation Matrix
@@ -32,7 +33,7 @@ Use this as the durable map from requirements to proof. Prefer stable probe name
 | R2 system flow respects projection | Mechanism: `system_flow_projected_gate_probe.gd` (windowed A/B render). Gross divergence: RT.3 `enforce=all` (recalibrated 35°). Staleness: R2.4 version int. Duck-drift check (human) | Windowed probes + headless RT.3 + editor (human) | Gated vs forced-slide renders differ where content exercises the slide; repeat renders identical; influence p90 < 35°; pre-v1 maps warn on load | Pass — `SYSTEM_FLOW_PROJECTED_GATE_OK` (obstacle slide_diff=4641, repeat_diff=0); `enforce=all` exit 0 (23.255°/26.913°); stale warning demonstrated on v0 maps then cleared by regeneration; user confirmed scenes/debug views and duck behavior near obstacles in the editor round | 2026-06-12 | Agent + User |
 | R3 extraction parity | Shader compile ×3 renderers; RT.2 `views=parity` capture before/after in the same session + headless diff; system-map regen compare; inspector revert spot-checks | Windowed capture + headless diff | Compiles clean; capture PNGs byte-identical; system maps regenerated (changed by design — R2 rode in the same include); reverts restore live shader defaults | Pass — `SCENE_RENDER_SMOKE_OK` on forward_plus/mobile/gl_compatibility; `CAPTURE_DIFF_OK files=26` byte-identical (before vs after the full phase, one windowed session); compiled uniform sets identical on both shaders; `REVERT_DEFAULT_CHECK_OK params=14` + `PILLOW_INSPECTOR_WIRING_PROBE_OK` (windowed); user eyeballed surface + debug views in the editor round (rule-8 confirmation) | 2026-06-12 | Agent + User |
 | R8 docs coherence | Grep gates (zero stale mechanism refs in code; doc refs only in historical records); pass-list/uniform/include claims spot-checked vs source; shared flow-arrow probe re-run after R8.4 consolidation | Headless + review | Code grep clean; shared probe `*_OK`; docs match source | Pass — code grep zero hits (`.gd`+shaders); `ARROW_NEUTRAL_CELLS_PROBE_OK` post-consolidation; 19-pass list / 3-include structure / neutrals verified against source | 2026-06-12 | Agent |
-| R4 runtime robustness | Forced 20 FPS ripple run; 2 s hitch; 60 Hz emitter; 50-point curve edit frame capture; width array diff; two-system scene; sleep check | Editor/runtime (human-assisted) | Artifact-free reduced-rate propagation (rate documented here); no step burst; waves propagate; interactive editing; identical arrays; coverage-bound binding; body sleeps | Unrun | — | — |
+| R4 runtime robustness | Forced 20 FPS ripple run; 2 s hitch; 60 Hz emitter; 50-point curve edit frame capture; width array diff; two-system scene; sleep check; `r4_runtime_robustness_probe.gd`; `r4_ripple_visible_auto_review.gd`; `r4_buoyancy_visible_review.tscn` | Editor/runtime (human-assisted) + headless/windowed probe | Artifact-free reduced-rate propagation (rate documented here); no step burst; waves propagate; interactive editing; identical arrays; coverage-bound binding; body sleeps; `R4_RUNTIME_ROBUSTNESS_PROBE_OK`; `R4_VISIBLE_AUTO_REVIEW_DONE` | Pass — first user-visible review failed and exposed an impulse scheduling bug, then post-fix agent captures and user rerun showed localized ripple/influence. Checks 2-7 passed by user, including the two-WaterSystem buoyancy coverage and settled sleep scene. | 2026-06-13 | Agent + User |
 | R5/R6 behavior preservation | RT.1 hash-compare; property-list dump+diff; undo round-trip probe; (R6) abort matrix + metadata dict diffs | Headless + editor | Byte-identical bakes; empty diffs; undo intact; no stuck flags/leaked renderers/orphan viewports | Unrun | — | — |
 | R7 solve correctness + perf | f16-epsilon compare vs CPU path; adversarial ordering test; wall-clock before/after | Editor | Within epsilon; fence prevents stale read when both viewports update in one frame; wall-clock recorded as regression budget | Unrun | — | — |
 | RT.4 cross-language seed invariant | `flow_solve_seed_assert_probe.gd` | Headless | `Color(0.5,…)` == enc(0) in all three solve encodings; `FLOW_SOLVE_SEED_ASSERT_OK` | Pass | 2026-06-12 | Agent |
@@ -51,6 +52,8 @@ Use this as the durable map from requirements to proof. Prefer stable probe name
 ## Automated Checks
 
 - Command or procedure: headless console probes under `probes/` (hardened with `*_OK` markers and `out=` support by R0.9); RT.1 hash-compare; RT.3 flow comparison; RT.4 seed assertion. Exact commands recorded here as the tools land.
+- R4 runtime guard (headless): `& $godotConsole --headless --path $root --script "res://addons/waterways/probes/r4_runtime_robustness_probe.gd"`; marker `R4_RUNTIME_ROBUSTNESS_PROBE_OK`. This covers non-visual invariants only; it does not close the visible low-FPS/editor stress pass.
+- R4 visible ripple auto-review (window required): `& $godotConsole --path $root --max-fps 20 --script "res://addons/waterways/probes/r4_ripple_visible_auto_review.gd"`; marker `R4_VISIBLE_AUTO_REVIEW_DONE`. Expected visual result: localized impulse/contact marks and visible-influence rings around the emitter markers; no need to press keys in the captured window.
 - RT.3 (after the APPDATA/LOCALAPPDATA redirect from Godot Launch Instructions):
   - report mode (control gate only): `& $godotConsole --headless --path $root --script "res://addons/waterways/probes/system_flow_compare_probe.gd"`
   - influence gate mode (gross-divergence guard; green since R2): append `-- enforce=all`
@@ -106,14 +109,16 @@ Use this by default for visible Godot editor checks, viewport interaction, scene
 
 When requesting this validation, the agent must put the exact request in the chat message so the user does not have to open this file to discover what to run.
 
-- Request to user: (per phase — pull the exact scene/steps/expected visuals from the phase's roadmap **Validation** block)
-- Exact scene, command, or workflow to run:
-- Plugin state required: waterways plugin enabled; relevant demo scene open
-- Console output or errors to relay back:
-- Screenshot or visible behavior to relay back:
-- Godot version and renderer to relay back:
-- Expected result:
-- Failure signs:
+- Request to user for next session: no R4 human-visible rerun is needed unless a later code change touches ripple timing/material binding, buoyancy coverage binding, WaterSystem sampling, or settled-body sleep behavior. Next implementation work can move to R5, while R6/R7 remain blocked on their own docs.
+- Before starting: use Godot 4.6.3 with the Waterways plugin enabled. Do not save changed demo/review scenes unless the change is deliberate; if Godot prompts after a temporary test edit, choose not to save. Report Godot version, renderer/device, pass/fail per check, Output panel warnings/errors, and anything visually odd. The known `Demo.tscn` invalid-UID fallback warning for `WaterSystem.water_system_bake.res` is acceptable and is not an R4 ripple failure.
+- Check 1, ripple low-FPS auto-review: **Pass on 2026-06-13 (user)**. Current stable command: `& $godotConsole --path $root --max-fps 20 --script "res://addons/waterways/probes/r4_ripple_visible_auto_review.gd"`. Expected and observed: normal/debug views show localized ripples/ripple influence; impulse/contact is localized; raw height shows local motion; the script disables and re-enables the field cleanly; marker `R4_VISIBLE_AUTO_REVIEW_DONE`.
+- Check 2, hitch recovery: **Pass on 2026-06-13 (user)**. Stable workflow: run `res://addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_demo_review.tscn`, then click `Run soft hitch test` or press `H`. The harness soft-freezes only the ripple field for 2 seconds per view, then resumes with a queued backlog. Expected and observed: every view recovers without rapid catch-up burst, texture corruption/full-field flashing, or static impulse stamps. `8` is intentionally disabled in this review scene after it triggered editor/debugger pause behavior on the user's machine.
+- Check 3, 60 Hz emitter stress: **Pass on 2026-06-13 (user)**. User temporarily set `WaterRippleField/PulseEmitter_UpperWater.pulse_rate` to `60.0` without saving; the emitter fired consistently and did not freeze into static impulse stamps. Its ripple field stayed close to the stationary emitter, which is acceptable fixed-source overlap behavior. User repeated the 60 Hz stress on `MovingEmitter_TestTrail`, and that moving emitter extended outward/traced normally. No Output errors were reported.
+- Check 4, curve editing responsiveness: **Pass on 2026-06-13 (user)**. User opened `res://Demo.tscn`, selected `WaterSystem/Water River`, and tested curve editing responsiveness. Expected and observed: interactive editing/responsive bank/mesh updates, no blocking stalls reported, and no Output errors reported. Do not save temporary curve edits.
+- Check 5, ripple inspector state: **Pass on 2026-06-13 (user)**. User selected `WaterRippleField` and an emitter child in the ripple review scene, exercised the inspector preset/apply/capture UI, changed selection/visibility lifecycle enough to test transient state, and reported pass. Expected and observed: transient inspector state did not vanish merely from selection/visibility changes, no stale duplicated UI reported, no Output errors reported, and no unwanted dirty-state behavior reported.
+- Check 6, two-WaterSystem buoyancy coverage: **Pass on 2026-06-13 (user)**. User ran `res://addons/waterways/probes/r4_buoyancy_visible_review.tscn` and reported all tests passed. Expected and observed: overlay showed `Coverage binding: PASS`; the test body is visibly closer to the red WaterSystem origin, but binds to the farther green WaterSystem whose coverage contains it.
+- Check 7, settled body sleep: **Pass on 2026-06-13 (user)**. Same scene and run as Check 6. Expected and observed: overlay showed `Settled sleep: PASS` after the observation window; no visible forever-twitch or repeated wake behavior was reported.
+- R4 closure: all human-visible Checks 1-7 have now passed after the impulse scheduling fix.
 - Result recording format:
   - Date:
   - Ran by:
@@ -125,6 +130,102 @@ When requesting this validation, the agent must put the exact request in the cha
 ## Recorded Results
 
 Record new runs here. Put the newest and most relevant result first, then move older detail under an archive marker when the section gets long.
+
+Recorded result:
+
+- Date: 2026-06-13
+- Ran by: User (R4 Checks 6-7 buoyancy coverage and settled sleep)
+- Godot version/renderer/device: Godot 4.6.3 editor/runtime assumed from this validation session; renderer/device not reported in chat
+- Command, scene, or workflow: Ran `res://addons/waterways/probes/r4_buoyancy_visible_review.tscn`, the self-contained visible scene with red near-origin/outside-coverage WaterSystem, green farther covering WaterSystem, coverage-binding body, live settling body, and sleep-watch body.
+- Output or parser errors: none reported in chat.
+- Visible result, if applicable: Pass — user reported all tests passed. Expected overlay results: `Coverage binding: PASS` and `Settled sleep: PASS`; no forever-twitch or repeated wake behavior was reported.
+- Stable result marker: user-visible pass; prior agent verifier marker for this scene was `R4_BUOYANCY_VISIBLE_REVIEW_PROBE_OK`.
+- Pass/partial/fail: Pass for R4 Checks 6-7. With Checks 1-5 already passed earlier on 2026-06-13, the R4 human-visible suite is closed.
+- Notes or follow-up: Do not rerun unless later code changes touch ripple timing/material binding, buoyancy coverage binding, WaterSystem sampling, or settled-body sleep behavior.
+
+Recorded result:
+
+- Date: 2026-06-13
+- Ran by: User (R4 Check 5 ripple inspector state)
+- Godot version/renderer/device: Godot 4.6.3 editor/runtime; renderer/device not reported in chat
+- Command, scene, or workflow: In `res://addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_demo_review.tscn`, selected `WaterRippleField`, used the ripple inspector preset/apply/capture UI enough to show transient state, clicked away/back and repeated with an emitter child.
+- Output or parser errors: none reported in chat.
+- Visible result, if applicable: Pass — user reported the inspector lifecycle/state test passed; no stale duplicated UI or transient-state loss was reported.
+- Stable result marker: user-visible pass.
+- Pass/partial/fail: Pass for R4 Check 5 ripple inspector state. At this point R4 was still open for Checks 6-7; those later passed on 2026-06-13.
+- Notes or follow-up: Do not save accidental scene edits from inspection unless deliberate.
+
+Recorded result:
+
+- Date: 2026-06-13
+- Ran by: User (R4 Check 4 curve editing responsiveness)
+- Godot version/renderer/device: Godot 4.6.3 editor/runtime; renderer/device not reported in chat
+- Command, scene, or workflow: Opened `res://Demo.tscn`, selected `WaterSystem/Water River`, and exercised curve point/handle editing responsiveness.
+- Output or parser errors: none reported in chat.
+- Visible result, if applicable: Pass — user reported the test passed; no long stalls or responsiveness issues were reported.
+- Stable result marker: user-visible pass.
+- Pass/partial/fail: Pass for R4 Check 4 curve editing responsiveness. At this point R4 was still open for Checks 5-7; those later passed on 2026-06-13.
+- Notes or follow-up: Do not save temporary curve edits.
+
+Recorded result:
+
+- Date: 2026-06-13
+- Ran by: User (R4 Check 3 60 Hz emitter stress)
+- Godot version/renderer/device: Godot 4.6.3 editor/runtime; renderer/device not reported in chat
+- Command, scene, or workflow: In `res://addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_demo_review.tscn`, user temporarily set `WaterRippleField/PulseEmitter_UpperWater.pulse_rate` to `60.0` without saving, ran the scene, then repeated the 60 Hz stress on `MovingEmitter_TestTrail` as a comparison.
+- Output or parser errors: none reported in chat. Known `Demo.tscn` invalid-UID fallback warning is acceptable if present.
+- Visible result, if applicable: Pass — `PulseEmitter_UpperWater` fired consistently. Its ripple field stayed relatively close to the stationary emitter, which is acceptable fixed-source overlap behavior. `MovingEmitter_TestTrail` at 60 Hz extended outward/traced normally, confirming wave propagation continues under heavy emission.
+- Stable result marker: user-visible pass.
+- Pass/partial/fail: Pass for R4 Check 3 60 Hz emitter stress. At this point R4 was still open for Checks 4-7; those later passed on 2026-06-13.
+- Notes or follow-up: Do not save the temporary `pulse_rate = 60.0` scene edits; reload/close without saving or restore `PulseEmitter_UpperWater.pulse_rate = 0.85` and `MovingEmitter_TestTrail.pulse_rate = 12.0`.
+
+Recorded result:
+
+- Date: 2026-06-13
+- Ran by: User + Agent (R4 Check 2 hitch recovery, branch `river-refactor`)
+- Godot version/renderer/device: User visible editor/runtime, Godot 4.6.3; agent verification with Godot 4.6.3 console windowed, Vulkan Forward+, AMD Radeon RX 6800 XT
+- Command, scene, or workflow: User ran `res://addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_field_emitter_demo_review.tscn` and passed the soft-hitch review using the in-scene `Run soft hitch test`/`H` path. Earlier attempts to use a real OS/thread freeze or the `8` key caused editor/game pause behavior, so the review scene now soft-freezes only `WaterRippleField` processing for 2 seconds per view and queues backlog before resuming normal frames.
+- Output or parser errors: User reported pass; no Output errors were reported. Known `Demo.tscn` invalid-UID fallback warning is acceptable if present. Agent verification produced only that known UID warning.
+- Visible result, if applicable: Pass — normal, visible influence, impulse/contact, raw height, and boundary mask views recover after the soft hitch without rapid catch-up burst, full-field flashing, texture corruption, or static impulse stamps.
+- Stable result marker: user-visible pass; agent verification markers `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_PROBE_OK` and `R4_SOFT_HITCH_PROBE_OK`.
+- Pass/partial/fail: Pass for R4 Check 2 hitch recovery. At this point R4 was still open for Checks 3-7; those later passed on 2026-06-13.
+- Notes or follow-up: Use `H` or the button for this harness. `8` is explicitly disabled in the scene because it triggered editor/debugger pause behavior on the user's machine.
+
+Recorded result:
+
+- Date: 2026-06-13
+- Ran by: User (R4 ripple visible auto-review rerun after impulse scheduling fix)
+- Godot version/renderer/device: Godot 4.6.3, renderer/device not recorded in the chat reply
+- Command, scene, or workflow: Ran `res://addons/waterways/probes/r4_ripple_visible_auto_review.gd` at forced 20 FPS after the impulse render/step/clear scheduling fix.
+- Output or parser errors: not reported in the chat reply. Known `Demo.tscn` invalid-UID fallback warning is acceptable if present.
+- Visible result, if applicable: Pass — user confirmed visible ripples and ripple influence in the normal/debug views.
+- Stable result marker: user-visible confirmation of `R4_VISIBLE_AUTO_REVIEW_DONE` workflow; prior agent run printed `R4_VISIBLE_AUTO_REVIEW_DONE`.
+- Pass/partial/fail: Pass for the immediate R4 visible ripple rerun. At this point R4 was still open for the more involved human-visible suite; that suite later passed on 2026-06-13.
+- Notes or follow-up: The old manual keypress-heavy low-FPS checklist is superseded by the scripted auto-review because the captured mouse/window path was unreliable on the user's machine.
+
+Recorded result:
+
+- Date: 2026-06-13
+- Ran by: User + Agent (R4 visible ripple failure follow-up, branch `river-refactor`)
+- Godot version/renderer/device: User-visible Godot 4.6.3 windowed run; agent follow-up with Godot 4.6.3 console windowed captures, Windows 11
+- Command, scene, or workflow: User ran the ripple visible review path and reported no visible ripple or ripple influence in normal/debug views; the window captured the mouse and the overlay stayed at `Queued 3 emitter impulses`. Agent reproduced with a capture script against `ripple_field_emitter_demo_review.tscn`, fixed the impulse scheduling in `water_ripple_field.gd` by separating impulse render, simulation step, and impulse clear across frames, then promoted `r4_ripple_visible_auto_review.gd` as the stable rerun command.
+- Output or parser errors: Known `Demo.tscn` invalid-UID fallback warning appeared in related runs; it was reproduced separately and is not the ripple blocker.
+- Visible result, if applicable: Pre-fix captures showed no localized impulse/contact or influence rings. Post-fix captures show localized impulse/contact and visible-influence rings around the emitters; the exact visible auto-review command completed locally at forced 20 FPS and the user rerun later confirmed the visible ripples/ripple influence.
+- Stable result marker: `R4_RUNTIME_ROBUSTNESS_PROBE_OK`; `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_PROBE_OK`; `RIPPLE_FIELD_EMITTER_DEMO_REVIEW_DIAGNOSTIC_OK`; `R4_VISIBLE_AUTO_REVIEW_DONE`; `git diff --check` clean after the fix.
+- Pass/partial/fail: Partial at the time — the initial visible check failed as reported by the user; the code fix, agent visual captures, agent-run visible auto-review, and user rerun pass. The remaining live-editor R4 checks later passed on 2026-06-13.
+- Notes or follow-up: The immediate visible-ripple rerun is closed, and the later involved human-visible R4 suite is now closed too.
+
+Recorded result:
+
+- Date: 2026-06-13
+- Ran by: Agent (Phase R4 implementation, branch `river-refactor`)
+- Godot version/renderer/device: Godot 4.6.3 console headless, Windows 11
+- Command, scene, or workflow: Implemented R4.1-R4.6: one ripple simulation step per `_process` with impulse frames still accumulating time; `Curve3D.get_closest_offset`-based width sampling with a legacy-tolerance lookup table; coverage-bound buoyancy system selection plus explicit outside-coverage fallback warning and no forced body wake; ripple target lifecycle refresh and one-shot emitter retry cap; small guard fixes; per-step ripple uniform update reduced to the swapped texture. Added `probes/r4_runtime_robustness_probe.gd`, then ran parser/check-only on changed scripts, the new R4 probe, existing ripple probes, and the core system/flow/bake probes.
+- Output or parser errors: none in final runs. `system_flow_compare_probe.gd` printed known UID fallback warnings for existing demo bake resources, then passed; those warnings are not R4 failures.
+- Visible result, if applicable: n/a for this entry. The human-visible low-FPS/runtime/editor stress pass remains pending.
+- Stable result marker: `R4_CHECK_ONLY_OK`; `R4_RUNTIME_ROBUSTNESS_PROBE_OK`; `R4_EXISTING_RIPPLE_PROBES_OK`; `R4_CORE_PROBES_OK`; underlying markers included `RIPPLE_FIELD_EMITTER_PROBE_OK`, `RIPPLE_FIELD_EMITTER_PERFORMANCE_PROBE_OK`, `RIPPLE_PHASE9_PRESET_API_PROBE_OK`, `RIPPLE_PHASE10_INSPECTOR_PROBE_OK`, `RIPPLE_MATERIAL_OWNERSHIP_PROBE_OK`, `SYSTEM_FLOW_COMPARE_OK` (default and `enforce=all`), `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`, and `BAKE_HASH_PROBE_OK`.
+- Pass/partial/fail: Partial — R4 implementation and automated/headless guard coverage pass; the phase gate is still open for visible runtime/editor stress validation.
+- Notes or follow-up: The R4.1 slowdown below `simulation_update_rate` is still the accepted design trade and must not be treated as a failure. The R4.2 width probe asserts parity against the legacy 1/100-segment search tolerance used by the old brute-force path; the user later confirmed curve editing responsiveness on 2026-06-13.
 
 Recorded result:
 

@@ -2,7 +2,7 @@
 
 ## Review Date
 
-Not yet held — no implementation to review. The pre-implementation review that *has* happened is the adversarial review of the audit/roadmap (2026-06-12); its outcomes are recorded under Premise Review and in `spec.md` Resolved Questions.
+No formal full-track review held yet. The pre-implementation adversarial review happened 2026-06-12; R4 implementation review closed as Pass on 2026-06-13. The first human-visible ripple check failed and exposed an impulse scheduling bug; the fix landed, automated/windowed agent checks pass, the user rerun confirmed visible ripples/ripple influence, and the broader live-editor R4 stress suite later passed.
 
 ## Scope Reviewed
 
@@ -11,11 +11,11 @@ Not yet held — no implementation to review. The pre-implementation review that
 
 ## Current Truth
 
-- Overall review status: In progress — Phases R0, RT, R1, R2, R3, R8 implemented, validated, and closed against their gates (2026-06-12); no formal full-track phase-review session held yet (per-item validation + user confirmations stood in, recorded in `validation.md`). The `river-obstacle-flow-constraints` folder got its own `review.md` in R8.3
-- Blocking issues remaining: none in landed code; process gates open: R6/R7 spec-plan-validation files not yet written; R7 compute decision not recorded; the formal Adversarial Plan Review in `plan.md` was never held (work proceeded with per-item user validation by accepted practice)
+- Overall review status: In progress — Phases R0, RT, R1, R2, R3, R4, and R8 implemented, validated, and closed against their gates. R4 implementation landed 2026-06-13 and passed automated/headless guards. The first visible ripple review then failed, was reproduced by agent captures, and was fixed by separating impulse render/step/clear frames in `water_ripple_field.gd`; the user rerun passed, and the later Checks 2-7 completed the suite. No formal full-track phase-review session held yet (per-item validation + user confirmations stood in, recorded in `validation.md`). The `river-obstacle-flow-constraints` folder got its own `review.md` in R8.3
+- Blocking issues remaining: none known in landed code after R4 closure; process gates open: R6/R7 spec-plan-validation files not yet written; R7 compute decision not recorded; the formal Adversarial Plan Review in `plan.md` was never held (work proceeded with per-item user validation by accepted practice)
 - Important issues remaining: two execution findings recorded in `spec.md` Resolved Questions (Defect-1 signature misattribution; dead ShaderMaterial revert fallback) — both resolved in code, and both now folded into the architecture docs by R8 (the obstacle mechanism rewrite + the revert behavior)
-- Last validation relied on: 2026-06-12 R8 docs-coherence pass (code grep gates clean, docs spot-checked against source) on top of the post-R2+R3 full suite (see `validation.md` matrix and recorded results)
-- Next action: R4 (runtime/editor robustness) or the GDScript halves of R5; R6/R7 need their own spec/plan/validation files first
+- Last validation relied on: 2026-06-13 R4 full suite — automated/headless markers (`R4_RUNTIME_ROBUSTNESS_PROBE_OK`, existing ripple review/diagnostic probes, `R4_VISIBLE_AUTO_REVIEW_DONE`) plus user-visible passes for hitch recovery, 60 Hz emitter stress, curve editing, ripple inspector state, two-WaterSystem buoyancy coverage, and settled-body sleep.
+- Next action: continue into the GDScript halves of R5, or write the required R6/R7 spec/plan/validation files before those phases start. R7 also needs the compute decision recorded.
 - Historical detail starts at: nothing archived yet
 
 ## Findings
@@ -26,7 +26,7 @@ Not yet held — no implementation to review. The pre-implementation review that
 
 ### Important
 
-- None yet.
+- The first R4 visible ripple review failed: the overlay stayed at `Queued 3 emitter impulses` and no localized ripple/influence appeared. Root cause was unsafe same-frame impulse render, simulation step, and impulse clear ordering; fix landed in `water_ripple_field.gd` and the user-visible rerun passed.
 
 ### Minor
 
@@ -49,12 +49,13 @@ Fill per phase as work lands; criteria come from `spec.md` Acceptance Tests.
 
 | Acceptance Criterion | Status | Notes |
 | --- | --- | --- |
-| R0 gate (debug parity, neutral distmap, mid-bake close, no-op click, probe markers) | Not run | |
-| RT gate (known-good/known-bad demonstrations) | Not run | |
-| R1 gate (stale detection, scoped diffs, zero code refs) | Not run | |
-| R2 gate (RT.3 thresholds, duck behavior) | Not run | |
-| R3 gate (3-renderer compile, RT.2 parity, revert checks) | Not run | |
-| R4 gate (low-FPS ripple, hitch recovery, width parity, buoyancy binding, sleep) | Not run | |
+| R0 gate (debug parity, neutral distmap, mid-bake close, no-op click, probe markers) | Pass | Closed 2026-06-12; see `validation.md` recorded results |
+| RT gate (known-good/known-bad demonstrations) | Pass | RT.1-RT.4 demonstrated 2026-06-12; see `validation.md` |
+| R1 gate (stale detection, scoped diffs, zero code refs) | Pass | Closed 2026-06-12 after user rebake + RT.1 diff |
+| R2 gate (RT.3 thresholds, duck behavior) | Pass | Closed 2026-06-12 with mechanism gate, regenerated v1 maps, and user editor round |
+| R3 gate (3-renderer compile, RT.2 parity, revert checks) | Pass | Closed 2026-06-12 with RT.2 byte-identity and windowed checks |
+| R8 gate (docs coherence) | Pass | Closed 2026-06-12; docs spot-checked against source and grep gates clean |
+| R4 gate (low-FPS ripple, hitch recovery, width parity, buoyancy binding, sleep) | Pass | Implementation and headless guard pass 2026-06-13 (`R4_RUNTIME_ROBUSTNESS_PROBE_OK`); first visible ripple review failed, fix landed, post-fix agent captures and user rerun show rings; Checks 2-7 later passed by user in the editor/runtime suite |
 | R5/R6 gate (byte-identical bakes, property-list diff, undo, abort matrix) | Not run | |
 | R7 gate (f16 epsilon, ordering test, wall-clock budget) | Not run | |
 
@@ -75,16 +76,18 @@ To be answered per reviewed phase:
 ## Validation Results
 
 - Automated:
-  - None run. Note for future entries: state whether the signal was only a parser/static/headless editor-load check.
+  - 2026-06-13 R4 implementation sweep: changed-script parser/check-only, `r4_runtime_robustness_probe.gd`, existing ripple probes, and core flow/bake probes passed. Signal is headless/non-visual only for R4.
+  - 2026-06-13 post-visible-failure checks: parser/check-only, `r4_runtime_robustness_probe.gd`, existing ripple review/diagnostic probes, `r4_ripple_visible_auto_review.gd`, and `git diff --check` passed after the impulse scheduling fix.
   - Do not present headless/editor-load checks as proof of visible editor, shader, bake, or runtime behavior.
 - Human-assisted:
-  - None run. Record the exact request sent to the user, who ran it, date, Godot version/renderer/device, Output/console errors, and visible result.
+  - Initial R4 ripple visible review run by user failed: no visible ripple/influence, overlay stayed at `Queued 3 emitter impulses`. Agent fixed the reproduced issue; user rerun passed.
+  - R4 involved live-editor suite passed after the fix: hitch recovery, 60 Hz emitter stress, curve editing, ripple inspector state, two-WaterSystem buoyancy coverage, and settled-body sleep.
 - Shader: none
 - Editor: none
-- Visual: none
+- Visual: initial R4 ripple visible review failed; post-fix agent captures show localized impulse/contact and visible-influence rings; user rerun passed
 - Bake output: none
-- Runtime: none
-- Performance: none
+- Runtime: R4 non-visual invariants covered headless; visible runtime stress pass closed by user confirmation
+- Performance: R4 width-array parity covered headless; curve editing responsiveness passed by user confirmation
 - Manual: none
 
 ## Documentation Consistency Check

@@ -84,11 +84,11 @@ const WaterRippleFieldPresetResource := preload("res://addons/waterways/resource
 			return
 		var previous_group := field_group_name
 		field_group_name = next_group
+		if not previous_group.is_empty() and is_in_group(previous_group):
+			remove_from_group(previous_group)
+		if not field_group_name.is_empty() and not is_in_group(field_group_name):
+			add_to_group(field_group_name)
 		if is_inside_tree():
-			if not previous_group.is_empty() and is_in_group(previous_group):
-				remove_from_group(previous_group)
-			if not field_group_name.is_empty():
-				add_to_group(field_group_name)
 			update_configuration_warnings()
 
 @export_group("Boundary Mask")
@@ -194,11 +194,14 @@ var _last_capped_impulse_count := 0
 var _last_rejected_impulse_count := 0
 var _steps_completed := 0
 var _is_applying_preset := false
+var _target_signature := PackedInt64Array()
+var _impulse_texture_ready_for_step := false
+var _impulse_clear_pending := false
 
 
 func _enter_tree() -> void:
 	_world_to_ripple_uv = build_world_to_ripple_uv(world_bounds)
-	if not field_group_name.is_empty():
+	if not field_group_name.is_empty() and not is_in_group(field_group_name):
 		add_to_group(field_group_name)
 	if _should_run_runtime() and enabled:
 		initialize_runtime()
@@ -206,23 +209,42 @@ func _enter_tree() -> void:
 
 
 func _exit_tree() -> void:
-	cleanup_runtime()
+	cleanup_runtime(false)
 
 
 func _process(delta: float) -> void:
 	if not _runtime_initialized or not enabled:
 		return
 
-	if not _queued_impulses.is_empty():
-		render_queued_impulses_once()
-		return
+	_sync_dynamic_group_targets()
 
 	var step_interval: float = 1.0 / max(simulation_update_rate, 1.0)
 	_step_accumulator += delta
-	while _step_accumulator >= step_interval:
-		_step_accumulator -= step_interval
-		step_once()
-		clear_impulse_once()
+	if _step_accumulator >= step_interval:
+		_step_accumulator = fmod(_step_accumulator, step_interval)
+		if _impulse_texture_ready_for_step:
+			if step_once():
+				_impulse_texture_ready_for_step = false
+				_impulse_clear_pending = true
+			return
+		if not _queued_impulses.is_empty():
+			render_queued_impulses_once()
+			_impulse_texture_ready_for_step = true
+			_impulse_clear_pending = false
+			return
+		if _impulse_clear_pending:
+			clear_impulse_once()
+			_impulse_clear_pending = false
+			return
+		if step_once():
+			# One fixed simulation step per frame is intentional. At low FPS the
+			# ripple sim slows down instead of issuing stale ping-pong reads.
+			return
+
+	if not _queued_impulses.is_empty() and not _impulse_texture_ready_for_step:
+		render_queued_impulses_once()
+		_impulse_texture_ready_for_step = true
+		_impulse_clear_pending = false
 
 
 func _get_configuration_warnings() -> PackedStringArray:
@@ -409,7 +431,7 @@ func rebuild_runtime() -> void:
 		initialize_runtime()
 
 
-func cleanup_runtime() -> void:
+func cleanup_runtime(preserve_registered_targets: bool = true) -> void:
 	_clear_target_material_state()
 	set_process(false)
 	_runtime_initialized = false
@@ -421,9 +443,13 @@ func cleanup_runtime() -> void:
 	_impulse_materials.clear()
 	_impulse_rects.clear()
 	_simulation_viewports.clear()
-	_registered_targets.clear()
+	if not preserve_registered_targets:
+		_registered_targets.clear()
 	_target_rivers.clear()
 	_applied_targets.clear()
+	_target_signature.clear()
+	_impulse_texture_ready_for_step = false
+	_impulse_clear_pending = false
 	_last_read_texture = null
 	_last_write_viewport = null
 	_last_rendered_impulse_count = 0
@@ -590,6 +616,8 @@ func render_queued_impulses_once() -> int:
 
 	_queued_impulses.clear()
 	_request_viewport_update_once(_impulse_viewport)
+	_impulse_texture_ready_for_step = render_count > 0
+	_impulse_clear_pending = false
 	return render_count
 
 
@@ -600,6 +628,8 @@ func clear_impulse_once() -> void:
 		if rect != null:
 			rect.visible = false
 	_request_viewport_update_once(_impulse_viewport)
+	_impulse_texture_ready_for_step = false
+	_impulse_clear_pending = false
 
 
 func step_once() -> bool:
@@ -635,7 +665,7 @@ func step_once() -> bool:
 	_read_index = _write_index
 	_write_index = old_read
 	_steps_completed += 1
-	_apply_material_state_to_targets()
+	_apply_current_ripple_texture_to_targets()
 	return true
 
 
@@ -658,6 +688,8 @@ func reset_feedback() -> void:
 	_read_index = 0
 	_write_index = 1
 	_steps_completed = 0
+	_impulse_texture_ready_for_step = false
+	_impulse_clear_pending = false
 	_apply_material_state_to_targets()
 
 
@@ -735,6 +767,9 @@ func get_field_snapshot() -> Dictionary:
 		"normal_runtime_readback": false,
 		"target_count": _target_rivers.size(),
 		"applied_target_count": _applied_targets.size(),
+		"target_signature": _target_signature,
+		"impulse_texture_ready_for_step": _impulse_texture_ready_for_step,
+		"impulse_clear_pending": _impulse_clear_pending,
 		"queued_impulse_count": _queued_impulses.size(),
 		"last_rendered_impulse_count": _last_rendered_impulse_count,
 		"last_capped_impulse_count": _last_capped_impulse_count,
@@ -829,27 +864,12 @@ func _create_solid_texture(color: Color) -> ImageTexture:
 
 
 func _refresh_target_rivers() -> void:
-	var next_targets := []
-	for path in target_river_paths:
-		if path == NodePath(""):
-			continue
-		var target := get_node_or_null(path)
-		if _is_valid_ripple_target(target) and not next_targets.has(target):
-			next_targets.append(target)
-
-	if not target_group_name.is_empty() and is_inside_tree():
-		for target in get_tree().get_nodes_in_group(target_group_name):
-			if _is_valid_ripple_target(target) and not next_targets.has(target):
-				next_targets.append(target)
-
-	for target in _registered_targets:
-		if _is_valid_ripple_target(target) and not next_targets.has(target):
-			next_targets.append(target)
-
+	var next_targets := _collect_configured_targets(true)
 	for applied in _applied_targets.duplicate():
 		if not next_targets.has(applied):
 			_clear_material_state_for_target(applied)
 	_target_rivers = next_targets
+	_target_signature = _build_target_signature(next_targets)
 
 
 func _is_valid_ripple_target(target: Variant) -> bool:
@@ -865,6 +885,22 @@ func _apply_material_state_to_targets() -> void:
 	_refresh_target_rivers()
 	var parameters := _make_material_state()
 	for target in _target_rivers:
+		_apply_material_state_to_target(target, parameters)
+
+
+func _apply_current_ripple_texture_to_targets() -> void:
+	if not _runtime_initialized or not enabled:
+		return
+	var current_texture := get_current_ripple_texture()
+	if current_texture == null:
+		current_texture = _neutral_texture
+	var parameters := {
+		"i_ripple_simulation_texture": current_texture,
+	}
+	for target in _applied_targets.duplicate():
+		if target == null or not is_instance_valid(target):
+			_applied_targets.erase(target)
+			continue
 		_apply_material_state_to_target(target, parameters)
 
 
@@ -971,3 +1007,47 @@ func _sort_impulses_by_priority(a: Dictionary, b: Dictionary) -> bool:
 
 func _uv_is_in_bounds(uv: Vector2) -> bool:
 	return uv.x >= 0.0 and uv.y >= 0.0 and uv.x <= 1.0 and uv.y <= 1.0
+
+
+func _sync_dynamic_group_targets() -> void:
+	if not _runtime_initialized or not is_inside_tree():
+		return
+	if target_group_name.is_empty() and target_river_paths.is_empty() and _registered_targets.is_empty():
+		return
+	var next_signature := _build_target_signature(_collect_configured_targets(true))
+	if next_signature == _target_signature:
+		return
+	_refresh_target_rivers()
+	rebuild_boundary_mask()
+	reset_feedback()
+	_apply_material_state_to_targets()
+
+
+func _collect_configured_targets(include_registered_targets: bool) -> Array:
+	var next_targets := []
+	for path in target_river_paths:
+		if path == NodePath(""):
+			continue
+		var target := get_node_or_null(path)
+		if _is_valid_ripple_target(target) and not next_targets.has(target):
+			next_targets.append(target)
+
+	if not target_group_name.is_empty() and is_inside_tree():
+		for target in get_tree().get_nodes_in_group(target_group_name):
+			if _is_valid_ripple_target(target) and not next_targets.has(target):
+				next_targets.append(target)
+
+	if include_registered_targets:
+		for target in _registered_targets:
+			if _is_valid_ripple_target(target) and not next_targets.has(target):
+				next_targets.append(target)
+	return next_targets
+
+
+func _build_target_signature(targets: Array) -> PackedInt64Array:
+	var ids := PackedInt64Array()
+	for target in targets:
+		if target != null and is_instance_valid(target):
+			ids.append(target.get_instance_id())
+	ids.sort()
+	return ids

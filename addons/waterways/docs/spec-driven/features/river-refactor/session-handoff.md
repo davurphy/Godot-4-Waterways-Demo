@@ -1,12 +1,14 @@
 # Session Handoff: River Refactor (Hardening + Refactor Track)
 
+Latest update, 2026-06-13: User passed R4 Checks 6-7 in `res://addons/waterways/probes/r4_buoyancy_visible_review.tscn`; Checks 1-5 had already passed earlier the same session. R4 is now closed. Next: move to R5's GDScript work or write the required R6/R7 phase docs before those phases start.
+
 ## Date
 
-2026-06-12
+2026-06-13
 
 ## Current Focus
 
-Execute the hardening/refactor track derived from the 2026-06-12 full-addon code audit. Phases R0, RT, R1, **R2, R3, and R8** are complete and **fully closed** (R2+R3 landed merged 2026-06-12 on `river-refactor`: three shared shader includes, the system_flow Defect-1 fix, the system-map version int, regenerated v1 system maps; all automated gates green; user editor round confirmed scenes/debug views/duck behavior same day. R8 docs coherence landed the same day: `architecture-and-features.md` rewritten, Data Contract neutrals + `system_flow_map_version`, obstacle-constraints spec/validation/review backfilled, probe folders consolidated, vertex-cost figure corrected; code grep gates clean). Next: **R4/R5 absorb idle time**. R6/R7 stay blocked on their own spec/plan/validation files.
+Execute the hardening/refactor track derived from the 2026-06-12 full-addon code audit. Phases R0, RT, R1, **R2, R3, R4, and R8** are complete and **fully closed**. R4 implementation landed 2026-06-13 on `river-refactor` with automated/headless guard coverage passing; the first user-visible ripple check then failed and exposed an impulse scheduling bug. A local fix now separates impulse render, sim step, and impulse clear across frames, agent captures show localized rings, and the full user-visible R4 suite later passed. Next: **R5 GDScript work** or the required R6/R7 phase docs. R6/R7 stay blocked on their own spec/plan/validation files.
 
 - Feature folder:
   - `addons\waterways\docs\spec-driven\features\river-refactor\`
@@ -15,12 +17,12 @@ Execute the hardening/refactor track derived from the 2026-06-12 full-addon code
 
 ## Current Truth
 
-- Overall status: In progress — **Phases R0, RT, R1, R2, R3, and R8 complete and validated**. R2+R3 (commits `c34b136`..`a2ec75c` + docs, 2026-06-12, all agent-run including the windowed rounds) landed: `river_flow_common.gdshaderinc` (flow family, consumed by river/debug/system_flow), `river_surface_common.gdshaderinc` (~620 shared surface lines, river/debug only), `flow_pack.gdshaderinc` (canonical flow codec, ten clones converted), the Defect-1 fix (system_flow gates the slide on `i_flow_projected` + stagnation fade + shared force), R2.4's `SYSTEM_FLOW_MAP_VERSION` staleness int, R3.3 revert-table deletion (reverts now read live shader defaults), R3.4 filter-default alignment, R3.5 occupancy-const centralization, regenerated v1 system maps. R8 (docs) landed same day: `architecture-and-features.md` rewritten from current code, Data Contract neutrals + `system_flow_map_version`, obstacle-constraints spec/validation/review backfilled, two superseded flow-arrow probe copies deleted + RT tools indexed, vertex-cost figure corrected; code grep gates clean
-- Highest-priority open task: R4 / R5 (independent items, absorb idle time; R5.3 pairs with the done R3.5). R6/R7 stay blocked on their own spec/plan/validation files. The post-R2+R3 user editor round is done (2026-06-12: scenes/debug views/ducks all passed; `.uid` sidecars committed `1d9c91a`)
-- Last passing validation: 2026-06-12 post-R2+R3 — full suite green **including** RT.3 `enforce=all` (23.3°/26.9° < recalibrated 35°), `SYSTEM_FLOW_PROJECTED_GATE_OK` (the new R2 mechanism gate), `CAPTURE_DIFF_OK files=26` (whole-phase byte-identity), 3-renderer smoke, `REVERT_DEFAULT_CHECK_OK`, `PILLOW_INSPECTOR_WIRING_PROBE_OK` (era pin 20→28, first full green)
+- Overall status: In progress — **Phases R0, RT, R1, R2, R3, R4, and R8 complete and validated**. R4 implemented ripple stepping/lifecycle fixes, width generation performance path, buoyancy coverage binding and sleep preservation, small editor/runtime guards, reduced ripple uniform churn, and `r4_runtime_robustness_probe.gd`; automated/headless plus user-visible validation now pass.
+- Highest-priority open task: continue into R5's GDScript halves, or write R6/R7's required spec/plan/validation files before those phases start. R6/R7 stay blocked on their own docs and R7 also on the compute decision.
+- Last passing validation: 2026-06-13 R4 full suite — `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, existing ripple review/diagnostic probe markers, `R4_VISIBLE_AUTO_REVIEW_DONE`, post-fix windowed captures showing localized impulse/contact plus visible-influence rings, and user-visible Checks 2-7 passed.
 - **Major execution finding (attribution correction):** the "Defect-1 signature" (pre-R2 influence p90 25.5°/28.9°) was NOT the slide — A/B rendering (slide gated vs forced) measures the slide at 0 differing texels on Demo and 4.6k texels at mean 3.3° on the obstacle scene; the 23–27° floor is sampling/quantization noise of the stilled low-magnitude ring and survives the (correct, landed) fix. RT.3's influence gate is now a 35° gross-divergence guard; the mechanism is gated by `probes/system_flow_projected_gate_probe.gd` (windowed A/B). Full detail in validation.md's 2026-06-12 R2+R3 entry
 - Second execution finding: `ShaderMaterial.property_can_revert/get_revert` never worked for the internal river material (remap cache only fills when the material itself is inspected) — the deleted revert table was the only working source; replacement calls `RenderingServer.shader_get_parameter_default` directly. That API returns null under the headless dummy renderer, so revert checks are windowed
-- Known failing or unproven check: none — R0–R3 fully closed including the human-assisted checks (user round 2026-06-12). Pre-existing quirk remaining: ripple_debug_parity_probe is windowed-only (dummy renderer headless)
+- Known failing or unproven check: none in R4 after the impulse scheduling fix and full user-visible suite pass. Pre-existing quirk remaining: ripple_debug_parity_probe is windowed-only (dummy renderer headless)
 - Packaging/artifact hygiene status: probe overlays + RT.2 capture sets under `.codex-research/probe-out/` (excluded from packaging; the `rt2-r3` parity captures are now safe to delete — both gates closed and recorded). `.codex-research/r1-baseline/` deleted (R1 evidence recorded). **Hazard noted in validation.md:** `river_obstacle_projection_rebake_probe.gd` saves river bakes in place — never run casually
 - Historical detail starts at: nothing archived yet
 
@@ -50,12 +52,21 @@ Read these first:
 
 Then do this next:
 
-- R8 (docs coherence) is **done** (2026-06-12). Pick up R4 (runtime/editor robustness) or the GDScript halves of R5 per the roadmap — both independent of the shader work and able to absorb idle time (R5.3 pairs with the done R3.5). R6/R7 stay blocked on their own spec/plan/validation files (R7 also on the recorded compute decision).
+- R4 is closed: the initial visible ripple failure is fixed locally, the user-visible auto-review rerun passed, automated/windowed agent checks pass, and Checks 2-7 passed by user confirmation (2026-06-13). Next session, pick up the GDScript halves of R5 or write the required R6/R7 phase docs. R6/R7 stay blocked on their own spec/plan/validation files (R7 also on the recorded compute decision).
 - For Godot-specific implementation work, search current official Godot documentation and API references online before patching. Prefer official docs first, and record any source that affects implementation in `research.md` or `addons\waterways\docs\research\river-research-citations.md`.
 - If this requires human-assisted Godot validation, include the exact scene path, plugin state, steps, expected visible result, and Output/console text to relay. The next agent should paste those steps into its user-facing message instead of telling the user to read `validation.md`. The per-phase steps live in each roadmap phase's **Validation** block.
 - If the next action might be based on a false premise or overlooked context, tell the user before patching. The adversarial review already overturned several audit claims (see `spec.md` Resolved Questions); the standing rule from that miss: before deleting any shader uniform or function, grep shaders *and* probes *and* feature specs.
 
 ## What Changed This Session
+
+Phase R4 implementation session (2026-06-13, branch `river-refactor`):
+
+- R4.1: `water_ripple_field.gd` now renders queued impulses without starving simulation time, clamps to one fixed ripple sim step per `_process`, separates impulse render/step/clear across frames so visible impulses survive sampling, and drops post-hitch backlog with the documented slower-at-low-FPS trade.
+- R4.2: `WaterHelperMethods.generate_river_width_values()` now uses `Curve3D.get_closest_offset` with an offset-to-segment lookup instead of the old O(samples × segments × 101) inner search; the new probe compares against the legacy 1/100-segment tolerance.
+- R4.3: `BuoyantManager` binds only to WaterSystems covering the body position; `WaterSystem` exposes `covers_world_position()`, avoids Dictionary allocation on altitude/flow samples, warns once for explicit outside-coverage fallback, and buoyancy no longer forces sleeping bodies awake.
+- R4.4: ripple fields refresh late group-routed targets, preserve API-registered targets across runtime cleanup, avoid stale off-tree field group membership, distinguish continuous emitters from pulse emitters, cap one-shot no-field retries, and keep ripple inspector transient state across ordinary visibility toggles while pruning stale captures.
+- R4.5/R4.6: small guards landed for width removal, filter-renderer instantiation, runtime data-only width/flow setters, runtime `generate_system_maps()` save warning, and per-step ripple texture uniform updates.
+- Validation added: `probes/r4_runtime_robustness_probe.gd`, `probes/r4_ripple_visible_auto_review.gd`, `probes/r4_buoyancy_visible_review.tscn`, plus README index entries. Final automated/headless markers include `R4_CHECK_ONLY_OK`, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, `R4_EXISTING_RIPPLE_PROBES_OK`, and `R4_CORE_PROBES_OK`; post-visible-failure checks re-ran the R4 probe, ripple review/diagnostic probes, and visible auto-review (`R4_VISIBLE_AUTO_REVIEW_DONE`) after the impulse scheduling fix. The user-visible auto-review rerun and the remaining involved live-editor checks passed.
 
 Phase R8 docs-coherence session (2026-06-12, branch `river-refactor`):
 
@@ -103,7 +114,7 @@ Previous implementation session (2026-06-12, branch `river-refactor`, all commit
 
 ## Current Changes Summary
 
-- Phases R0 + RT + R1 + R2 + R3 + R8 complete and fully closed (signature v28; system maps v1; three shared shader includes; docs coherent with code; all gates green incl. the 2026-06-12 user editor round). Next: R4/R5 absorb idle time.
+- Phases R0 + RT + R1 + R2 + R3 + R4 + R8 complete and fully closed (signature v28; system maps v1; three shared shader includes; docs coherent with code; all gates green incl. the 2026-06-12 user editor round). R4 implementation landed 2026-06-13 and automated/headless guards pass; the first visible ripple review failed, the impulse scheduling fix landed, and the full user-visible R4 suite later passed. Next: move to R5 or write the required R6/R7 phase docs.
 
 ## Historical Change Log
 
@@ -121,26 +132,26 @@ Previous implementation session (2026-06-12, branch `river-refactor`, all commit
 
 Implementation status:
 
-- In progress — Phases R0, RT, R1, R2, R3 complete and validated; R4/R5/R8 ready; R6/R7 blocked on their own docs
+- In progress — Phases R0, RT, R1, R2, R3, R4, and R8 complete and validated; R5 ready; R6/R7 blocked on their own docs
 
 Spec/plan status:
 
 - Research: Complete (audit + adversarial review; `research.md` records the outcome)
 - Spec: Accepted in practice (R0 executed against it); Resolved Questions table grew the R0.7 reachability finding
 - Plan: Current — Adversarial Plan Review section still not formally completed with the user (work proceeded with per-item user validation instead)
-- Tasks: R0, RT, R1, R2, R3, R8 closed; see `tasks.md` Current Truth
-- Validation: Matrix live — R0/RT/R1/R2/R3/R8 rows Pass; recorded results current
-- Review: No formal full-track phase review held yet; `review.md` still scaffold + premise review (the `river-obstacle-flow-constraints` folder got its own review.md in R8.3)
+- Tasks: R0, RT, R1, R2, R3, R4, and R8 closed; see `tasks.md` Current Truth
+- Validation: Matrix live — R0/RT/R1/R2/R3/R4/R8 rows Pass; R4 row records the initial visible failure, fix, and final user-visible suite pass
+- Review: No formal full-track phase review held yet; `review.md` records R4 as Pass and the `river-obstacle-flow-constraints` folder got its own `review.md` in R8.3
 
 Validation status:
 
-- Automated: all markers green, no intentional reds — `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`, `SYSTEM_FLOW_COMPARE_OK` (incl. `enforce=all` since R2), `SYSTEM_FLOW_PROJECTED_GATE_OK`, `CAPTURE_DIFF_OK`, `FILTER_RENDERER_LOAD_OK`, plus windowed `REVERT_DEFAULT_CHECK_OK`, `PILLOW_INSPECTOR_WIRING_PROBE_OK`, `SCENE_RENDER_SMOKE_OK` ×3 renderers
-- Human-assisted: R0.2/R0.3/R0.4 confirmed by user 2026-06-12; post-R2+R3 round confirmed scenes/debug views/duck behavior 2026-06-12 (Godot 4.6.3 windowed)
+- Automated/windowed: all current markers green, no intentional reds — R4 added `R4_CHECK_ONLY_OK`, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, `R4_EXISTING_RIPPLE_PROBES_OK`, `R4_CORE_PROBES_OK`; post-visible-failure checks re-ran the R4 probe, existing ripple review/diagnostic probes, and `R4_VISIBLE_AUTO_REVIEW_DONE`. Prior suite includes `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`, `SYSTEM_FLOW_COMPARE_OK` (incl. `enforce=all` since R2), `SYSTEM_FLOW_PROJECTED_GATE_OK`, `CAPTURE_DIFF_OK`, `FILTER_RENDERER_LOAD_OK`, plus windowed `REVERT_DEFAULT_CHECK_OK`, `PILLOW_INSPECTOR_WIRING_PROBE_OK`, `SCENE_RENDER_SMOKE_OK` ×3 renderers
+- Human-assisted: R0.2/R0.3/R0.4 confirmed by user 2026-06-12; post-R2+R3 round confirmed scenes/debug views/duck behavior 2026-06-12 (Godot 4.6.3 windowed); initial R4 visible ripple review failed 2026-06-13, then user rerun after the fix passed; R4 Checks 2-7 also passed by user confirmation
 - Shader: foam parity confirmed visually post-rebake; 3-renderer compile sweep deferred to R3's gate
 - Editor: mid-bake close + no-op click confirmed
 - Visual: Foam Mix vs surface confirmed; R0.7 visual route unreachable (probe instead)
-- Runtime: untouched (R4 territory)
-- Performance: untouched (R4/R7 territory)
+- Runtime: R4 non-visual invariants covered headless; initial visible ripple failure fixed locally; user rerun passed; involved hitch/60 Hz/two-system/sleep checks passed
+- Performance: R4 width parity covered headless; curve editing responsiveness passed by user confirmation
 - Manual: n/a
 
 ## Important Context
@@ -172,7 +183,7 @@ Relevant audit sections:
 
 ## Blockers
 
-- Adversarial Plan Review (`plan.md`) not yet completed with the user — required before code changes.
+- Adversarial Plan Review (`plan.md`) not yet completed with the user — process debt to close before future high-risk phases.
 - Local Godot editor/visual access is unreliable for the agent: pixel-parity and editor-interaction gates are human-assisted by design. Local parser/headless editor-load signal is not a substitute for visible editor/runtime validation.
 - R7 is blocked on the recorded compute decision; R6/R7 are blocked on their own spec/plan/validation files.
 
@@ -198,7 +209,8 @@ Result summary:
 - [x] (User, editor) Un-share the system bake. *Done 2026-06-12.*
 - [x] (User, editor) Post-R2+R3 round. *Done 2026-06-12: scenes and debug views passed inspection, ducks unremarkable near the rocks; only the two expected `.uid` sidecars generated (committed `1d9c91a`); scenes/bakes byte-unchanged.*
 - [x] R8 — docs coherence (architecture-and-features rewrite; Data Contract neutrals + `system_flow_map_version`; obstacle-constraints spec/validation/review backfill; probe consolidation + RT index; vertex-cost figure). *Done 2026-06-12; code grep gates clean, shared probe re-run green.*
-- [ ] R4 / R5 — independent items as time allows (R5.3 pairs with the now-done R3.5).
+- [x] R4 visible validation — implementation/headless guard and full user-visible stress suite closed 2026-06-13.
+- [ ] R5 — independent GDScript items as time allows (R5.3 pairs with the now-done R3.5).
 
 ## Do Not Do Yet
 
