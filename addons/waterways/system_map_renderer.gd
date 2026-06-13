@@ -109,8 +109,13 @@ func grab_flow(water_objects, aabb : AABB, resolution : float) -> ImageTexture:
 		water_mesh_copy.material_override = flow_mat
 		flow_mat.set_shader_parameter("flowmap", water_objects[i].flow_foam_noise)
 		flow_mat.set_shader_parameter("distmap", water_objects[i].dist_pressure)
-		flow_mat.set_shader_parameter("terrain_contact_features", water_objects[i].terrain_contact_features)
-		flow_mat.set_shader_parameter("bank_response_features", water_objects[i].bank_response_features)
+		flow_mat.set_shader_parameter("i_terrain_contact_features", water_objects[i].terrain_contact_features)
+		flow_mat.set_shader_parameter("i_bank_response_features", water_objects[i].bank_response_features)
+		# Defect 1 fix (R2.1): system_flow skips the boundary slide for
+		# pressure-projected bakes, same as the river surface shader. The
+		# material flag is bound from bake metadata in _apply_bake_data.
+		var flow_projected = water_objects[i].get_shader_param("i_flow_projected")
+		flow_mat.set_shader_parameter("i_flow_projected", flow_projected != null and bool(flow_projected))
 		flow_mat.set_shader_parameter("flow_base", water_objects[i].get_shader_param("flow_base"))
 		flow_mat.set_shader_parameter("flow_steepness", water_objects[i].get_shader_param("flow_steepness"))
 		flow_mat.set_shader_parameter("flow_distance", water_objects[i].get_shader_param("flow_distance"))
