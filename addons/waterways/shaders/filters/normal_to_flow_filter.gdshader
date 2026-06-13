@@ -1,4 +1,5 @@
 shader_type canvas_item;
+#include "res://addons/waterways/shaders/flow_pack.gdshaderinc"
 
 uniform sampler2D input_texture : repeat_disable, filter_nearest;
 
@@ -10,6 +11,6 @@ vec3 nm2flow(vec2 x) {
 
 void fragment() {
     vec4 texture_sample = textureLod(input_texture, UV, 0.0);
-    vec3 flowmap = nm2flow(texture_sample.xy) * 0.5 + 0.5;
-    COLOR = vec4(flowmap, 1.0);
+    vec3 flow_direction = nm2flow(texture_sample.xy);
+    COLOR = vec4(flow_pack_encode_unclamped(flow_direction.xy), flow_direction.z * 0.5 + 0.5, 1.0);
 }

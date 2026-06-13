@@ -2,6 +2,7 @@
 // See `LICENSE.md` included in the source distribution for details.
 shader_type spatial;
 render_mode depth_draw_always, cull_disabled;
+#include "res://addons/waterways/shaders/flow_pack.gdshaderinc"
 
 // If you are making your own shader, you can customize or add your own
 // parameters below and they will automatically get parsed and displayed in
@@ -132,7 +133,7 @@ void fragment() {
 		pressure_map = 0.5;
 	}
 	
-	flow = (flow - 0.5) * 2.0; // unpack the flow vectors
+	flow = flow_pack_decode(flow); // unpack the flow vectors
 	
 	// Calculate the steepness map
 	vec3 flow_viewspace = flow.x * TANGENT + flow.y * BINORMAL;

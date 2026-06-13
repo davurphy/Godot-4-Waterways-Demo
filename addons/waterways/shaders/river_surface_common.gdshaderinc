@@ -10,8 +10,9 @@
 // inject ~80 surface uniforms and a displacement vertex() into the system-map
 // render (see river-refactor roadmap R3.1).
 //
-// Requires river_flow_common.gdshaderinc to be included first (EPSILON and
-// the boundary feature samplers are declared there).
+// Requires flow_pack.gdshaderinc and river_flow_common.gdshaderinc to be
+// included first (the flow codec, EPSILON, and the boundary feature samplers
+// are declared there).
 
 // Flow
 uniform float flow_speed : hint_range(0.0, 10.0) = 1.0;
@@ -623,7 +624,7 @@ void vertex() {
 		vec4 obstacle_features = textureLod(i_obstacle_features, custom_UV, 0.0);
 		vec4 terrain_contact_features = textureLod(i_terrain_contact_features, custom_UV, 0.0);
 		vec4 bank_response_features = textureLod(i_bank_response_features, custom_UV, 0.0);
-		vec2 flow = (flow_foam_noise.xy - vec2(0.5)) * 2.0;
+		vec2 flow = flow_pack_decode(flow_foam_noise.xy);
 		float hard_boundary_context = clamp(max(bank_response_features.a, terrain_contact_features.b), 0.0, 1.0);
 		if (!i_flow_projected) {
 			flow = apply_contextual_flow_slide(flow, custom_UV, 1.0 / atlas_size, hard_boundary_context);

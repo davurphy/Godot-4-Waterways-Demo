@@ -17,6 +17,10 @@
 // river_manager's RIVER_FLOW_PRESSURE_SEED_COLOR (r = 0.5), which is enc(0)
 // for all three encodings above. Changing any 0.5 bias here requires
 // updating that seed; flow_solve_seed_assert_probe asserts the pairing.
+//
+// The velocity pair matches flow_pack.gdshaderinc (the canonical runtime
+// flow codec); it stays separate here because the solve passes form one
+// internally-consistent encoding family with the div/pressure scales above.
 
 const float FLOW_SOLVE_EPSILON = 0.0001;
 const float FLOW_SOLVE_DIV_SCALE = 0.25;

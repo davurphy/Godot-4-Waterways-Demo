@@ -37,11 +37,12 @@ uniform float eddy_line_support_reject_start = 0.62;
 uniform float eddy_line_support_reject_full = 0.92;
 
 #include "res://addons/waterways/shaders/filters/atlas_column_clamp.gdshaderinc"
+#include "res://addons/waterways/shaders/flow_pack.gdshaderinc"
 
 const float EPSILON = 0.0001;
 
 vec2 decode_flow(vec4 color) {
-	return color.rg * 2.0 - 1.0;
+	return flow_pack_decode(color.rg);
 }
 
 vec2 safe_direction(vec2 vector, vec2 fallback) {

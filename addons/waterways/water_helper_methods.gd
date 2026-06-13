@@ -374,6 +374,9 @@ static func calculate_side(steps : int) -> int:
 	return int(side_float)
 
 
+# GDScript mirror of the canonical shader-side flow codec in
+# shaders/flow_pack.gdshaderinc (rg = v * 0.5 + 0.5, neutral 0.5) - GDScript
+# cannot consume a shader include, so keep the two in sync.
 static func decode_packed_flow_vector(color: Color) -> Vector2:
 	return Vector2((color.r - 0.5) * 2.0, (color.g - 0.5) * 2.0)
 

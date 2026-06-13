@@ -2,6 +2,7 @@
 // See `LICENSE.md` included in the source distribution for details.
 shader_type spatial;
 render_mode depth_draw_always, specular_schlick_ggx, cull_disabled;
+#include "res://addons/waterways/shaders/flow_pack.gdshaderinc"
 #include "res://addons/waterways/shaders/river_flow_common.gdshaderinc"
 #include "res://addons/waterways/shaders/river_surface_common.gdshaderinc"
 
@@ -218,7 +219,7 @@ void fragment() {
 		foam_mask = 0.0;
 	}
 	
-	flow = (flow - 0.5) * 2.0; // unpack the flow vectors
+	flow = flow_pack_decode(flow); // unpack the flow vectors
 	float hard_boundary_context = clamp(max(hard_boundary_protrusion, terrain_protrusion), 0.0, 1.0);
 	if (!i_flow_projected) {
 		flow = apply_contextual_flow_slide(flow, custom_UV, 1.0 / atlas_size, hard_boundary_context);

@@ -2,6 +2,7 @@
 // See `LICENSE.md` included in the source distribution for details.
 shader_type spatial;
 render_mode unshaded, cull_disabled;
+#include "res://addons/waterways/shaders/flow_pack.gdshaderinc"
 #include "res://addons/waterways/shaders/river_flow_common.gdshaderinc"
 #include "res://addons/waterways/shaders/river_surface_common.gdshaderinc"
 
@@ -358,7 +359,7 @@ void fragment() {
 		ALBEDO = mix(vec3(1.0, 0.0, 1.0), vec3(0.0, 1.0, 1.0), invalid_checker);
 	}
 if (i_valid_flowmap) {
-	flow = (flow - 0.5) * 2.0; // unpack flowmap
+	flow = flow_pack_decode(flow); // unpack flowmap
 	vec2 raw_flow = flow;
 	float hard_boundary_context = clamp(max(hard_boundary_protrusion, terrain_protrusion), 0.0, 1.0);
 	if (!i_flow_projected) {
@@ -436,7 +437,7 @@ if (i_valid_flowmap) {
 	float pillow_visual_foam_contribution = pillow_visual * clamp(foam_pillow_visual_bias, 0.0, 2.0) * max(grade_energy_channel, normalized_flow_force) * foam_randomness;
 	
 	if(mode == EFFECTIVE_FLOWMAP) {
-		ALBEDO = vec3(clamp(flow * 0.5 + 0.5, vec2(0.0), vec2(1.0)), 0.0);
+		ALBEDO = vec3(flow_pack_encode(flow), 0.0);
 		
 	} else if(mode == FOAMMAP) {
 		ALBEDO = vec3(foam_mask);
@@ -465,7 +466,7 @@ if (i_valid_flowmap) {
 		vec2 tiled_UV = fract(tiled_UV_raw) - 0.5;
 		vec2 arrow_source_UV = (floor(tiled_UV_raw) + vec2(0.5)) / (safe_uv2_sides * FLOW_ARROW_DENSITY_PER_UV2_TILE);
 		vec2 arrow_custom_UV = (arrow_source_UV * source_size + margin) / atlas_size;
-		vec2 arrow_flow = textureLod(i_flowmap, arrow_custom_UV, 0.0).rg * 2.0 - 1.0;
+		vec2 arrow_flow = flow_pack_decode(textureLod(i_flowmap, arrow_custom_UV, 0.0).rg);
 		vec4 arrow_terrain_contact_features = textureLod(i_terrain_contact_features, arrow_custom_UV, 0.0);
 		vec4 arrow_bank_response_features = textureLod(i_bank_response_features, arrow_custom_UV, 0.0);
 		float arrow_hard_boundary_context = clamp(max(arrow_bank_response_features.a, arrow_terrain_contact_features.b), 0.0, 1.0);
@@ -489,7 +490,7 @@ if (i_valid_flowmap) {
 				);
 				vec2 probe_source_UV = clamp(arrow_source_UV + probe_sign * cell_size_source_uv * 0.3, vec2(0.0), vec2(1.0));
 				vec2 probe_custom_UV = (probe_source_UV * source_size + margin) / atlas_size;
-				vec2 probe_flow = textureLod(i_flowmap, probe_custom_UV, 0.0).rg * 2.0 - 1.0;
+				vec2 probe_flow = flow_pack_decode(textureLod(i_flowmap, probe_custom_UV, 0.0).rg);
 				probe_flow *= occupancy_speed_factor(water_occupancy_at(probe_custom_UV));
 				if (length(probe_flow) > length(arrow_flow)) {
 					arrow_flow = probe_flow;

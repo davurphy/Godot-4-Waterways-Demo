@@ -1,5 +1,6 @@
 shader_type spatial;
 render_mode unshaded, cull_disabled;
+#include "res://addons/waterways/shaders/flow_pack.gdshaderinc"
 #include "res://addons/waterways/shaders/river_flow_common.gdshaderinc"
 
 uniform sampler2D flowmap : repeat_disable, filter_linear;
@@ -75,7 +76,7 @@ void fragment() {
 		bank_response = vec4(0.0);
 	}
 
-	flow = (flow - 0.5) * 2.0; // remap
+	flow = flow_pack_decode(flow);
 	float hard_boundary_context = clamp(max(bank_response.a, terrain_contact.b), 0.0, 1.0);
 	// Defect 1 fix (2026-06-12, river-refactor R2): pressure-projected flow is
 	// divergence-free; re-bending it with the boundary slide corrupted what
@@ -96,5 +97,5 @@ void fragment() {
 
 	mat2 world_from_uv = get_world_xz_from_uv_axes();
 	vec2 new_flow = world_from_uv * flow;
-	ALBEDO = data_to_albedo(vec3((new_flow), 0.0) * 0.5 + 0.5); // repack flowmap
+	ALBEDO = data_to_albedo(vec3(flow_pack_encode_unclamped(new_flow), 0.5)); // repack flowmap
 }
