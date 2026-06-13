@@ -10,12 +10,12 @@ A dependency-aware phase sequence (R0 hotfixes → RT tooling → R1 dead-code p
 
 ## Current Truth
 
-- Implementation status: Not started
-- Open architectural decisions: R7-vs-feature-Phase-5 compute decision (gate before R7); R2/R3 merge-or-separate (decide when R1 lands)
-- Last validation that proves the plan still works: adversarial code review of the audit (2026-06-12) — every load-bearing claim verified against source at the cited lines; feasibility of R2 plumbing and R3's include split verified in-repo
-- Next planned implementation slice: Phase R0 hotfixes (independent items, any order) with RT tooling started in parallel
-- Branch safety before implementation: Not checked — operating rule is one branch per phase (or per item for R0/RT), cut from `main`, never on a dirty tree
-- Sections below that are historical or superseded: none yet
+- Implementation status: Phases R0, RT, R1, R2, R3 complete and fully closed (2026-06-12); R4/R5/R8 open; R6/R7 gated on their own docs
+- Open architectural decisions: R7-vs-feature-Phase-5 compute decision (gate before R7). Resolved: R2/R3 landed merged (2026-06-12), as the roadmap recommended. New optional decision logged in `validation.md`: whether system_flow should also apply occupancy stilling/wake damping so duck-read magnitudes match the river surface's runtime advection
+- Last validation that proves the plan still works: 2026-06-12 post-R2+R3 full suite green (see `validation.md` matrix); the plan's R2 gate assumption was corrected during execution (Defect-1 signature misattribution — see `spec.md` Resolved Questions)
+- Next planned implementation slice: R8 docs coherence; R4/R5 items as time allows
+- Branch safety before implementation: all work to date on `river-refactor` with the user's acquiescence (deviation from the one-branch-per-phase rule, recorded in the handoff)
+- Sections below that are historical or superseded: the R2 acceptance-gate description (RT.3 `enforce=all` < 20°) is superseded by the restructured gate (mechanism probe + 35° gross-divergence guard)
 
 ## Premise Check
 

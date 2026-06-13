@@ -11,11 +11,11 @@ Not yet held — no implementation to review. The pre-implementation review that
 
 ## Current Truth
 
-- Overall review status: Blocked — nothing implemented yet; first reviewable unit will be a Phase R0 item or RT.1
-- Blocking issues remaining: none in code (none exists); process gates open: Adversarial Plan Review in `plan.md` not yet completed with the user; R6/R7 spec-plan-validation files not yet written; R7 compute decision not recorded
-- Important issues remaining: none recorded
-- Last validation relied on: none — `validation.md` matrix is entirely Unrun
-- Next action: implement and review the first R0/RT slice; complete `plan.md`'s Adversarial Plan Review with the user before code changes
+- Overall review status: In progress — Phases R0, RT, R1, R2, R3 implemented, validated, and closed against their gates (2026-06-12); no formal phase-review session held yet (per-item validation + user confirmations stood in, recorded in `validation.md`)
+- Blocking issues remaining: none in landed code; process gates open: R6/R7 spec-plan-validation files not yet written; R7 compute decision not recorded; the formal Adversarial Plan Review in `plan.md` was never held (work proceeded with per-item user validation by accepted practice)
+- Important issues remaining: two execution findings recorded in `spec.md` Resolved Questions (Defect-1 signature misattribution; dead ShaderMaterial revert fallback) — both resolved in code, kept here as review context for R8's doc rewrite
+- Last validation relied on: 2026-06-12 post-R2+R3 full suite (see `validation.md` matrix and recorded results)
+- Next action: R8 docs coherence; fold the two execution findings into the architecture docs where relevant
 - Historical detail starts at: nothing archived yet
 
 ## Findings

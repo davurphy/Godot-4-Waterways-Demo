@@ -11,7 +11,7 @@ The canonical per-item checklists live in `roadmap.md` (phases R0, RT, R1–R8) 
 - Current implementation slice: Phases R0, RT, R1, R2, and R3 complete and validated (R2+R3 landed merged 2026-06-12); next slice is R8 (docs coherence — can interleave) and/or R4/R5
 - Remaining open task count: R4, R5, R8 ready; R6/R7 blocked on their own spec/plan/validation files (R7 also on the compute decision)
 - Last passing validation: 2026-06-12 post-R2+R3 — full suite green including RT.3 `enforce=all` (recalibrated; see validation.md attribution correction), `SYSTEM_FLOW_PROJECTED_GATE_OK`, `CAPTURE_DIFF_OK files=26` whole-phase byte-identity, 3-renderer smoke, windowed revert checks
-- Next recommended action: user editor round (eyeball surface/debug views + duck drift near obstacle rocks; commit regenerated `.uid` sidecars), then R8
+- Next recommended action: R8 (docs coherence); the post-R2+R3 user editor round is done (2026-06-12, all passed, `.uid` sidecars committed)
 - Known deferred work: R9 (vertex pillow stack) stays on the feature roadmap; R7 blocked on the feature-Phase-5 compute decision gate; optional user decision logged in validation.md — whether system_flow should also apply occupancy stilling/wake damping to match duck-read magnitudes to the river surface
 
 ## Open Work
@@ -58,7 +58,7 @@ Use this section as the canonical checklist for unfinished *process* work. When 
 
 ## Validation
 
-- [x] Run automated checks listed in `validation.md` (full suite green 2026-06-12 on the un-shared scene-owned bakes; only intentional red is RT.3 `enforce=all`, the pre-R2 Defect-1 baseline).
+- [x] Run automated checks listed in `validation.md` (full suite green 2026-06-12 post-R2+R3, including RT.3 `enforce=all` — no intentional reds remain).
 - [ ] Revisit the context challenge check after validation: if results suggest a roadmap item's premise was wrong, tell the user and update docs before doing more implementation.
 - [ ] For Godot editor, viewport, scene-running, gizmo, shader, bake, or runtime checks, ask the user in the chat message to run the exact check and relay output, screenshots, version/renderer, and visible behavior.
 - [ ] Do not rely on `validation.md` alone for human-assisted checks; paste the requested steps into the user-facing message.

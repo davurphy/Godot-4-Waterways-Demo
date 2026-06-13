@@ -6,7 +6,7 @@
 
 ## Current Focus
 
-Execute the hardening/refactor track derived from the 2026-06-12 full-addon code audit. Phases R0, RT, R1, **R2, and R3** are complete and validated (R2+R3 landed merged 2026-06-12 on `river-refactor`: three shared shader includes, the system_flow Defect-1 fix, the system-map version int, regenerated v1 system maps; all gates green). Next: a short user editor round (visual eyeball + duck drift + `.uid` sidecars), then **R8 (docs coherence)** can interleave; R4/R5 absorb idle time. R6/R7 stay blocked on their own spec/plan/validation files.
+Execute the hardening/refactor track derived from the 2026-06-12 full-addon code audit. Phases R0, RT, R1, **R2, and R3** are complete and **fully closed** (R2+R3 landed merged 2026-06-12 on `river-refactor`: three shared shader includes, the system_flow Defect-1 fix, the system-map version int, regenerated v1 system maps; all automated gates green; user editor round confirmed scenes/debug views/duck behavior same day). Next: **R8 (docs coherence)**; R4/R5 absorb idle time. R6/R7 stay blocked on their own spec/plan/validation files.
 
 - Feature folder:
   - `addons\waterways\docs\spec-driven\features\river-refactor\`
@@ -16,12 +16,12 @@ Execute the hardening/refactor track derived from the 2026-06-12 full-addon code
 ## Current Truth
 
 - Overall status: In progress — **Phases R0, RT, R1, R2, and R3 complete and validated**. R2+R3 (commits `c34b136`..`a2ec75c` + docs, 2026-06-12, all agent-run including the windowed rounds) landed: `river_flow_common.gdshaderinc` (flow family, consumed by river/debug/system_flow), `river_surface_common.gdshaderinc` (~620 shared surface lines, river/debug only), `flow_pack.gdshaderinc` (canonical flow codec, ten clones converted), the Defect-1 fix (system_flow gates the slide on `i_flow_projected` + stagnation fade + shared force), R2.4's `SYSTEM_FLOW_MAP_VERSION` staleness int, R3.3 revert-table deletion (reverts now read live shader defaults), R3.4 filter-default alignment, R3.5 occupancy-const centralization, regenerated v1 system maps
-- Highest-priority open task: short user editor round (eyeball surface/debug views — RT.2 says byte-identical; watch ducks near the obstacle rocks; save scenes so the new `.gdshaderinc`/probe `.uid` sidecars generate — commit them). Then R8 (docs coherence); R4/R5 absorb idle time
+- Highest-priority open task: R8 (docs coherence — `architecture-and-features.md` rewrite, Data Contract gains `system_flow_map_version` per R8.2); R4/R5 absorb idle time. The post-R2+R3 user editor round is done (2026-06-12: scenes/debug views/ducks all passed; `.uid` sidecars committed `1d9c91a`)
 - Last passing validation: 2026-06-12 post-R2+R3 — full suite green **including** RT.3 `enforce=all` (23.3°/26.9° < recalibrated 35°), `SYSTEM_FLOW_PROJECTED_GATE_OK` (the new R2 mechanism gate), `CAPTURE_DIFF_OK files=26` (whole-phase byte-identity), 3-renderer smoke, `REVERT_DEFAULT_CHECK_OK`, `PILLOW_INSPECTOR_WIRING_PROBE_OK` (era pin 20→28, first full green)
 - **Major execution finding (attribution correction):** the "Defect-1 signature" (pre-R2 influence p90 25.5°/28.9°) was NOT the slide — A/B rendering (slide gated vs forced) measures the slide at 0 differing texels on Demo and 4.6k texels at mean 3.3° on the obstacle scene; the 23–27° floor is sampling/quantization noise of the stilled low-magnitude ring and survives the (correct, landed) fix. RT.3's influence gate is now a 35° gross-divergence guard; the mechanism is gated by `probes/system_flow_projected_gate_probe.gd` (windowed A/B). Full detail in validation.md's 2026-06-12 R2+R3 entry
 - Second execution finding: `ShaderMaterial.property_can_revert/get_revert` never worked for the internal river material (remap cache only fills when the material itself is inspected) — the deleted revert table was the only working source; replacement calls `RenderingServer.shader_get_parameter_default` directly. That API returns null under the headless dummy renderer, so revert checks are windowed
-- Known failing or unproven check: none failing. Pending human-assisted: duck-drift observation near obstacles (expected change small, obstacle scene only) and a post-extraction visual eyeball. Pre-existing quirk remaining: ripple_debug_parity_probe is windowed-only (dummy renderer headless)
-- Packaging/artifact hygiene status: probe overlays + RT.2 capture sets under `.codex-research/probe-out/` (excluded from packaging; the `rt2-r3` set is this phase's parity evidence — keep until the user round closes). `.codex-research/r1-baseline/` deleted (R1 evidence recorded). **Hazard noted in validation.md:** `river_obstacle_projection_rebake_probe.gd` saves river bakes in place — never run casually
+- Known failing or unproven check: none — R0–R3 fully closed including the human-assisted checks (user round 2026-06-12). Pre-existing quirk remaining: ripple_debug_parity_probe is windowed-only (dummy renderer headless)
+- Packaging/artifact hygiene status: probe overlays + RT.2 capture sets under `.codex-research/probe-out/` (excluded from packaging; the `rt2-r3` parity captures are now safe to delete — both gates closed and recorded). `.codex-research/r1-baseline/` deleted (R1 evidence recorded). **Hazard noted in validation.md:** `river_obstacle_projection_rebake_probe.gd` saves river bakes in place — never run casually
 - Historical detail starts at: nothing archived yet
 
 ## How To Use This Feature Folder
@@ -50,7 +50,7 @@ Read these first:
 
 Then do this next:
 
-- Run the pending user editor round (exact steps in **Next Tasks**), commit the resulting `.uid`/scene changes deliberately, then pick up R8 (or R4/R5 items) per the roadmap.
+- Pick up R8 (docs coherence) per the roadmap — the stale `architecture-and-features.md` rewrite, the Data Contract updates (R1.1 string fix, `water_occupancy`/`dist_pressure` neutrals, `system_flow_map_version`), and probe-folder hygiene. R4/R5 items absorb idle time.
 - For Godot-specific implementation work, search current official Godot documentation and API references online before patching. Prefer official docs first, and record any source that affects implementation in `research.md` or `addons\waterways\docs\research\river-research-citations.md`.
 - If this requires human-assisted Godot validation, include the exact scene path, plugin state, steps, expected visible result, and Output/console text to relay. The next agent should paste those steps into its user-facing message instead of telling the user to read `validation.md`. The per-phase steps live in each roadmap phase's **Validation** block.
 - If the next action might be based on a false premise or overlooked context, tell the user before patching. The adversarial review already overturned several audit claims (see `spec.md` Resolved Questions); the standing rule from that miss: before deleting any shader uniform or function, grep shaders *and* probes *and* feature specs.
@@ -94,7 +94,7 @@ Previous implementation session (2026-06-12, branch `river-refactor`, all commit
 
 ## Current Changes Summary
 
-- Phases R0 + RT + R1 + R2 + R3 complete and validated (signature v28; system maps v1; three shared shader includes; all suite gates green). Next: user editor round, then R8; R4/R5 absorb idle time.
+- Phases R0 + RT + R1 + R2 + R3 complete and fully closed (signature v28; system maps v1; three shared shader includes; all gates green incl. the 2026-06-12 user editor round). Next: R8; R4/R5 absorb idle time.
 
 ## Historical Change Log
 
@@ -125,8 +125,8 @@ Spec/plan status:
 
 Validation status:
 
-- Automated: eight markers green — `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`, `SYSTEM_FLOW_COMPARE_OK`, `CAPTURE_DIFF_OK`; the only intentional red is RT.3 `enforce=all` (pre-R2 Defect-1 baseline: influence p90 25.5°/27.6° > 20°)
-- Human-assisted: R0.2/R0.3/R0.4 confirmed by user 2026-06-12 (Godot 4.6.3 windowed)
+- Automated: all markers green, no intentional reds — `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`, `SYSTEM_FLOW_COMPARE_OK` (incl. `enforce=all` since R2), `SYSTEM_FLOW_PROJECTED_GATE_OK`, `CAPTURE_DIFF_OK`, `FILTER_RENDERER_LOAD_OK`, plus windowed `REVERT_DEFAULT_CHECK_OK`, `PILLOW_INSPECTOR_WIRING_PROBE_OK`, `SCENE_RENDER_SMOKE_OK` ×3 renderers
+- Human-assisted: R0.2/R0.3/R0.4 confirmed by user 2026-06-12; post-R2+R3 round confirmed scenes/debug views/duck behavior 2026-06-12 (Godot 4.6.3 windowed)
 - Shader: foam parity confirmed visually post-rebake; 3-renderer compile sweep deferred to R3's gate
 - Editor: mid-bake close + no-op click confirmed
 - Visual: Foam Mix vs surface confirmed; R0.7 visual route unreachable (probe instead)
@@ -174,11 +174,11 @@ Relevant audit sections:
 
 ## Commands or Checks Used
 
-See **Validation Commands** below for the full RT.1–RT.4 invocations (all use the `.codex-research` profile redirect). Latest sweep (2026-06-12, after the bake un-sharing round): RT.3 report mode exit 0; RT.3 `enforce=all` exit 1 (expected pre-R2); `BAKE_HASH_PROBE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`, `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK` all exit 0.
+See **Validation Commands** below for the full invocations (all use the `.codex-research` profile redirect). Latest sweep (2026-06-12, post-R2+R3): RT.3 report AND `enforce=all` exit 0; `SYSTEM_FLOW_PROJECTED_GATE_OK`; `BAKE_HASH_PROBE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`, both arrow probes, seam probe all exit 0; RT.2 `CAPTURE_DIFF_OK files=26` (whole-phase byte-identity); windowed revert/pillow-wiring checks and the 3-renderer smoke green.
 
 Result summary:
 
-- Full headless suite green on the current scenes/bakes; RT.2 byte-identity demonstrated windowed (26/26 PNGs); the only intentionally red check is RT.3 `enforce=all` (the pre-R2 Defect-1 baseline).
+- Everything green — automated and human-assisted — on the current scenes/bakes (v28 river bakes, v1 system maps). No intentional reds remain.
 
 ## Next Tasks
 
@@ -187,7 +187,7 @@ Result summary:
 - [x] R1 — dead-code purge + single v27→v28 signature bump. *Gate closed 2026-06-12.*
 - [x] R2+R3 (merged) — shared includes + system_flow projected-flow fix + system-map version int. *Done 2026-06-12; original RT.3 numeric gate found misattributed and restructured (see validation.md); all gates green.*
 - [x] (User, editor) Un-share the system bake. *Done 2026-06-12.*
-- [ ] (User, editor) Post-R2+R3 round: open both demo scenes, eyeball the river surface + a few debug views (RT.2 proved byte-identity — this is the rule-8 human confirmation), run the obstacle scene and watch ducks near the rocks, save scenes, then commit the newly generated `.uid` sidecars (`flow_pack.gdshaderinc.uid`, `system_flow_projected_gate_probe.gd.uid`, possibly others).
+- [x] (User, editor) Post-R2+R3 round. *Done 2026-06-12: scenes and debug views passed inspection, ducks unremarkable near the rocks; only the two expected `.uid` sidecars generated (committed `1d9c91a`); scenes/bakes byte-unchanged.*
 - [ ] R8 — docs coherence (architecture-and-features rewrite; Data Contract gains `system_flow_map_version`, R8.2).
 - [ ] R4 / R5 — independent items as time allows (R5.3 pairs with the now-done R3.5).
 

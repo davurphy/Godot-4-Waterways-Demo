@@ -6,9 +6,9 @@ Turn the 2026-06-12 full-addon code audit (`docs/audit/waterways-code-audit-2026
 
 ## Current Truth
 
-- Status: Draft — not started
+- Status: Accepted and in execution — Phases R0, RT, R1, R2, R3 complete and fully closed (2026-06-12); R4/R5/R8 open; R6/R7 gated on their own docs
 - Source of truth for open work: `roadmap.md` phase checklists (R0, RT, R1–R8); `tasks.md` mirrors only the cross-phase process items
-- Last meaningful decision: roadmap accepted as the ordered plan after adversarial review (2026-06-12) verified every load-bearing audit claim against source; corrections noted inline in `roadmap.md`
+- Last meaningful decision: R2's acceptance gate restructured on measured evidence (2026-06-12) — the recorded "Defect-1 signature" was misattributed sampling noise; the mechanism is now gated by `system_flow_projected_gate_probe.gd` and RT.3's influence threshold recalibrated to a 35° gross-divergence guard (see Resolved Questions and `validation.md`)
 - Known deferred items: R9 (vertex pillow stack → baked/compute) stays on the feature roadmap (`river-future/Roadmap.md` Phase 5); R7 has a decision gate against that same Phase 5 before any work starts
 - Current non-goals that are easy to accidentally reopen: deleting the ripple-displacement interface (R1.4 — it is *not* dead); changing data-contract channel semantics; "improving" areas the audit verified clean (audit §10)
 
@@ -152,7 +152,8 @@ Shared systems must not hard-code:
 | --- | --- | --- | --- |
 | Is the ripple-displacement uniform set dead code? | No — annotate, do not delete | 2026-06-12 | `river_debug.gdshader:899,984` samples it; probes assert it; `river-height displacement/initial_research.md` designs against it (roadmap R1.4) |
 | Can `i_distmap`'s neutral be expressed with a built-in hint? | No — code-side neutral ImageTexture required | 2026-06-12 | Neutral ≈ (0.75, 0.25, 0.0, 0.5); no `hint_default_*` matches (roadmap R0.7) |
-| Is `MATERIAL_PARAMETER_REVERT_OVERRIDES` deletion safe? | Yes | 2026-06-12 | All sampled entries match shader defaults exactly; floats/Colors only (roadmap R3.3) |
+| Is `MATERIAL_PARAMETER_REVERT_OVERRIDES` deletion safe? | Yes — but the planned fallback was dead | 2026-06-12 | All entries match shader defaults; execution found `ShaderMaterial.property_can_revert/get_revert` never worked for the internal material (remap cache fills only when the material itself is inspected) — the table was the only working revert source; replacement calls `RenderingServer.shader_get_parameter_default` directly (null headless → revert checks are windowed) |
+| Was the pre-R2 influence p90 (25.5°/28.9°) the Defect-1 slide re-bend? | No — misattributed | 2026-06-12 | A/B rendering (slide gated vs forced): 0 differing texels on Demo, 4.6k at mean 3.3° on the obstacle scene; the 23–27° floor is 8-bit quantization/resampling noise of the stilled low-magnitude ring and survives the (correct, landed) fix. Mechanism gated by `system_flow_projected_gate_probe.gd`; RT.3 influence limit recalibrated 20→35 |
 | One shader include or two? | Two (flow + surface) plus `flow_pack` | 2026-06-12 | Monolithic include would inject ~90 unused uniforms + displacement `vertex()` into system-map render (roadmap R3.1) |
 | Does R0.4's no-change guard need epsilon comparison? | No — exact equality suffices | 2026-06-12 | Click-without-drag produces bitwise-identical curve-state dictionaries |
 | Does removing the `reorder_params` call change inspector ordering? | No | 2026-06-12 | The call has been a silent no-op since the Godot 4 port (roadmap R0.6) |
