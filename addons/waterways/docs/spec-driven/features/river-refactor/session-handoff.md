@@ -6,7 +6,7 @@
 
 ## Current Focus
 
-Execute the hardening/refactor track derived from the 2026-06-12 full-addon code audit. Phases R0, RT, and now R1 (dead-code purge + the v27→v28 signature bump, landed with explicit user go 2026-06-12) are implemented; R1's human-assisted gate is the immediate next step — the user must verify the editor stale warning, rebake both demo rivers and regenerate both system maps, then the agent runs the RT.1 diff and re-greens the suite on fresh v28 bakes. After that: R2+R3 (best merged).
+Execute the hardening/refactor track derived from the 2026-06-12 full-addon code audit. Phases R0, RT, and R1 are complete and validated (R1 gate closed 2026-06-12: v28 bump, user rebake round committed as the new baseline, RT.1 metadata-only proof). Next slice: **R2+R3 merged** — the shared flow include is the structural fix for Defect 1; RT.3 `enforce=all` flipping green is R2's acceptance gate (fresh-baseline influence p90 25.5°/28.9° vs the 20° limit).
 
 - Feature folder:
   - `addons\waterways\docs\spec-driven\features\river-refactor\`
@@ -15,11 +15,11 @@ Execute the hardening/refactor track derived from the 2026-06-12 full-addon code
 
 ## Current Truth
 
-- Overall status: In progress — **Phases R0, RT, and R1 implemented**; R1 (commits `1ca6109`..`717fdb6`, 2026-06-12) landed the dead-SDF-steering deletion, the three signature-gap keys, the occupancy serialization fix, the ripple-rider annotations, the small sweep, and the v27→v28 bump — **all saved river bakes are now intentionally stale**
-- Highest-priority open task: R1's human-assisted gate — user verifies the editor stale warning fires, rebakes both demo rivers (Generate Flow & Foam Map) and regenerates both system maps, saves; then agent runs RT.1 diff vs the committed v27 baseline, re-runs the suite (should re-green on fresh bakes), commits the editor-modified files deliberately
-- Last passing validation: 2026-06-12 post-R1 headless gate — stale detection demonstrated (`SYSTEM_FLOW_COMPARE_STALE` on both demo scenes, the v28 gate firing); rest of suite green (see validation.md newest Recorded Result); grep gate zero code refs to the deleted set
-- Known failing or unproven check: RT.3 default mode exits 1 with `SYSTEM_FLOW_COMPARE_STALE` on both demo scenes — **expected and correct post-bump** until the rebake round; two pre-existing probe quirks recorded in validation.md (ripple_debug_parity_probe is windowed-only; pillow_inspector_wiring_probe has a stale version pin of 20). Older note — none open from RT — the bake un-sharing round closed the shared-resource issue (each scene now owns its system bake; Demo's lives in `waterways_bakes/Demo_28018/` because `_get_scene_bake_folder` diverts when `Demo/` holds another scene's bakes). En route, a stale-detector false positive was found and fixed (`water_system_manager.gd`: texture-path keys flip container between editor-embedded scene saves and bake-resource binding on fresh load — no longer compared). Pre-R2 RT.3 baseline on fresh scene-owned maps: influence-zone angular p90 25.5°/27.6° vs the 20° gate and an 8.5°/12.5° control floor (the Defect-1 signature, proven against freshly generated data).
-- Next recommended action: run the R1 rebake round with the user (steps are in the latest chat message and the R1 matrix row): editor stale warning check → rebake both rivers → regenerate both system maps → save → agent runs RT.1 diff vs the v27 baseline and the full suite → commit editor-modified files → check off the R1 matrix row. Then start R2+R3 merged (the flow include is the structural fix for Defect 1; RT.3 `enforce=all` flipping green is R2's acceptance gate). The grep-everything rule caught another audit miss during R1.5: river_debug's nine `pillow_*` material-only uniforms are probe-asserted (kept, annotated).
+- Overall status: In progress — **Phases R0, RT, and R1 complete and validated**; R1 (commits `1ca6109`..`8fca46b`, 2026-06-12) landed the dead-SDF-steering deletion, the three signature-gap keys, the occupancy serialization fix, the ripple-rider annotations, the small sweep, the v27→v28 bump, and the user's rebake round (fresh v28 bakes committed as the baseline)
+- Highest-priority open task: R2+R3 merged (system_flow projected-flow correctness via the shared flow include; see roadmap R2/R3 sections). R2.4's system-map version int must follow the stable-values comparator rule. Decide formally at kickoff: merged branch confirmed (roadmap recommends it)
+- Last passing validation: 2026-06-12 post-rebake — full suite green on fresh v28 bakes; RT.1 proved R1 metadata-only (Demo river byte-identical v27→v28; obstacle river only raycast-borderline rebake variance); RT.3 `enforce=all` red at the pre-R2 baseline (influence p90 25.5°/28.9° > 20°)
+- Known failing or unproven check: only the intentional pre-R2 red — RT.3 `enforce=all` (influence p90 25.5°/28.9° > 20°, the Defect-1 signature on fresh v28 maps). Two pre-existing probe quirks recorded in validation.md: ripple_debug_parity_probe is windowed-only (dummy renderer headless); pillow_inspector_wiring_probe has a stale era pin (`EXPECTED_SIGNATURE_VERSION := 20`) — its uniform assertions pass; consider updating the pin when next touching pillow code — the bake un-sharing round closed the shared-resource issue (each scene now owns its system bake; Demo's lives in `waterways_bakes/Demo_28018/` because `_get_scene_bake_folder` diverts when `Demo/` holds another scene's bakes). En route, a stale-detector false positive was found and fixed (`water_system_manager.gd`: texture-path keys flip container between editor-embedded scene saves and bake-resource binding on fresh load — no longer compared). Pre-R2 RT.3 baseline on fresh scene-owned maps: influence-zone angular p90 25.5°/27.6° vs the 20° gate and an 8.5°/12.5° control floor (the Defect-1 signature, proven against freshly generated data).
+- Next recommended action: start R2+R3 merged on a fresh slice (the flow include is the structural fix for Defect 1; RT.3 `enforce=all` flipping green is R2's acceptance gate against the 25.5°/28.9° baseline). R3's parity gate is windowed RT.2 capture before/after in one session — plan that with the user. Note the grep-everything rule caught another audit miss during R1.5: river_debug's nine `pillow_*` material-only uniforms are probe-asserted (kept, annotated).
 - Packaging/artifact hygiene status: probe overlays written to `.codex-research/probe-out/` (excluded from packaging; safe to delete)
 - Historical detail starts at: nothing archived yet
 
@@ -81,7 +81,7 @@ Previous implementation session (2026-06-12, branch `river-refactor`, all commit
 
 ## Current Changes Summary
 
-- Phases R0 + RT validated; Phase R1 implemented (signature v28, all R1 boxes checked) with the headless gate passed; saved bakes intentionally stale. Next: user rebake round, then R2+R3.
+- Phases R0 + RT + R1 complete and validated (signature v28; fresh rebaked v28 baseline committed `8fca46b`). Next: R2+R3 merged.
 
 ## Historical Change Log
 
@@ -171,9 +171,8 @@ Result summary:
 
 - [x] RT.3 — system-vs-river flow comparison probe (gates R2; headless-able). *Done 2026-06-12: `probes/system_flow_compare_probe.gd`; commands in `validation.md` Automated Checks.*
 - [x] RT.2 — pixel-parity capture harness on `debug_view_capture_probe.gd` (gates R3). *Done 2026-06-12: parity preset + diff mode + determinism fixes; 26/26 byte-identical across runs; commands in `validation.md` Automated Checks.*
-- [x] R1 — dead-code purge + single v27→v28 signature bump. *Implemented 2026-06-12 with user go; headless gate passed (stale detection demonstrated).*
-- [ ] R1 human-assisted gate: user editor stale check + rebake both rivers + regenerate both system maps; agent RT.1 diff vs v27 baseline, suite re-green, commit editor files, close the R1 matrix row.
-- [ ] R2+R3 (merged) — system_flow projected-flow correctness via the shared flow include; RT.3 `enforce=all` flipping green is the acceptance gate.
+- [x] R1 — dead-code purge + single v27→v28 signature bump. *Implemented and gate-closed 2026-06-12 (user rebake round committed `8fca46b`; RT.1 metadata-only proof; suite green on v28).*
+- [ ] R2+R3 (merged) — system_flow projected-flow correctness via the shared flow include; RT.3 `enforce=all` flipping green is the acceptance gate (baseline influence p90 25.5°/28.9°). R3 parity needs a same-session windowed RT.2 capture pair.
 - [x] (User, editor) Un-share the system bake. *Done 2026-06-12: each scene owns its bake; old shared resource removed; RT.3 report mode exits 0 with no stale warnings; full headless suite green. Also fixed the stale detector's texture-path false positive (see validation.md).*
 
 ## Do Not Do Yet

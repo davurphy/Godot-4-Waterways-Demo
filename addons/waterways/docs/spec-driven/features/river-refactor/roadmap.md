@@ -1,6 +1,6 @@
 # River Refactor Roadmap
 
-Status: In progress — Phases R0 and RT complete and validated; R1 implemented with user go (2026-06-12, signature now v28 — all saved river bakes intentionally stale); R1's human-assisted gate (editor stale warning + rebake round + RT.1 diff) pending; then R2+R3 (best merged)
+Status: In progress — Phases R0, RT, and R1 complete and validated (2026-06-12; signature v28, demo bakes rebaked and committed as the v28 baseline). Next: R2+R3, best merged (RT.3 `enforce=all` flipping green is R2's acceptance gate; baseline influence p90 25.5°/28.9°)
 Date: 2026-06-12
 Source: `docs/audit/waterways-code-audit-2026-06-12.md` (full-addon audit, bake signature v27), hardened by an adversarial code review (2026-06-12) in which every load-bearing claim below was verified against source at the cited lines. Where the audit and the code disagreed, the code won — those corrections are noted inline.
 Related: `docs/spec-driven/features/river-future/Roadmap.md` (feature roadmap, Phases 0–5), `docs/spec-driven/00-constitution.md`
@@ -73,7 +73,7 @@ The hash/parity/comparison gates the later phases rely on do not exist yet (veri
 
 ## Phase R1 — Dead-Code Purge + the One Signature Bump (days; needs RT.1)
 
-> Branch: `river-refactor` (2026-06-12). **Implemented R1.1–R1.7** (commits `1ca6109`..`717fdb6`); headless gate portion passed (stale detection demonstrated on both demo scenes); the human-assisted portion (editor stale warning + rebake round + RT.1 diff) is pending. Execution corrections: ten (not nine) `RIVER_OBSTACLE_AVOIDANCE_*` constants; river_debug's nine `pillow_*` material-only uniforms are probe-asserted/spec-contract (annotated, not deleted — only the six `wake_*` ones and `OCCUPANCY_CLIP_*` went). Results in `validation.md`.
+> Branch: `river-refactor` (2026-06-12). **Phase complete and validated.** R1.1–R1.7 implemented (commits `1ca6109`..`717fdb6`); stale detection demonstrated headless and in the user's editor round; user rebaked both rivers + both system maps (committed `8fca46b` as the v28 baseline); RT.1 diff proved R1 metadata-only (Demo river byte-identical; obstacle river shows only recorded raycast-borderline rebake variance); grep gate zero code refs. Execution corrections: ten (not nine) `RIVER_OBSTACLE_AVOIDANCE_*` constants; river_debug's nine `pillow_*` material-only uniforms are probe-asserted/spec-contract (annotated, not deleted — only the six `wake_*` ones and `OCCUPANCY_CLIP_*` went). Results in `validation.md`.
 
 Everything that invalidates bakes lands here, together, as signature v28. Audit refs: §4, §8, Recommendation 9.
 
