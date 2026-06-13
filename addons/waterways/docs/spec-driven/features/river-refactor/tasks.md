@@ -8,11 +8,11 @@ The canonical per-item checklists live in `roadmap.md` (phases R0, RT, R1–R8) 
 ## Current Truth
 
 - Current status: In progress
-- Current implementation slice: Phases R0 and RT complete and demonstrated; next slice is R1 (dead-code purge + the single v28 signature bump)
-- Remaining open task count: phases R1–R8 untouched (all RT gates now exist: RT.1 for R1/R5/R6, RT.2 for R3, RT.3 for R2)
-- Last passing validation: 2026-06-12 — RT.2 `CAPTURE_DIFF_OK` (byte-identical parity runs) and RT.3 `SYSTEM_FLOW_COMPARE_OK` (known-good/known-bad/stale demonstrated); same day Phase R0 gate fully closed (see `validation.md`)
-- Next recommended action: start R1 — warn the user first (invalidates saved river bakes; land at a quiet point)
-- Known deferred work: R9 (vertex pillow stack) stays on the feature roadmap; R7 blocked on the feature-Phase-5 compute decision gate
+- Current implementation slice: Phases R0, RT, R1, R2, and R3 complete and validated (R2+R3 landed merged 2026-06-12); next slice is R8 (docs coherence — can interleave) and/or R4/R5
+- Remaining open task count: R4, R5, R8 ready; R6/R7 blocked on their own spec/plan/validation files (R7 also on the compute decision)
+- Last passing validation: 2026-06-12 post-R2+R3 — full suite green including RT.3 `enforce=all` (recalibrated; see validation.md attribution correction), `SYSTEM_FLOW_PROJECTED_GATE_OK`, `CAPTURE_DIFF_OK files=26` whole-phase byte-identity, 3-renderer smoke, windowed revert checks
+- Next recommended action: user editor round (eyeball surface/debug views + duck drift near obstacle rocks; commit regenerated `.uid` sidecars), then R8
+- Known deferred work: R9 (vertex pillow stack) stays on the feature roadmap; R7 blocked on the feature-Phase-5 compute decision gate; optional user decision logged in validation.md — whether system_flow should also apply occupancy stilling/wake damping to match duck-read magnitudes to the river surface
 
 ## Open Work
 
@@ -21,9 +21,9 @@ Use this section as the canonical checklist for unfinished *process* work. When 
 - [x] Phase R0 — Defect Hotfixes, implementation (9/9 items landed on `river-refactor`, 2026-06-12). R0.2 (the R3 prerequisite) is in.
 - [x] Phase R0 — validation closed 2026-06-12: user confirmed foam parity, mid-bake close recovery, and no-op click; null-distmap covered by `distmap_neutral_binding_probe.gd` (visual check unreachable — see validation.md).
 - [x] Phase RT — Validation Tooling complete (RT.1–RT.4 built and demonstrated, 2026-06-12; commands in `validation.md` Automated Checks).
-- [ ] Phase R1 — Dead-Code Purge + signature v28 (needs RT.1).
-- [ ] Phase R2 — `system_flow` projected-flow correctness (needs RT.3; after R1; consider merging with R3).
-- [ ] Phase R3 — Shared shader includes (needs R0.2 + RT.2).
+- [x] Phase R1 — Dead-Code Purge + signature v28 (gate closed 2026-06-12; user rebake round committed as the v28 baseline).
+- [x] Phase R2 — `system_flow` projected-flow correctness (landed merged with R3, 2026-06-12; original numeric gate found misattributed — see roadmap R2 banner and validation.md).
+- [x] Phase R3 — Shared shader includes (landed merged with R2, 2026-06-12; RT.2 byte-identity across the whole phase).
 - [ ] Phase R4 — Runtime/editor robustness (any time after R0).
 - [ ] Phase R5 — Structural dedup (R5.1/R5.4/R5.5 any time after R0; gates need RT.1).
 - [ ] Write R6's own `spec.md`/`plan.md`/`validation.md` (constitution rule 12) — gate before R6 starts; must include the Lifecycle/Cleanup/Re-entry section (21 abort points).
