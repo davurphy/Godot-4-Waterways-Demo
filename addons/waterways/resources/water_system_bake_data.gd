@@ -23,6 +23,16 @@ const DEFAULT_IMPORT_PROFILE := {
 
 const SOURCE_KIND_WATER_SYSTEM_COMBINE := "generated_water_system_combine"
 const SOURCE_RIVER_METADATA_VERSION := 1
+# Version of the system_flow.gdshader output baked into system_map, stored in
+# bake_settings as "system_flow_map_version". System maps have no bake-source
+# signature like river bakes do, so this int is their only staleness signal
+# for shader-output changes. Bump it whenever system_flow.gdshader's output
+# changes for identical inputs. Comparator rule (2026-06-12): compare stable
+# values like this int, never resource path strings.
+# v1 (2026-06-12, river-refactor R2): projected-flow fix - the boundary slide
+# is skipped for pressure-projected rivers and gained the stagnation fade;
+# maps saved before v1 carry re-bent flow and must be regenerated.
+const SYSTEM_FLOW_MAP_VERSION := 1
 
 @export var system_map: Texture2D:
 	set(value):
