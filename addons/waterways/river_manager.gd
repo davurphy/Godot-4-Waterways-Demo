@@ -149,68 +149,6 @@ const DEFAULT_PARAMETERS = {
 	lod_lod0_distance = 50.0,
 }
 
-const MATERIAL_PARAMETER_REVERT_OVERRIDES = {
-	pillow_strength = 1.15,
-	pillow_confidence_gate_start = 0.07,
-	pillow_confidence_gate_full = 0.45,
-	pillow_hard_gate_start = 0.08,
-	pillow_hard_gate_full = 0.45,
-	pillow_energy_gate_start = 0.05,
-	pillow_energy_gate = 0.35,
-	pillow_flow_gate_start = 0.03,
-	pillow_flow_gate = 0.28,
-	pillow_bank_suppression = 0.85,
-	pillow_pressure_strength = 0.50,
-	pillow_highlight_strength = 0.60,
-	pillow_pressure_color = Color(0.34, 0.68, 0.78, 1.0),
-	pillow_highlight_color = Color(0.72, 0.92, 1.0, 1.0),
-	pillow_specular_boost = 0.12,
-	pillow_roughness_reduction = 0.18,
-	pillow_normal_strength = 0.70,
-	pillow_band_strength = 0.55,
-	pillow_band_scale = 18.0,
-	pillow_foam_bias = 0.14,
-	pillow_forward_reach_tiles = 0.0,
-	pillow_contact_pull_tiles = 0.0,
-	pillow_contact_pull_strength = 0.0,
-	pillow_terrain_height = 0.0,
-	pillow_terrain_height_curve = 1.35,
-	pillow_obstruction_height = 0.0,
-	pillow_obstruction_height_curve = 1.35,
-	pillow_height_smoothing_tiles = 0.10,
-	pillow_height_seam_stitch_tiles = 0.015,
-	pillow_height_tile_seam_fade = 0.0,
-	pillow_material_tile_seam_fade = 0.0,
-	foam_bank_friction_bias = 0.35,
-	foam_pillow_anchor_bias = 0.35,
-	foam_pillow_visual_bias = 0.35,
-	wake_strength = 0.70,
-	wake_confidence_gate_start = 0.08,
-	wake_confidence_gate_full = 0.45,
-	wake_hard_gate_start = 0.06,
-	wake_hard_gate_full = 0.40,
-	wake_energy_gate_start = 0.03,
-	wake_energy_gate = 0.35,
-	wake_flow_gate_start = 0.03,
-	wake_flow_gate = 0.28,
-	wake_bank_suppression = 0.85,
-	wake_edge_sample_tiles = 0.024,
-	wake_eddy_edge_gate_start = 0.025,
-	wake_eddy_edge_gate_full = 0.18,
-	wake_eddy_near_wake_gate_start = 0.04,
-	wake_eddy_near_wake_gate_full = 0.25,
-	wake_eddy_line_strength = 1.85,
-	wake_normal_strength = 0.22,
-	wake_eddy_line_normal_strength = 0.85,
-	wake_roughness_boost = 0.22,
-	wake_specular_reduction = 0.12,
-	wake_albedo_breakup_strength = 0.18,
-	wake_breakup_color = Color(0.42, 0.72, 0.78, 1.0),
-	wake_foam_fleck_bias = 0.055,
-	wake_eddy_line_foam_bias = 0.18,
-	wake_fleck_noise_scale = 42.0,
-}
-
 const RUNTIME_RIPPLE_MATERIAL_PARAMETER_SET = {
 	"i_ripple_enabled": true,
 	"i_ripple_simulation_texture": true,
@@ -882,12 +820,18 @@ func _property_can_revert(property: StringName) -> bool:
 			return true
 		return false
 	if property_name.begins_with("mat_"):
-		if _material == null:
+		if _material == null or _material.shader == null:
 			return false
+		# Reverts come straight from the live shader's declared defaults
+		# (R3.3) - the old hand-mirrored override table held no actual
+		# overrides, and ShaderMaterial.property_can_revert never worked here
+		# (its remap cache only fills when the material itself is inspected,
+		# which this internal material never is).
 		var param_name := property_name.trim_prefix("mat_")
-		if MATERIAL_PARAMETER_REVERT_OVERRIDES.has(param_name):
-			return _material.get_shader_parameter(param_name) != MATERIAL_PARAMETER_REVERT_OVERRIDES[param_name]
-		return _material.property_can_revert(str("shader_parameter/", param_name)) or _material.property_can_revert(str("shader_param/", param_name))
+		var current_value = _material.get_shader_parameter(param_name)
+		if current_value == null:
+			return false
+		return current_value != RenderingServer.shader_get_parameter_default(_material.shader.get_rid(), param_name)
 
 	return false
 
@@ -897,15 +841,10 @@ func _property_get_revert(property: StringName) -> Variant:
 	if DEFAULT_PARAMETERS.has(property_name):
 		return DEFAULT_PARAMETERS.get(property_name, null)
 	if property_name.begins_with("mat_"):
-		if _material == null:
+		if _material == null or _material.shader == null:
 			return null
 		var param_name := property_name.trim_prefix("mat_")
-		if MATERIAL_PARAMETER_REVERT_OVERRIDES.has(param_name):
-			return MATERIAL_PARAMETER_REVERT_OVERRIDES[param_name]
-		var revert_value := _material.property_get_revert(str("shader_parameter/", param_name))
-		if revert_value == null:
-			revert_value = _material.property_get_revert(str("shader_param/", param_name))
-		return revert_value
+		return RenderingServer.shader_get_parameter_default(_material.shader.get_rid(), param_name)
 	return null
 
 
