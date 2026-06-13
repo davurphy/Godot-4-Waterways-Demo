@@ -2,9 +2,9 @@
 
 ## Current Truth
 
-- Status: Draft plan for R6 only. No R6 code has started.
+- Status: Draft R6 plan and companion docs. No R6 code has started.
 - Parent track: `addons/waterways/docs/spec-driven/features/river-refactor/roadmap.md`
-- Gate before implementation: this phase still needs its own `spec.md` and `validation.md` beside this file. This plan is the roadmap/implementation plan, not the whole R6 documentation gate by itself.
+- Gate before implementation: this phase has companion docs beside this file, but implementation still waits on doc review/check-in and pre-R6 baseline capture. This plan is the roadmap/implementation plan, not the whole R6 documentation gate by itself.
 - Current branch assumption: continue on `river-refactor` unless the user asks for a fresh phase branch.
 - Last completed prerequisite: R5 structural dedup closed on 2026-06-13 with RT.1 texture hashes, exact property-list diff, and `R5_BEHAVIOR_PRESERVATION_PROBE_OK`.
 - Primary objective: move low-coupling responsibilities out of `river_manager.gd` without changing river bake output, metadata, public API behavior, inspector behavior, or runtime ripple behavior.
