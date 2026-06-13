@@ -10,10 +10,10 @@ A dependency-aware phase sequence (R0 hotfixes → RT tooling → R1 dead-code p
 
 ## Current Truth
 
-- Implementation status: Phases R0, RT, R1, R2, R3, R4, and R8 complete and fully closed. R4 implementation landed with automated/headless guard coverage passing (2026-06-13), the first visible ripple review failed, the impulse scheduling fix landed, and the full user-visible R4 suite later passed. R5 open; R6/R7 gated on their own docs
+- Implementation status: Phases R0, RT, R1, R2, R3, R4, R5, and R8 complete and fully closed. R5 implementation landed with RT.1 scratch rebake texture hashes, exact property-list diff, and `r5_behavior_preservation_probe.gd` passing. R6/R7 are gated on their own docs
 - Open architectural decisions: R7-vs-feature-Phase-5 compute decision (gate before R7). Resolved: R2/R3 landed merged (2026-06-12), as the roadmap recommended. New optional decision logged in `validation.md`: whether system_flow should also apply occupancy stilling/wake damping so duck-read magnitudes match the river surface's runtime advection
-- Last validation that proves the plan still works: 2026-06-13 R4 full suite (`R4_RUNTIME_ROBUSTNESS_PROBE_OK`, existing ripple review/diagnostic markers, `R4_VISIBLE_AUTO_REVIEW_DONE`, post-fix agent captures showing localized rings, user-visible Checks 2-7 passed, and `git diff --check` clean) on top of the post-R2+R3 full suite (see `validation.md` matrix); the plan's R2 gate assumption was corrected during execution (Defect-1 signature misattribution — see `spec.md` Resolved Questions)
-- Next planned slice: the GDScript halves of R5, or the required phase docs before R6/R7
+- Last validation that proves the plan still works: 2026-06-13 R5 sweep (`R5_BEHAVIOR_PRESERVATION_PROBE_OK`, RT.1 scratch rebake texture hashes, `R5_PROPERTY_LIST_MATCH=True`, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, `FILTER_RENDERER_LOAD_OK shader_paths=19`, `SYSTEM_FLOW_PROJECTED_GATE_OK`, and `git diff --check`) on top of the post-R2+R3 full suite (see `validation.md` matrix); the plan's R2 gate assumption was corrected during execution (Defect-1 signature misattribution — see `spec.md` Resolved Questions)
+- Next planned slice: the required phase docs before R6/R7
 - Branch safety before implementation: all work to date on `river-refactor` with the user's acquiescence (deviation from the one-branch-per-phase rule, recorded in the handoff)
 - Sections below that are historical or superseded: the R2 acceptance-gate description (RT.3 `enforce=all` < 20°) is superseded by the restructured gate (mechanism probe + 35° gross-divergence guard)
 

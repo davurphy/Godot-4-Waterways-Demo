@@ -42,6 +42,10 @@ Not applicable as external research — this track changes no channel semantics 
 - 2026-06-13 R4 docs refresh: the official `Curve3D.get_closest_offset(to_point)` docs confirm the query point is in curve-local space and the return value is the baked offset usable with `sample_baked`, so R4.2 keeps the offset→segment lookup layer instead of treating it as a segment index.
 - 2026-06-13 R4 docs refresh: the official `SubViewport.UPDATE_ONCE` docs confirm one-shot render-target updates switch back to disabled after the update; R4.1 therefore performs at most one ripple sim step per `_process` and accepts slower propagation under low FPS rather than queueing multiple ping-pong writes in one frame.
 - 2026-06-13 R4 docs refresh: the official `RigidBody3D.sleeping` docs describe sleeping bodies as inactive until woken by collision/force/impulse, so R4.3 stops forcing `sleeping = false` every buoyancy tick and lets settled bodies remain asleep.
+- 2026-06-13 R5 docs refresh: the official `SubViewport.UPDATE_ONCE` docs also support R5's renderer consolidation - one-shot filter/system render passes still set the viewport to update once, await frames, then read back.
+- 2026-06-13 R5 docs refresh: the official `Texture2D.get_image()` docs confirm readback returns an `Image` copy, can return null, and is expensive when texture data is stored on the GPU. R5.3 therefore adds the same readback preflight to `system_map_renderer.gd` that `filter_renderer.gd` already had.
+- 2026-06-13 R5 docs refresh: the official `ShaderMaterial.set_shader_parameter()` docs confirm per-material parameter assignment and case-sensitive names, so R5.1 uses a fresh `ShaderMaterial` per pass and descriptor-bound parameter names to avoid stale uniform bleed.
+- 2026-06-13 R5 docs refresh: the official `ImageTexture.create_from_image()` docs confirm output textures are created from `Image` data, so both filter/system renderers validate the readback image before creating the texture and validate the texture size afterward.
 - Headless rendering is unreliable per the constitution's own caveat — all pixel-parity gates are windowed/human-assisted by default.
 
 ## Legacy Waterways Reference
@@ -108,3 +112,7 @@ The adversarial review *was* the context challenge, and it overturned audit clai
 - Godot Engine stable docs, `Curve3D.get_closest_offset`: https://docs.godotengine.org/en/stable/classes/class_curve3d.html#class-curve3d-method-get-closest-offset
 - Godot Engine stable docs, `SubViewport.UPDATE_ONCE`: https://docs.godotengine.org/en/stable/classes/class_subviewport.html#enum-subviewport-updatemode
 - Godot Engine stable docs, `RigidBody3D.sleeping`: https://docs.godotengine.org/en/stable/classes/class_rigidbody3d.html#class-rigidbody3d-property-sleeping
+- Godot Engine 4.6 docs, `SubViewport.UPDATE_ONCE`: https://docs.godotengine.org/en/4.6/classes/class_subviewport.html
+- Godot Engine 4.6 docs, `Texture2D.get_image`: https://docs.godotengine.org/en/4.6/classes/class_texture2d.html
+- Godot Engine 4.6 docs, `ShaderMaterial.set_shader_parameter`: https://docs.godotengine.org/en/4.6/classes/class_shadermaterial.html
+- Godot Engine 4.6 docs, `ImageTexture.create_from_image`: https://docs.godotengine.org/en/4.6/classes/class_imagetexture.html

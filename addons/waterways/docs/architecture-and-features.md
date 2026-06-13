@@ -51,7 +51,7 @@ The most important bake entry point is `_generate_flowmap()`. Despite the histor
 - support-derived context: `normal_map_pass` (gradient/normal of the dilated support), `flow_pressure_pass`, `foam_pass`
 - fallback flow: `normal_to_flow_filter` (support normals to flow, used when obstacle-avoidance generation is off)
 - occupancy: `occupancy_pack_pass` (crisp solid mask + proximity ramp into `water_occupancy`)
-- pressure projection solve: `flow_divergence_pass`, `flow_pressure_jacobi_pass`, `flow_gradient_subtract_pass`, `flow_boundary_tangency_pass` (run on HDR float targets via `set_hdr_2d` — 8-bit targets quantize pressure gradients into velocity noise)
+- pressure projection solve: `flow_divergence_pass`, `flow_pressure_jacobi_pass`, `flow_gradient_subtract_pass`, `flow_boundary_tangency_pass` (their pass descriptors set `hdr = true`, so each pass owns the HDR float target selection - 8-bit targets quantize pressure gradients into velocity noise)
 - semantic feature masks: `obstacle_feature_mask_filter`, `bank_response_feature_mask_filter`
 - authored speed: `flow_speed_scale_pass` (per-point `flow_speeds` magnitude scale, skipped when all points are neutral)
 - packing/utility: `combine_pass`, `dotproduct`

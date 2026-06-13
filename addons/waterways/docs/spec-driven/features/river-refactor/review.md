@@ -2,7 +2,7 @@
 
 ## Review Date
 
-No formal full-track review held yet. The pre-implementation adversarial review happened 2026-06-12; R4 implementation review closed as Pass on 2026-06-13. The first human-visible ripple check failed and exposed an impulse scheduling bug; the fix landed, automated/windowed agent checks pass, the user rerun confirmed visible ripples/ripple influence, and the broader live-editor R4 stress suite later passed.
+No formal full-track review held yet. The pre-implementation adversarial review happened 2026-06-12; R4 implementation review closed as Pass on 2026-06-13 after the visible ripple fix; R5 structural-dedup review closed as Pass on 2026-06-13 with RT.1 scratch rebake hashes, property-list diff, and the R5 guard probe.
 
 ## Scope Reviewed
 
@@ -11,11 +11,11 @@ No formal full-track review held yet. The pre-implementation adversarial review 
 
 ## Current Truth
 
-- Overall review status: In progress — Phases R0, RT, R1, R2, R3, R4, and R8 implemented, validated, and closed against their gates. R4 implementation landed 2026-06-13 and passed automated/headless guards. The first visible ripple review then failed, was reproduced by agent captures, and was fixed by separating impulse render/step/clear frames in `water_ripple_field.gd`; the user rerun passed, and the later Checks 2-7 completed the suite. No formal full-track phase-review session held yet (per-item validation + user confirmations stood in, recorded in `validation.md`). The `river-obstacle-flow-constraints` folder got its own `review.md` in R8.3
+- Overall review status: In progress — Phases R0, RT, R1, R2, R3, R4, R5, and R8 implemented, validated, and closed against their gates. R4 implementation landed 2026-06-13 and passed automated/headless guards after the visible ripple scheduling fix. R5 implementation landed 2026-06-13 and passed behavior-preservation gates: RT.1 generated texture hashes identical across both demo river bakes, property-list dump matched exactly, and `r5_behavior_preservation_probe.gd` passed. No formal full-track phase-review session held yet (per-item validation + user confirmations stood in, recorded in `validation.md`). The `river-obstacle-flow-constraints` folder got its own `review.md` in R8.3
 - Blocking issues remaining: none known in landed code after R4 closure; process gates open: R6/R7 spec-plan-validation files not yet written; R7 compute decision not recorded; the formal Adversarial Plan Review in `plan.md` was never held (work proceeded with per-item user validation by accepted practice)
 - Important issues remaining: two execution findings recorded in `spec.md` Resolved Questions (Defect-1 signature misattribution; dead ShaderMaterial revert fallback) — both resolved in code, and both now folded into the architecture docs by R8 (the obstacle mechanism rewrite + the revert behavior)
-- Last validation relied on: 2026-06-13 R4 full suite — automated/headless markers (`R4_RUNTIME_ROBUSTNESS_PROBE_OK`, existing ripple review/diagnostic probes, `R4_VISIBLE_AUTO_REVIEW_DONE`) plus user-visible passes for hitch recovery, 60 Hz emitter stress, curve editing, ripple inspector state, two-WaterSystem buoyancy coverage, and settled-body sleep.
-- Next action: continue into the GDScript halves of R5, or write the required R6/R7 spec/plan/validation files before those phases start. R7 also needs the compute decision recorded.
+- Last validation relied on: 2026-06-13 R5 sweep — `R5_BEHAVIOR_PRESERVATION_PROBE_OK`, RT.1 scratch rebake texture hashes identical across both generated demo river bakes, `R5_PROPERTY_LIST_MATCH=True`, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, `FILTER_RENDERER_LOAD_OK shader_paths=19`, `SYSTEM_FLOW_PROJECTED_GATE_OK`, and `git diff --check`.
+- Next action: write the required R6/R7 spec/plan/validation files before those phases start. R7 also needs the compute decision recorded.
 - Historical detail starts at: nothing archived yet
 
 ## Findings
@@ -56,7 +56,8 @@ Fill per phase as work lands; criteria come from `spec.md` Acceptance Tests.
 | R3 gate (3-renderer compile, RT.2 parity, revert checks) | Pass | Closed 2026-06-12 with RT.2 byte-identity and windowed checks |
 | R8 gate (docs coherence) | Pass | Closed 2026-06-12; docs spot-checked against source and grep gates clean |
 | R4 gate (low-FPS ripple, hitch recovery, width parity, buoyancy binding, sleep) | Pass | Implementation and headless guard pass 2026-06-13 (`R4_RUNTIME_ROBUSTNESS_PROBE_OK`); first visible ripple review failed, fix landed, post-fix agent captures and user rerun show rings; Checks 2-7 later passed by user in the editor/runtime suite |
-| R5/R6 gate (byte-identical bakes, property-list diff, undo, abort matrix) | Not run | |
+| R5 gate (byte-identical bakes, property-list diff, undo) | Pass | Closed 2026-06-13 with scratch baseline-vs-R5 generated texture hashes, exact serialized property-list match, and `R5_BEHAVIOR_PRESERVATION_PROBE_OK` |
+| R6 gate (byte-identical bakes, abort matrix, metadata dict diffs) | Not run | |
 | R7 gate (f16 epsilon, ordering test, wall-clock budget) | Not run | |
 
 ## Architecture Compliance
@@ -78,6 +79,7 @@ To be answered per reviewed phase:
 - Automated:
   - 2026-06-13 R4 implementation sweep: changed-script parser/check-only, `r4_runtime_robustness_probe.gd`, existing ripple probes, and core flow/bake probes passed. Signal is headless/non-visual only for R4.
   - 2026-06-13 post-visible-failure checks: parser/check-only, `r4_runtime_robustness_probe.gd`, existing ripple review/diagnostic probes, `r4_ripple_visible_auto_review.gd`, and `git diff --check` passed after the impulse scheduling fix.
+  - 2026-06-13 R5 sweep: `r5_behavior_preservation_probe.gd`, RT.1 scratch rebake texture hashes, property-list dump compare, filter renderer load check, system-map renderer check-only, `system_flow_projected_gate_probe.gd`, `r4_runtime_robustness_probe.gd`, and `git diff --check` passed.
   - Do not present headless/editor-load checks as proof of visible editor, shader, bake, or runtime behavior.
 - Human-assisted:
   - Initial R4 ripple visible review run by user failed: no visible ripple/influence, overlay stayed at `Queued 3 emitter impulses`. Agent fixed the reproduced issue; user rerun passed.

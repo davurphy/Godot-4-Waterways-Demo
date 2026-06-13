@@ -280,6 +280,79 @@ const BAKING_RAYCAST_LAYERS_MIN := 0
 const BAKING_RAYCAST_LAYERS_MAX := 0xFFFFFFFF
 const BAKING_NORMALIZED_MIN := 0.0
 const BAKING_NORMALIZED_MAX := 1.0
+const BAKING_PROPERTY_DESCRIPTORS := [
+	{
+		name = "baking_resolution",
+		type = TYPE_INT,
+		hint = PROPERTY_HINT_ENUM,
+		hint_string = "64, 128, 256, 512, 1024",
+		sanitize = "int_range",
+		min = RIVER_BAKE_RESOLUTION_MIN,
+		max = RIVER_BAKE_RESOLUTION_MAX
+	},
+	{
+		name = "baking_raycast_distance",
+		type = TYPE_FLOAT,
+		hint = PROPERTY_HINT_RANGE,
+		hint_string = "0.0, 100.0",
+		sanitize = "float_range",
+		min = BAKING_RAYCAST_DISTANCE_MIN,
+		max = BAKING_RAYCAST_DISTANCE_MAX
+	},
+	{
+		name = "baking_raycast_layers",
+		type = TYPE_INT,
+		hint = PROPERTY_HINT_LAYERS_3D_PHYSICS,
+		sanitize = "int_range",
+		min = BAKING_RAYCAST_LAYERS_MIN,
+		max = BAKING_RAYCAST_LAYERS_MAX
+	},
+	{
+		name = "baking_dilate",
+		type = TYPE_FLOAT,
+		hint = PROPERTY_HINT_RANGE,
+		hint_string = "0.0, 1.0",
+		sanitize = "float_range",
+		min = BAKING_NORMALIZED_MIN,
+		max = BAKING_NORMALIZED_MAX
+	},
+	{
+		name = "baking_flowmap_blur",
+		type = TYPE_FLOAT,
+		hint = PROPERTY_HINT_RANGE,
+		hint_string = "0.0, 1.0",
+		sanitize = "float_range",
+		min = BAKING_NORMALIZED_MIN,
+		max = BAKING_NORMALIZED_MAX
+	},
+	{
+		name = "baking_foam_cutoff",
+		type = TYPE_FLOAT,
+		hint = PROPERTY_HINT_RANGE,
+		hint_string = "0.0, 1.0",
+		sanitize = "float_range",
+		min = BAKING_NORMALIZED_MIN,
+		max = BAKING_NORMALIZED_MAX
+	},
+	{
+		name = "baking_foam_offset",
+		type = TYPE_FLOAT,
+		hint = PROPERTY_HINT_RANGE,
+		hint_string = "0.0, 1.0",
+		sanitize = "float_range",
+		min = BAKING_NORMALIZED_MIN,
+		max = BAKING_NORMALIZED_MAX
+	},
+	{
+		name = "baking_foam_blur",
+		type = TYPE_FLOAT,
+		hint = PROPERTY_HINT_RANGE,
+		hint_string = "0.0, 1.0",
+		sanitize = "float_range",
+		min = BAKING_NORMALIZED_MIN,
+		max = BAKING_NORMALIZED_MAX
+	}
+]
 
 
 # Shape Properties
@@ -333,7 +406,7 @@ var lod_lod0_distance := 50.0:
 # Bake Properties
 var baking_resolution := 2:
 	set(value):
-		var sanitized_value := _sanitize_int_range("baking_resolution", value, RIVER_BAKE_RESOLUTION_MIN, RIVER_BAKE_RESOLUTION_MAX, DEFAULT_PARAMETERS.baking_resolution)
+		var sanitized_value := int(_sanitize_baking_property_value("baking_resolution", value))
 		if sanitized_value == baking_resolution:
 			return
 		baking_resolution = sanitized_value
@@ -341,7 +414,7 @@ var baking_resolution := 2:
 			_on_bake_property_changed()
 var baking_raycast_distance := 10.0:
 	set(value):
-		var sanitized_value := _sanitize_float_range("baking_raycast_distance", value, BAKING_RAYCAST_DISTANCE_MIN, BAKING_RAYCAST_DISTANCE_MAX, DEFAULT_PARAMETERS.baking_raycast_distance)
+		var sanitized_value := float(_sanitize_baking_property_value("baking_raycast_distance", value))
 		if is_equal_approx(sanitized_value, baking_raycast_distance):
 			return
 		baking_raycast_distance = sanitized_value
@@ -349,7 +422,7 @@ var baking_raycast_distance := 10.0:
 			_on_bake_property_changed()
 var baking_raycast_layers := 1:
 	set(value):
-		var sanitized_value := _sanitize_int_range("baking_raycast_layers", value, BAKING_RAYCAST_LAYERS_MIN, BAKING_RAYCAST_LAYERS_MAX, DEFAULT_PARAMETERS.baking_raycast_layers)
+		var sanitized_value := int(_sanitize_baking_property_value("baking_raycast_layers", value))
 		if sanitized_value == baking_raycast_layers:
 			return
 		baking_raycast_layers = sanitized_value
@@ -357,7 +430,7 @@ var baking_raycast_layers := 1:
 			_on_bake_property_changed()
 var baking_dilate := 0.6:
 	set(value):
-		var sanitized_value := _sanitize_float_range("baking_dilate", value, BAKING_NORMALIZED_MIN, BAKING_NORMALIZED_MAX, DEFAULT_PARAMETERS.baking_dilate)
+		var sanitized_value := float(_sanitize_baking_property_value("baking_dilate", value))
 		if is_equal_approx(sanitized_value, baking_dilate):
 			return
 		baking_dilate = sanitized_value
@@ -365,7 +438,7 @@ var baking_dilate := 0.6:
 			_on_bake_property_changed()
 var baking_flowmap_blur := 0.04:
 	set(value):
-		var sanitized_value := _sanitize_float_range("baking_flowmap_blur", value, BAKING_NORMALIZED_MIN, BAKING_NORMALIZED_MAX, DEFAULT_PARAMETERS.baking_flowmap_blur)
+		var sanitized_value := float(_sanitize_baking_property_value("baking_flowmap_blur", value))
 		if is_equal_approx(sanitized_value, baking_flowmap_blur):
 			return
 		baking_flowmap_blur = sanitized_value
@@ -373,7 +446,7 @@ var baking_flowmap_blur := 0.04:
 			_on_bake_property_changed()
 var baking_foam_cutoff := 0.9:
 	set(value):
-		var sanitized_value := _sanitize_float_range("baking_foam_cutoff", value, BAKING_NORMALIZED_MIN, BAKING_NORMALIZED_MAX, DEFAULT_PARAMETERS.baking_foam_cutoff)
+		var sanitized_value := float(_sanitize_baking_property_value("baking_foam_cutoff", value))
 		if is_equal_approx(sanitized_value, baking_foam_cutoff):
 			return
 		baking_foam_cutoff = sanitized_value
@@ -381,7 +454,7 @@ var baking_foam_cutoff := 0.9:
 			_on_bake_property_changed()
 var baking_foam_offset := 0.1:
 	set(value):
-		var sanitized_value := _sanitize_float_range("baking_foam_offset", value, BAKING_NORMALIZED_MIN, BAKING_NORMALIZED_MAX, DEFAULT_PARAMETERS.baking_foam_offset)
+		var sanitized_value := float(_sanitize_baking_property_value("baking_foam_offset", value))
 		if is_equal_approx(sanitized_value, baking_foam_offset):
 			return
 		baking_foam_offset = sanitized_value
@@ -389,7 +462,7 @@ var baking_foam_offset := 0.1:
 			_on_bake_property_changed()
 var baking_foam_blur := 0.02:
 	set(value):
-		var sanitized_value := _sanitize_float_range("baking_foam_blur", value, BAKING_NORMALIZED_MIN, BAKING_NORMALIZED_MAX, DEFAULT_PARAMETERS.baking_foam_blur)
+		var sanitized_value := float(_sanitize_baking_property_value("baking_foam_blur", value))
 		if is_equal_approx(sanitized_value, baking_foam_blur):
 			return
 		baking_foam_blur = sanitized_value
@@ -588,62 +661,8 @@ func _get_property_list() -> Array:
 			type = TYPE_NIL,
 			hint_string = "baking_",
 			usage = PROPERTY_USAGE_GROUP | PROPERTY_USAGE_SCRIPT_VARIABLE
-		},
-		{
-			name = "baking_resolution",
-			type = TYPE_INT,
-			hint = PROPERTY_HINT_ENUM,
-			hint_string = "64, 128, 256, 512, 1024",
-			usage = PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_SCRIPT_VARIABLE
-		},
-		{
-			name = "baking_raycast_distance",
-			type = TYPE_FLOAT,
-			hint = PROPERTY_HINT_RANGE,
-			hint_string = "0.0, 100.0",
-			usage = PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_SCRIPT_VARIABLE
-		},		
-		{
-			name = "baking_raycast_layers",
-			type = TYPE_INT,
-			hint = PROPERTY_HINT_LAYERS_3D_PHYSICS,
-			usage = PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_SCRIPT_VARIABLE
-		},
-		{
-			name = "baking_dilate",
-			type = TYPE_FLOAT,
-			hint = PROPERTY_HINT_RANGE,
-			hint_string = "0.0, 1.0",
-			usage = PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_SCRIPT_VARIABLE
-		},
-		{
-			name = "baking_flowmap_blur",
-			type = TYPE_FLOAT,
-			hint = PROPERTY_HINT_RANGE,
-			hint_string = "0.0, 1.0",
-			usage = PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_SCRIPT_VARIABLE
-		},
-		{
-			name = "baking_foam_cutoff",
-			type = TYPE_FLOAT,
-			hint = PROPERTY_HINT_RANGE,
-			hint_string = "0.0, 1.0",
-			usage = PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_SCRIPT_VARIABLE
-		},
-		{
-			name = "baking_foam_offset",
-			type = TYPE_FLOAT,
-			hint = PROPERTY_HINT_RANGE,
-			hint_string = "0.0, 1.0",
-			usage = PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_SCRIPT_VARIABLE
-		},
-		{
-			name = "baking_foam_blur",
-			type = TYPE_FLOAT,
-			hint = PROPERTY_HINT_RANGE,
-			hint_string = "0.0, 1.0",
-			usage = PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_SCRIPT_VARIABLE
-		},
+		}
+	] + _get_baking_property_list_entries() + [
 		{
 			name = "bake_data",
 			type = TYPE_OBJECT,
@@ -722,6 +741,22 @@ func _get_property_list() -> Array:
 	]
 	var combined_props = props + props2 + props3
 	return combined_props
+
+
+func _get_baking_property_list_entries() -> Array:
+	var entries := []
+	for descriptor in BAKING_PROPERTY_DESCRIPTORS:
+		var entry := {
+			name = String(descriptor.get("name", "")),
+			type = int(descriptor.get("type", TYPE_NIL)),
+			usage = PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_SCRIPT_VARIABLE
+		}
+		if descriptor.has("hint"):
+			entry.hint = int(descriptor.get("hint", PROPERTY_HINT_NONE))
+		if descriptor.has("hint_string"):
+			entry.hint_string = String(descriptor.get("hint_string", ""))
+		entries.append(entry)
+	return entries
 
 
 func _ordered_shader_parameters_for_inspector(shader_params: Array) -> Array:
@@ -1627,6 +1662,26 @@ func _sanitize_float_range(property_name: String, value: Variant, min_value: flo
 	return sanitized_value
 
 
+func _sanitize_baking_property_value(property_name: String, value: Variant) -> Variant:
+	var descriptor := _get_baking_property_descriptor(property_name)
+	if descriptor.is_empty():
+		return value
+	var fallback = DEFAULT_PARAMETERS.get(property_name, value)
+	match String(descriptor.get("sanitize", "")):
+		"int_range":
+			return _sanitize_int_range(property_name, value, int(descriptor.get("min", 0)), int(descriptor.get("max", 0)), int(fallback))
+		"float_range":
+			return _sanitize_float_range(property_name, value, float(descriptor.get("min", 0.0)), float(descriptor.get("max", 0.0)), float(fallback))
+	return value
+
+
+func _get_baking_property_descriptor(property_name: String) -> Dictionary:
+	for descriptor in BAKING_PROPERTY_DESCRIPTORS:
+		if String(descriptor.get("name", "")) == property_name:
+			return descriptor
+	return {}
+
+
 func _sanitize_shader_type(value: Variant) -> int:
 	if typeof(value) == TYPE_FLOAT and not _is_finite_number(float(value)):
 		_warn_sanitized_property("mat_shader_type", value, SHADER_TYPES.WATER)
@@ -1673,55 +1728,38 @@ func _sanitize_authoring_properties() -> void:
 
 
 func _set_widths_without_property_notifications(new_widths: Array) -> void:
-	var was_suppressed := _suppress_property_change_notifications
-	_suppress_property_change_notifications = true
-	widths = new_widths
-	_suppress_property_change_notifications = was_suppressed
+	_set_per_point_channel_without_property_notifications("widths", new_widths)
 
 
 func _set_flow_speeds_without_property_notifications(new_flow_speeds: Array) -> void:
+	_set_per_point_channel_without_property_notifications("flow_speeds", new_flow_speeds)
+
+
+func _set_per_point_channel_without_property_notifications(channel_name: String, new_values: Array) -> void:
 	var was_suppressed := _suppress_property_change_notifications
 	_suppress_property_change_notifications = true
-	flow_speeds = new_flow_speeds
+	match channel_name:
+		"widths":
+			widths = new_values
+		"flow_speeds":
+			flow_speeds = new_values
 	_suppress_property_change_notifications = was_suppressed
 
 
 func _sanitize_flow_speed_array(value: Variant) -> Array:
-	var sanitized_flow_speeds := []
-	if typeof(value) != TYPE_ARRAY:
-		_warn_sanitized_property("flow_speeds", value, "[]")
-		return sanitized_flow_speeds
-	var source_flow_speeds: Array = value
-	for flow_speed_index in source_flow_speeds.size():
-		sanitized_flow_speeds.append(_sanitize_flow_speed_value(source_flow_speeds[flow_speed_index], "flow_speeds[" + str(flow_speed_index) + "]"))
-	return sanitized_flow_speeds
+	return _sanitize_per_point_channel_array("flow_speeds", value)
 
 
 func _sanitize_flow_speed_value(value: Variant, property_name: String) -> float:
-	var flow_speed_value := float(value)
-	if not _is_finite_number(flow_speed_value) or flow_speed_value < RIVER_FLOW_SPEED_FACTOR_MIN or flow_speed_value > RIVER_FLOW_SPEED_FACTOR_MAX:
-		_warn_sanitized_property(property_name, value, RIVER_NEUTRAL_FLOW_SPEED_FACTOR)
-		return RIVER_NEUTRAL_FLOW_SPEED_FACTOR
-	return flow_speed_value
+	return _sanitize_per_point_channel_value("flow_speeds", value, property_name)
 
 
 func _ensure_flow_speed_count_for_curve() -> void:
-	var required_count := 0
-	if curve != null:
-		required_count = curve.get_point_count()
-	if required_count <= 0:
-		return
-	if flow_speeds.is_empty():
-		flow_speeds.append(RIVER_NEUTRAL_FLOW_SPEED_FACTOR)
-	while flow_speeds.size() < required_count:
-		flow_speeds.append(flow_speeds[flow_speeds.size() - 1])
+	_ensure_per_point_channel_count_for_curve("flow_speeds")
 
 
 func _get_flow_speed_for_point(point_index: int) -> float:
-	if flow_speeds.is_empty():
-		return RIVER_NEUTRAL_FLOW_SPEED_FACTOR
-	var flow_speed_index: int = clamp(point_index, 0, flow_speeds.size() - 1)
-	return _sanitize_flow_speed_value(flow_speeds[flow_speed_index], "flow_speeds[" + str(flow_speed_index) + "]")
+	return _get_per_point_channel_value_for_point("flow_speeds", point_index)
 
 
 func _any_flow_speed_non_neutral() -> bool:
@@ -1732,43 +1770,108 @@ func _any_flow_speed_non_neutral() -> bool:
 
 
 func _sanitize_width_array(value: Variant) -> Array:
-	var sanitized_widths := []
-	if typeof(value) != TYPE_ARRAY:
-		_warn_sanitized_property("widths", value, "[]")
-		return sanitized_widths
-	var source_widths: Array = value
-	for width_index in source_widths.size():
-		sanitized_widths.append(_sanitize_width_value(source_widths[width_index], "widths[" + str(width_index) + "]"))
-	return sanitized_widths
+	return _sanitize_per_point_channel_array("widths", value)
 
 
 func _sanitize_width_value(value: Variant, property_name: String) -> float:
-	var width_value := float(value)
-	if not _is_finite_number(width_value) or width_value < WaterHelperMethods.MIN_RIVER_WIDTH:
-		_warn_sanitized_property(property_name, value, WaterHelperMethods.MIN_RIVER_WIDTH)
-		return WaterHelperMethods.MIN_RIVER_WIDTH
-	return width_value
+	return _sanitize_per_point_channel_value("widths", value, property_name)
 
 
 func _ensure_width_count_for_curve() -> void:
-	var required_width_count := 0
-	if curve != null:
-		required_width_count = curve.get_point_count()
-	if required_width_count <= 0:
-		return
-	if widths.is_empty():
-		_warn_sanitized_property("widths", "empty", "default width values")
-		widths.append(1.0)
-	while widths.size() < required_width_count:
-		_warn_sanitized_property("widths", "too few entries", "padded to curve point count")
-		widths.append(widths[widths.size() - 1])
+	_ensure_per_point_channel_count_for_curve("widths")
 
 
 func _get_width_for_point(point_index: int) -> float:
-	if widths.is_empty():
-		return WaterHelperMethods.MIN_RIVER_WIDTH
-	var width_index: int = clamp(point_index, 0, widths.size() - 1)
-	return _sanitize_width_value(widths[width_index], "widths[" + str(width_index) + "]")
+	return _get_per_point_channel_value_for_point("widths", point_index)
+
+
+func _sanitize_per_point_channel_array(channel_name: String, value: Variant) -> Array:
+	var sanitized_values := []
+	if typeof(value) != TYPE_ARRAY:
+		_warn_sanitized_property(channel_name, value, "[]")
+		return sanitized_values
+	var source_values: Array = value
+	for value_index in source_values.size():
+		sanitized_values.append(_sanitize_per_point_channel_value(channel_name, source_values[value_index], channel_name + "[" + str(value_index) + "]"))
+	return sanitized_values
+
+
+func _sanitize_per_point_channel_value(channel_name: String, value: Variant, property_name: String) -> float:
+	var numeric_value := float(value)
+	match channel_name:
+		"widths":
+			if not _is_finite_number(numeric_value) or numeric_value < WaterHelperMethods.MIN_RIVER_WIDTH:
+				_warn_sanitized_property(property_name, value, WaterHelperMethods.MIN_RIVER_WIDTH)
+				return WaterHelperMethods.MIN_RIVER_WIDTH
+			return numeric_value
+		"flow_speeds":
+			if not _is_finite_number(numeric_value) or numeric_value < RIVER_FLOW_SPEED_FACTOR_MIN or numeric_value > RIVER_FLOW_SPEED_FACTOR_MAX:
+				_warn_sanitized_property(property_name, value, RIVER_NEUTRAL_FLOW_SPEED_FACTOR)
+				return RIVER_NEUTRAL_FLOW_SPEED_FACTOR
+			return numeric_value
+		_:
+			_warn_sanitized_property(property_name, value, _get_per_point_channel_seed_default(channel_name))
+			return _get_per_point_channel_seed_default(channel_name)
+
+
+func _ensure_per_point_channel_count_for_curve(channel_name: String) -> void:
+	var required_count := 0
+	if curve != null:
+		required_count = curve.get_point_count()
+	if required_count <= 0:
+		return
+	var values := _get_per_point_channel_values(channel_name)
+	if values.is_empty():
+		if _should_warn_on_empty_per_point_channel(channel_name):
+			_warn_sanitized_property(channel_name, "empty", "default " + channel_name + " values")
+		values.append(_get_per_point_channel_seed_default(channel_name))
+	while values.size() < required_count:
+		if _should_warn_on_padded_per_point_channel(channel_name):
+			_warn_sanitized_property(channel_name, "too few entries", "padded to curve point count")
+		values.append(values[values.size() - 1])
+
+
+func _get_per_point_channel_value_for_point(channel_name: String, point_index: int) -> float:
+	var values := _get_per_point_channel_values(channel_name)
+	if values.is_empty():
+		return _get_per_point_channel_empty_fallback(channel_name)
+	var value_index: int = clamp(point_index, 0, values.size() - 1)
+	return _sanitize_per_point_channel_value(channel_name, values[value_index], channel_name + "[" + str(value_index) + "]")
+
+
+func _get_per_point_channel_values(channel_name: String) -> Array:
+	match channel_name:
+		"widths":
+			return widths
+		"flow_speeds":
+			return flow_speeds
+	return []
+
+
+func _get_per_point_channel_seed_default(channel_name: String) -> float:
+	match channel_name:
+		"widths":
+			return 1.0
+		"flow_speeds":
+			return RIVER_NEUTRAL_FLOW_SPEED_FACTOR
+	return 0.0
+
+
+func _get_per_point_channel_empty_fallback(channel_name: String) -> float:
+	match channel_name:
+		"widths":
+			return WaterHelperMethods.MIN_RIVER_WIDTH
+		"flow_speeds":
+			return RIVER_NEUTRAL_FLOW_SPEED_FACTOR
+	return _get_per_point_channel_seed_default(channel_name)
+
+
+func _should_warn_on_empty_per_point_channel(channel_name: String) -> bool:
+	return channel_name == "widths"
+
+
+func _should_warn_on_padded_per_point_channel(channel_name: String) -> bool:
+	return channel_name == "widths"
 
 
 func _get_average_width() -> float:
@@ -1847,14 +1950,10 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 		# River flow RG is local UV flow. Flat collision interiors have no gradient,
 		# so the default bake supplies downstream +V and keeps collision data as support.
 		var downstream_baseline := WaterHelperMethods.create_downstream_baseline_flow_image(int(flowmap_resolution), _uv2_sides, _steps, RIVER_DOWNSTREAM_BASELINE_STRENGTH)
-		var downstream_baseline_with_margins := WaterHelperMethods.add_margins(downstream_baseline, flowmap_resolution, margin, _steps)
-		downstream_baseline_with_margins_texture = ImageTexture.create_from_image(downstream_baseline_with_margins)
-	var blank_support_with_margins := WaterHelperMethods.add_margins(_create_blank_support_source_image(int(flowmap_resolution)), flowmap_resolution, margin, _steps)
-	var blank_support_with_margins_texture := ImageTexture.create_from_image(blank_support_with_margins)
-	var blank_obstacle_features_with_margins := WaterHelperMethods.add_margins(_create_blank_obstacle_feature_source_image(int(flowmap_resolution)), flowmap_resolution, margin, _steps)
-	var blank_obstacle_features_with_margins_texture := ImageTexture.create_from_image(blank_obstacle_features_with_margins)
-	var blank_bank_response_features_with_margins := WaterHelperMethods.add_margins(_create_blank_bank_response_feature_source_image(int(flowmap_resolution)), flowmap_resolution, margin, _steps)
-	var blank_bank_response_features_with_margins_texture := ImageTexture.create_from_image(blank_bank_response_features_with_margins)
+		downstream_baseline_with_margins_texture = _create_margin_texture(downstream_baseline, flowmap_resolution, margin, _steps)
+	var blank_support_with_margins_texture := _create_margin_texture(_create_blank_support_source_image(int(flowmap_resolution)), flowmap_resolution, margin, _steps)
+	var blank_obstacle_features_with_margins_texture := _create_margin_texture(_create_blank_obstacle_feature_source_image(int(flowmap_resolution)), flowmap_resolution, margin, _steps)
+	var blank_bank_response_features_with_margins_texture := _create_margin_texture(_create_blank_bank_response_feature_source_image(int(flowmap_resolution)), flowmap_resolution, margin, _steps)
 	var terrain_contact_source := await WaterHelperMethods.generate_terrain_contact_feature_map(
 		_create_blank_terrain_contact_feature_source_image(int(flowmap_resolution)),
 		mesh_instance,
@@ -1866,18 +1965,15 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 		_get_terrain_contact_feature_settings()
 	)
 	WaterHelperMethods.smooth_uv2_tile_channels(terrain_contact_source, _uv2_sides, _steps, RIVER_TERRAIN_CONTACT_EDGE_SMOOTH_PASSES)
-	var terrain_contact_with_margins := WaterHelperMethods.add_margins(terrain_contact_source, flowmap_resolution, margin, _steps)
+	var terrain_contact_with_margins := _create_margin_image(terrain_contact_source, flowmap_resolution, margin, _steps)
 	var terrain_contact_with_margins_texture := ImageTexture.create_from_image(terrain_contact_with_margins)
-	var grade_energy_with_margins := WaterHelperMethods.add_margins(_create_curve_grade_energy_source_image(int(flowmap_resolution), _uv2_sides, _steps), flowmap_resolution, margin, _steps)
-	var grade_energy_with_margins_texture := ImageTexture.create_from_image(grade_energy_with_margins)
-	var bend_bias_with_margins := WaterHelperMethods.add_margins(_create_curve_bend_bias_source_image(int(flowmap_resolution), _uv2_sides, _steps), flowmap_resolution, margin, _steps)
-	var bend_bias_with_margins_texture := ImageTexture.create_from_image(bend_bias_with_margins)
+	var grade_energy_with_margins_texture := _create_margin_texture(_create_curve_grade_energy_source_image(int(flowmap_resolution), _uv2_sides, _steps), flowmap_resolution, margin, _steps)
+	var bend_bias_with_margins_texture := _create_margin_texture(_create_curve_bend_bias_source_image(int(flowmap_resolution), _uv2_sides, _steps), flowmap_resolution, margin, _steps)
 	# Authored per-point flow speed: only built when any point deviates from
 	# neutral, so default rivers skip the extra scale pass entirely.
 	var flow_speed_with_margins_texture: Texture2D = null
 	if _any_flow_speed_non_neutral():
-		var flow_speed_with_margins := WaterHelperMethods.add_margins(_create_curve_flow_speed_source_image(int(flowmap_resolution), _uv2_sides, _steps), flowmap_resolution, margin, _steps)
-		flow_speed_with_margins_texture = ImageTexture.create_from_image(flow_speed_with_margins)
+		flow_speed_with_margins_texture = _create_margin_texture(_create_curve_flow_speed_source_image(int(flowmap_resolution), _uv2_sides, _steps), flowmap_resolution, margin, _steps)
 
 	# Create correctly tiling noise for A channel
 	var noise_texture := load(FLOW_OFFSET_NOISE_TEXTURE_PATH) as Texture2D
@@ -1919,21 +2015,14 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 	var water_occupancy_mask: Texture2D = null
 	var bank_response_feature_mask_ready := false
 	if downstream_baseline_with_margins_texture != null:
-		var early_bank_response_feature_settings := _get_bank_response_feature_settings()
 		var early_bank_response_uv_denominator := float(_uv2_sides) + 2.0
-		var early_bank_response_feature_mask_result = await renderer_instance.apply_bank_response_feature_mask(
+		var early_bank_response_feature_mask_result = await _render_bank_response_feature_mask(
+			renderer_instance,
 			downstream_baseline_with_margins_texture,
 			terrain_contact_with_margins_texture,
 			grade_energy_with_margins_texture,
 			bend_bias_with_margins_texture,
-			float(early_bank_response_feature_settings.get("probe_tiles", RIVER_BANK_RESPONSE_PROBE_TILES)) / early_bank_response_uv_denominator,
-			RIVER_BANK_RESPONSE_FRICTION_CONTACT_WEIGHT,
-			RIVER_BANK_RESPONSE_FRICTION_SHALLOW_WEIGHT,
-			RIVER_BANK_RESPONSE_HARD_PROTRUSION_WEIGHT,
-			RIVER_BANK_RESPONSE_OUTSIDE_BEND_START,
-			RIVER_BANK_RESPONSE_OUTSIDE_BEND_FULL,
-			RIVER_BANK_RESPONSE_INSIDE_BEND_START,
-			RIVER_BANK_RESPONSE_INSIDE_BEND_FULL,
+			early_bank_response_uv_denominator,
 			bake_atlas_columns
 		)
 		if not _filter_output_is_valid(early_bank_response_feature_mask_result, "bank response feature mask", renderer_instance):
@@ -1941,8 +2030,7 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 		bank_response_feature_mask = early_bank_response_feature_mask_result
 		bank_response_feature_mask_ready = true
 	if run_collision_support_filters:
-		var collision_with_margins_image := WaterHelperMethods.add_margins(image, flowmap_resolution, margin, _steps)
-		var collision_with_margins := ImageTexture.create_from_image(collision_with_margins_image)
+		var collision_with_margins := _create_margin_texture(image, flowmap_resolution, margin, _steps)
 		var flow_pressure_map = await renderer_instance.apply_flow_pressure(collision_with_margins, flowmap_resolution, _uv2_sides + 2.0)
 		if not _filter_output_is_valid(flow_pressure_map, "flow pressure", renderer_instance):
 			return
@@ -1958,8 +2046,7 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 		# Crisp water occupancy: collision interiors plus protruding terrain,
 		# packed with a proximity ramp for runtime clipping and flow stilling.
 		var solid_occupancy_source := WaterHelperMethods.create_solid_occupancy_source_image(image, terrain_contact_source, RIVER_OCCUPANCY_PROTRUSION_THRESHOLD, RIVER_OCCUPANCY_PROTRUSION_CONFIDENCE_MIN)
-		var solid_occupancy_with_margins := WaterHelperMethods.add_margins(solid_occupancy_source, flowmap_resolution, margin, _steps)
-		var solid_occupancy_with_margins_texture := ImageTexture.create_from_image(solid_occupancy_with_margins)
+		var solid_occupancy_with_margins_texture := _create_margin_texture(solid_occupancy_source, flowmap_resolution, margin, _steps)
 		var occupancy_proximity = await renderer_instance.apply_proximity(solid_occupancy_with_margins_texture, RIVER_OCCUPANCY_RAMP_TILES / float(_uv2_sides), flowmap_resolution, bake_atlas_columns)
 		if not _filter_output_is_valid(occupancy_proximity, "occupancy proximity field", renderer_instance):
 			return
@@ -2077,21 +2164,14 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 	if bank_response_source_flow == null:
 		bank_response_source_flow = primary_flow_map
 	if not bank_response_feature_mask_ready and bank_response_source_flow != null:
-		var bank_response_feature_settings := _get_bank_response_feature_settings()
 		var bank_response_uv_denominator := float(_uv2_sides) + 2.0
-		var bank_response_feature_mask_result = await renderer_instance.apply_bank_response_feature_mask(
+		var bank_response_feature_mask_result = await _render_bank_response_feature_mask(
+			renderer_instance,
 			bank_response_source_flow,
 			terrain_contact_with_margins_texture,
 			grade_energy_with_margins_texture,
 			bend_bias_with_margins_texture,
-			float(bank_response_feature_settings.get("probe_tiles", RIVER_BANK_RESPONSE_PROBE_TILES)) / bank_response_uv_denominator,
-			RIVER_BANK_RESPONSE_FRICTION_CONTACT_WEIGHT,
-			RIVER_BANK_RESPONSE_FRICTION_SHALLOW_WEIGHT,
-			RIVER_BANK_RESPONSE_HARD_PROTRUSION_WEIGHT,
-			RIVER_BANK_RESPONSE_OUTSIDE_BEND_START,
-			RIVER_BANK_RESPONSE_OUTSIDE_BEND_FULL,
-			RIVER_BANK_RESPONSE_INSIDE_BEND_START,
-			RIVER_BANK_RESPONSE_INSIDE_BEND_FULL,
+			bank_response_uv_denominator,
 			bake_atlas_columns
 		)
 		if not _filter_output_is_valid(bank_response_feature_mask_result, "bank response feature mask", renderer_instance):
@@ -2194,6 +2274,25 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 	update_configuration_warnings()
 
 
+func _render_bank_response_feature_mask(renderer_instance: Node, source_flow: Texture2D, terrain_contact_texture: Texture2D, grade_energy_texture: Texture2D, bend_bias_texture: Texture2D, uv_denominator: float, atlas_columns: float) -> Texture2D:
+	var bank_response_feature_settings := _get_bank_response_feature_settings()
+	return await renderer_instance.apply_bank_response_feature_mask(
+		source_flow,
+		terrain_contact_texture,
+		grade_energy_texture,
+		bend_bias_texture,
+		float(bank_response_feature_settings.get("probe_tiles", RIVER_BANK_RESPONSE_PROBE_TILES)) / uv_denominator,
+		RIVER_BANK_RESPONSE_FRICTION_CONTACT_WEIGHT,
+		RIVER_BANK_RESPONSE_FRICTION_SHALLOW_WEIGHT,
+		RIVER_BANK_RESPONSE_HARD_PROTRUSION_WEIGHT,
+		RIVER_BANK_RESPONSE_OUTSIDE_BEND_START,
+		RIVER_BANK_RESPONSE_OUTSIDE_BEND_FULL,
+		RIVER_BANK_RESPONSE_INSIDE_BEND_START,
+		RIVER_BANK_RESPONSE_INSIDE_BEND_FULL,
+		atlas_columns
+	)
+
+
 func _filter_output_is_valid(texture: Texture2D, label: String, renderer_instance: Node) -> bool:
 	if texture != null and texture.get_width() > 0 and texture.get_height() > 0:
 		return true
@@ -2224,25 +2323,31 @@ func _finish_flowmap_bake_after_failure() -> void:
 	update_configuration_warnings()
 
 
+func _create_margin_texture(source_image: Image, source_resolution: float, margin: int, steps: int) -> ImageTexture:
+	return ImageTexture.create_from_image(_create_margin_image(source_image, source_resolution, margin, steps))
+
+
+func _create_margin_image(source_image: Image, source_resolution: float, margin: int, steps: int) -> Image:
+	return WaterHelperMethods.add_margins(source_image, source_resolution, margin, steps)
+
+
 func _create_blank_support_source_image(resolution: int) -> Image:
 	return _create_uniform_support_source_image(resolution, RIVER_BLANK_SUPPORT_VALUE)
 
 
 func _create_blank_obstacle_feature_source_image(resolution: int) -> Image:
-	var safe_resolution := maxi(1, resolution)
-	var image := Image.create(safe_resolution, safe_resolution, false, Image.FORMAT_RGBA8)
-	image.fill(Color(0.0, 0.0, 0.0, 0.0))
-	return image
+	return _create_blank_feature_source_image(resolution)
 
 
 func _create_blank_terrain_contact_feature_source_image(resolution: int) -> Image:
-	var safe_resolution := maxi(1, resolution)
-	var image := Image.create(safe_resolution, safe_resolution, false, Image.FORMAT_RGBA8)
-	image.fill(Color(0.0, 0.0, 0.0, 0.0))
-	return image
+	return _create_blank_feature_source_image(resolution)
 
 
 func _create_blank_bank_response_feature_source_image(resolution: int) -> Image:
+	return _create_blank_feature_source_image(resolution)
+
+
+func _create_blank_feature_source_image(resolution: int) -> Image:
 	var safe_resolution := maxi(1, resolution)
 	var image := Image.create(safe_resolution, safe_resolution, false, Image.FORMAT_RGBA8)
 	image.fill(Color(0.0, 0.0, 0.0, 0.0))
@@ -2520,24 +2625,14 @@ func _sample_curve_baked_distance(distance: float, curve_length: float) -> Vecto
 
 
 func _smooth_curve_grade_values(values: Array, radius: int) -> Array:
-	var smoothed := []
-	smoothed.resize(values.size())
-	if values.is_empty():
-		return smoothed
-	var safe_radius := maxi(0, radius)
-	for value_index in values.size():
-		var start_index := maxi(0, value_index - safe_radius)
-		var end_index := mini(values.size() - 1, value_index + safe_radius)
-		var sum := 0.0
-		var count := 0
-		for sample_index in range(start_index, end_index + 1):
-			sum += float(values[sample_index])
-			count += 1
-		smoothed[value_index] = sum / float(maxi(1, count))
-	return smoothed
+	return _smooth_curve_scalar_values(values, radius, false, 0.0, 0.0)
 
 
 func _smooth_curve_bend_bias_values(values: Array, radius: int) -> Array:
+	return _smooth_curve_scalar_values(values, radius, true, -1.0, 1.0)
+
+
+func _smooth_curve_scalar_values(values: Array, radius: int, clamp_result: bool, min_value: float, max_value: float) -> Array:
 	var smoothed := []
 	smoothed.resize(values.size())
 	if values.is_empty():
@@ -2551,7 +2646,8 @@ func _smooth_curve_bend_bias_values(values: Array, radius: int) -> Array:
 		for sample_index in range(start_index, end_index + 1):
 			sum += float(values[sample_index])
 			count += 1
-		smoothed[value_index] = clampf(sum / float(maxi(1, count)), -1.0, 1.0)
+		var average := sum / float(maxi(1, count))
+		smoothed[value_index] = clampf(average, min_value, max_value) if clamp_result else average
 	return smoothed
 
 
@@ -3376,26 +3472,23 @@ func _write_bake_data(texture_size: Vector2i, source_texture_size: Vector2i, con
 			"obstacle_influence_field"
 		])
 	}
-	if data.has_method("set_from_bake"):
-		data.call(
-			"set_from_bake",
-			flow_foam_noise,
-			dist_pressure,
-			obstacle_features,
-			terrain_contact_features,
-			bank_response_features,
-			texture_size,
-			_uv2_sides,
-			_get_mesh_global_aabb(mesh_instance),
-			_get_bake_settings(source_texture_size, texture_size, content_rect, texture_layout),
-			source_texture_size,
-			content_rect,
-			texture_layout,
-			source_kind,
-			source_metadata,
-			get_bake_source_signature(),
-			water_occupancy
-		)
+	data.flow_foam_noise = flow_foam_noise
+	data.dist_pressure = dist_pressure
+	data.obstacle_features = obstacle_features
+	data.terrain_contact_features = terrain_contact_features
+	data.bank_response_features = bank_response_features
+	data.water_occupancy = water_occupancy
+	data.texture_size = texture_size
+	data.uv2_sides = _uv2_sides
+	data.mesh_global_bounds = _get_mesh_global_aabb(mesh_instance)
+	data.bake_settings = _get_bake_settings(source_texture_size, texture_size, content_rect, texture_layout)
+	data.source_texture_size = source_texture_size
+	data.content_rect = content_rect
+	data.texture_layout = texture_layout
+	data.source_kind = source_kind
+	data.source_metadata = source_metadata
+	data.source_signature = get_bake_source_signature()
+	data.finalize()
 	if Engine.is_editor_hint():
 		notify_property_list_changed()
 

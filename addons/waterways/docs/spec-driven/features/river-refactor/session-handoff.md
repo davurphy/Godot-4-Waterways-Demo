@@ -1,6 +1,6 @@
 # Session Handoff: River Refactor (Hardening + Refactor Track)
 
-Latest update, 2026-06-13: User passed R4 Checks 6-7 in `res://addons/waterways/probes/r4_buoyancy_visible_review.tscn`; Checks 1-5 had already passed earlier the same session. R4 is now closed. Next: move to R5's GDScript work or write the required R6/R7 phase docs before those phases start.
+Latest update, 2026-06-13: R5 structural dedup is implemented and validated on `river-refactor`. Scratch baseline-vs-R5 rebakes produced identical RT.1 texture hashes for both demo river bakes, the inspector property-list dump matched exactly, and `r5_behavior_preservation_probe.gd` passed. Next: write the required R6/R7 phase docs before those phases start.
 
 ## Date
 
@@ -8,7 +8,7 @@ Latest update, 2026-06-13: User passed R4 Checks 6-7 in `res://addons/waterways/
 
 ## Current Focus
 
-Execute the hardening/refactor track derived from the 2026-06-12 full-addon code audit. Phases R0, RT, R1, **R2, R3, R4, and R8** are complete and **fully closed**. R4 implementation landed 2026-06-13 on `river-refactor` with automated/headless guard coverage passing; the first user-visible ripple check then failed and exposed an impulse scheduling bug. A local fix now separates impulse render, sim step, and impulse clear across frames, agent captures show localized rings, and the full user-visible R4 suite later passed. Next: **R5 GDScript work** or the required R6/R7 phase docs. R6/R7 stay blocked on their own spec/plan/validation files.
+Execute the hardening/refactor track derived from the 2026-06-12 full-addon code audit. Phases R0, RT, R1, **R2, R3, R4, R5, and R8** are complete and **fully closed**. R5 implementation landed 2026-06-13 on `river-refactor` with table-driven filter passes, generic per-point channel helpers, consolidated system-map grabs/readback preflight, `RiverBakeData.finalize()`, and the property/dup sweep. Next: write the required R6/R7 phase docs. R6/R7 stay blocked on their own spec/plan/validation files.
 
 - Feature folder:
   - `addons\waterways\docs\spec-driven\features\river-refactor\`
@@ -17,13 +17,13 @@ Execute the hardening/refactor track derived from the 2026-06-12 full-addon code
 
 ## Current Truth
 
-- Overall status: In progress — **Phases R0, RT, R1, R2, R3, R4, and R8 complete and validated**. R4 implemented ripple stepping/lifecycle fixes, width generation performance path, buoyancy coverage binding and sleep preservation, small editor/runtime guards, reduced ripple uniform churn, and `r4_runtime_robustness_probe.gd`; automated/headless plus user-visible validation now pass.
-- Highest-priority open task: continue into R5's GDScript halves, or write R6/R7's required spec/plan/validation files before those phases start. R6/R7 stay blocked on their own docs and R7 also on the compute decision.
-- Last passing validation: 2026-06-13 R4 full suite — `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, existing ripple review/diagnostic probe markers, `R4_VISIBLE_AUTO_REVIEW_DONE`, post-fix windowed captures showing localized impulse/contact plus visible-influence rings, and user-visible Checks 2-7 passed.
+- Overall status: In progress — **Phases R0, RT, R1, R2, R3, R4, R5, and R8 complete and validated**. R5 implemented the structural GDScript dedup pass and preserved bake output/inspector/undo behavior under the R5 gates.
+- Highest-priority open task: write R6/R7's required spec/plan/validation files before those phases start. R6/R7 stay blocked on their own docs and R7 also on the compute decision.
+- Last passing validation: 2026-06-13 R5 sweep — `R5_BEHAVIOR_PRESERVATION_PROBE_OK`, RT.1 texture hashes identical across both generated demo river bakes, `R5_PROPERTY_LIST_MATCH=True`, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, `FILTER_RENDERER_LOAD_OK shader_paths=19`, `SYSTEM_FLOW_PROJECTED_GATE_OK`, and `git diff --check`.
 - **Major execution finding (attribution correction):** the "Defect-1 signature" (pre-R2 influence p90 25.5°/28.9°) was NOT the slide — A/B rendering (slide gated vs forced) measures the slide at 0 differing texels on Demo and 4.6k texels at mean 3.3° on the obstacle scene; the 23–27° floor is sampling/quantization noise of the stilled low-magnitude ring and survives the (correct, landed) fix. RT.3's influence gate is now a 35° gross-divergence guard; the mechanism is gated by `probes/system_flow_projected_gate_probe.gd` (windowed A/B). Full detail in validation.md's 2026-06-12 R2+R3 entry
 - Second execution finding: `ShaderMaterial.property_can_revert/get_revert` never worked for the internal river material (remap cache only fills when the material itself is inspected) — the deleted revert table was the only working source; replacement calls `RenderingServer.shader_get_parameter_default` directly. That API returns null under the headless dummy renderer, so revert checks are windowed
-- Known failing or unproven check: none in R4 after the impulse scheduling fix and full user-visible suite pass. Pre-existing quirk remaining: ripple_debug_parity_probe is windowed-only (dummy renderer headless)
-- Packaging/artifact hygiene status: probe overlays + RT.2 capture sets under `.codex-research/probe-out/` (excluded from packaging; the `rt2-r3` parity captures are now safe to delete — both gates closed and recorded). `.codex-research/r1-baseline/` deleted (R1 evidence recorded). **Hazard noted in validation.md:** `river_obstacle_projection_rebake_probe.gd` saves river bakes in place — never run casually
+- Known failing or unproven check: none in R5 after the structural-dedup sweep. Pre-existing quirk remaining: ripple_debug_parity_probe is windowed-only (dummy renderer headless)
+- Packaging/artifact hygiene status: probe overlays + RT.2 capture sets under `.codex-research/probe-out/` (excluded from packaging; the `rt2-r3` parity captures are now safe to delete — both gates closed and recorded). R5 scratch copies remain under `.codex-research/r5-rt1-*` because sandbox policy blocked recursive cleanup; they are disposable validation artifacts. `.codex-research/r1-baseline/` deleted (R1 evidence recorded). **Hazard noted in validation.md:** `river_obstacle_projection_rebake_probe.gd` saves river bakes in place — never run casually
 - Historical detail starts at: nothing archived yet
 
 ## How To Use This Feature Folder
@@ -52,12 +52,21 @@ Read these first:
 
 Then do this next:
 
-- R4 is closed: the initial visible ripple failure is fixed locally, the user-visible auto-review rerun passed, automated/windowed agent checks pass, and Checks 2-7 passed by user confirmation (2026-06-13). Next session, pick up the GDScript halves of R5 or write the required R6/R7 phase docs. R6/R7 stay blocked on their own spec/plan/validation files (R7 also on the recorded compute decision).
+- R5 is closed: the structural GDScript dedup landed and passed RT.1 scratch rebake texture hashes, property-list diff, `r5_behavior_preservation_probe.gd`, R4 runtime guard, filter load check, and system-flow mechanism probe. Next session, write the required R6/R7 phase docs. R6/R7 stay blocked on their own spec/plan/validation files (R7 also on the recorded compute decision).
 - For Godot-specific implementation work, search current official Godot documentation and API references online before patching. Prefer official docs first, and record any source that affects implementation in `research.md` or `addons\waterways\docs\research\river-research-citations.md`.
 - If this requires human-assisted Godot validation, include the exact scene path, plugin state, steps, expected visible result, and Output/console text to relay. The next agent should paste those steps into its user-facing message instead of telling the user to read `validation.md`. The per-phase steps live in each roadmap phase's **Validation** block.
 - If the next action might be based on a false premise or overlooked context, tell the user before patching. The adversarial review already overturned several audit claims (see `spec.md` Resolved Questions); the standing rule from that miss: before deleting any shader uniform or function, grep shaders *and* probes *and* feature specs.
 
 ## What Changed This Session
+
+Phase R5 structural dedup session (2026-06-13, branch `river-refactor`):
+
+- R5.1: `filter_renderer.gd` is now driven by `PASS_DESCRIPTORS` covering all 19 pass shaders, with descriptor-owned texture policies and HDR selection plus fresh per-pass `ShaderMaterial`s to avoid stale uniform bleed.
+- R5.2: `widths` and `flow_speeds` now share generic per-point channel helpers while preserving the existing public wrappers and restore/setter behavior.
+- R5.3: `system_map_renderer.gd` now shares one `_grab()` path for height/alpha/flow, caches shaders, exposes `last_readback_error`, and applies the same viewport readback preflight style as `filter_renderer.gd`.
+- R5.4: `RiverBakeData` gained `finalize()`; `set_from_bake()` remains compatible, and `_write_bake_data()` now assigns fields then finalizes instead of passing a long positional argument list.
+- R5.5: `river_manager.gd` table-drives Baking inspector rows and deduplicates bank-response rendering, blank feature-image creators, scalar smoothers, and margin-image/texture creation.
+- Validation added: `probes/r5_behavior_preservation_probe.gd` and README index entry. Final markers/evidence: `R5_BEHAVIOR_PRESERVATION_PROBE_OK`, exact serialized property-list match (`R5_PROPERTY_LIST_MATCH=True`), scratch baseline-vs-R5 RT.1 texture hashes identical for both demo river bakes, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, `FILTER_RENDERER_LOAD_OK shader_paths=19`, `SYSTEM_FLOW_PROJECTED_GATE_OK`, and `git diff --check`. Scratch copies remain under `.codex-research/r5-rt1-*` because sandbox policy blocked recursive cleanup.
 
 Phase R4 implementation session (2026-06-13, branch `river-refactor`):
 
@@ -114,7 +123,7 @@ Previous implementation session (2026-06-12, branch `river-refactor`, all commit
 
 ## Current Changes Summary
 
-- Phases R0 + RT + R1 + R2 + R3 + R4 + R8 complete and fully closed (signature v28; system maps v1; three shared shader includes; docs coherent with code; all gates green incl. the 2026-06-12 user editor round). R4 implementation landed 2026-06-13 and automated/headless guards pass; the first visible ripple review failed, the impulse scheduling fix landed, and the full user-visible R4 suite later passed. Next: move to R5 or write the required R6/R7 phase docs.
+- Phases R0 + RT + R1 + R2 + R3 + R4 + R5 + R8 complete and fully closed (signature v28; system maps v1; three shared shader includes; docs coherent with code; all gates green incl. the 2026-06-12 user editor round). R5 structural dedup landed 2026-06-13 and behavior-preservation gates pass. Next: write the required R6/R7 phase docs.
 
 ## Historical Change Log
 
@@ -132,14 +141,14 @@ Previous implementation session (2026-06-12, branch `river-refactor`, all commit
 
 Implementation status:
 
-- In progress — Phases R0, RT, R1, R2, R3, R4, and R8 complete and validated; R5 ready; R6/R7 blocked on their own docs
+- In progress — Phases R0, RT, R1, R2, R3, R4, R5, and R8 complete and validated; R6/R7 blocked on their own docs
 
 Spec/plan status:
 
 - Research: Complete (audit + adversarial review; `research.md` records the outcome)
 - Spec: Accepted in practice (R0 executed against it); Resolved Questions table grew the R0.7 reachability finding
 - Plan: Current — Adversarial Plan Review section still not formally completed with the user (work proceeded with per-item user validation instead)
-- Tasks: R0, RT, R1, R2, R3, R4, and R8 closed; see `tasks.md` Current Truth
+- Tasks: R0, RT, R1, R2, R3, R4, R5, and R8 closed; see `tasks.md` Current Truth
 - Validation: Matrix live — R0/RT/R1/R2/R3/R4/R8 rows Pass; R4 row records the initial visible failure, fix, and final user-visible suite pass
 - Review: No formal full-track phase review held yet; `review.md` records R4 as Pass and the `river-obstacle-flow-constraints` folder got its own `review.md` in R8.3
 

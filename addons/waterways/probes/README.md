@@ -164,3 +164,14 @@ whose coverage does contain them. The overlay reports that the buoyant body bind
 to the green coverage system even though the red origin is closer, then watches a
 settled sleeping body for wake/twitch regressions. Press `R` to restart the sleep
 watch.
+
+### `r5_behavior_preservation_probe.gd` - R5 structural-dedup guard (headless OK)
+
+River-refactor R5. Checks that the filter pass descriptor table covers all 19
+pass shaders and default/HDR policies, that Baking inspector rows still appear
+in descriptor order, that `widths` and `flow_speeds` round-trip through curve
+state restore and pad short arrays, and that `RiverBakeData.finalize()` deep
+copies metadata/settings/signatures while restoring default channel/import
+metadata. Marker: `R5_BEHAVIOR_PRESERVATION_PROBE_OK`. Expected warning: the
+width-padding assertion intentionally triggers the existing "too few entries"
+sanitizer warning.
