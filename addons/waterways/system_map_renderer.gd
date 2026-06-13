@@ -11,14 +11,6 @@ var _camera : Camera3D
 var _container : Node3D
 
 
-func _get_water_shader_float(water_object, param_name: String, fallback: float) -> float:
-	if water_object == null or not water_object.has_method("get_shader_param"):
-		return fallback
-	var value = water_object.get_shader_param(param_name)
-	if value == null:
-		return fallback
-	return float(value)
-
 func grab_height(water_objects, aabb : AABB, resolution : float) -> ImageTexture:
 	size = Vector2i(int(resolution), int(resolution))
 	own_world_3d = true
@@ -116,20 +108,25 @@ func grab_flow(water_objects, aabb : AABB, resolution : float) -> ImageTexture:
 		# material flag is bound from bake metadata in _apply_bake_data.
 		var flow_projected = water_objects[i].get_shader_param("i_flow_projected")
 		flow_mat.set_shader_parameter("i_flow_projected", flow_projected != null and bool(flow_projected))
+		# Pass the river's values straight through. A null (river material has
+		# no such parameter / no override) clears the override on flow_mat, so
+		# the uniform default from river_flow_common.gdshaderinc applies - the
+		# same include the river shader consumes, so the values cannot diverge
+		# (R3.5; this replaced ten hand-mirrored fallback literals).
 		flow_mat.set_shader_parameter("flow_base", water_objects[i].get_shader_param("flow_base"))
 		flow_mat.set_shader_parameter("flow_steepness", water_objects[i].get_shader_param("flow_steepness"))
 		flow_mat.set_shader_parameter("flow_distance", water_objects[i].get_shader_param("flow_distance"))
 		flow_mat.set_shader_parameter("flow_pressure", water_objects[i].get_shader_param("flow_pressure"))
-		flow_mat.set_shader_parameter("flow_grade_energy", _get_water_shader_float(water_objects[i], "flow_grade_energy", 1.0))
-		flow_mat.set_shader_parameter("flow_bend_bias", _get_water_shader_float(water_objects[i], "flow_bend_bias", 0.5))
-		flow_mat.set_shader_parameter("flow_bank_drag", _get_water_shader_float(water_objects[i], "flow_bank_drag", 0.55))
-		flow_mat.set_shader_parameter("flow_shallow_drag", _get_water_shader_float(water_objects[i], "flow_shallow_drag", 0.35))
-		flow_mat.set_shader_parameter("flow_inside_bend_drag", _get_water_shader_float(water_objects[i], "flow_inside_bend_drag", 0.25))
-		flow_mat.set_shader_parameter("flow_pressure_bank_gate", _get_water_shader_float(water_objects[i], "flow_pressure_bank_gate", 0.75))
-		flow_mat.set_shader_parameter("flow_hard_boundary_pressure", _get_water_shader_float(water_objects[i], "flow_hard_boundary_pressure", 0.45))
-		flow_mat.set_shader_parameter("flow_hard_boundary_slide", _get_water_shader_float(water_objects[i], "flow_hard_boundary_slide", 0.45))
-		flow_mat.set_shader_parameter("flow_hard_boundary_min_downstream", _get_water_shader_float(water_objects[i], "flow_hard_boundary_min_downstream", 0.55))
-		flow_mat.set_shader_parameter("flow_boundary_probe", _get_water_shader_float(water_objects[i], "flow_boundary_probe", 1.0))
+		flow_mat.set_shader_parameter("flow_grade_energy", water_objects[i].get_shader_param("flow_grade_energy"))
+		flow_mat.set_shader_parameter("flow_bend_bias", water_objects[i].get_shader_param("flow_bend_bias"))
+		flow_mat.set_shader_parameter("flow_bank_drag", water_objects[i].get_shader_param("flow_bank_drag"))
+		flow_mat.set_shader_parameter("flow_shallow_drag", water_objects[i].get_shader_param("flow_shallow_drag"))
+		flow_mat.set_shader_parameter("flow_inside_bend_drag", water_objects[i].get_shader_param("flow_inside_bend_drag"))
+		flow_mat.set_shader_parameter("flow_pressure_bank_gate", water_objects[i].get_shader_param("flow_pressure_bank_gate"))
+		flow_mat.set_shader_parameter("flow_hard_boundary_pressure", water_objects[i].get_shader_param("flow_hard_boundary_pressure"))
+		flow_mat.set_shader_parameter("flow_hard_boundary_slide", water_objects[i].get_shader_param("flow_hard_boundary_slide"))
+		flow_mat.set_shader_parameter("flow_hard_boundary_min_downstream", water_objects[i].get_shader_param("flow_hard_boundary_min_downstream"))
+		flow_mat.set_shader_parameter("flow_boundary_probe", water_objects[i].get_shader_param("flow_boundary_probe"))
 		flow_mat.set_shader_parameter("flow_max", water_objects[i].get_shader_param("flow_max"))
 		flow_mat.set_shader_parameter("valid_flowmap", water_objects[i].get_shader_param("i_valid_flowmap"))
 		var uv2_sides: int = 1

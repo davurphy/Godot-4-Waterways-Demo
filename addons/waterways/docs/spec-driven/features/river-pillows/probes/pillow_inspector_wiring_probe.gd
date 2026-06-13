@@ -1,9 +1,14 @@
+# WINDOWED since 2026-06-12 (R3.3): material revert defaults now come from
+# RenderingServer.shader_get_parameter_default, which returns null under the
+# headless dummy renderer - the revert assertions need a real renderer.
 extends SceneTree
 
-const EXPECTED_SIGNATURE_VERSION := 20
+const EXPECTED_SIGNATURE_VERSION := 28
 const RIVER_MANAGER_SCRIPT := "res://addons/waterways/river_manager.gd"
 const VISIBLE_SHADER := "res://addons/waterways/shaders/river.gdshader"
 const DEBUG_SHADER := "res://addons/waterways/shaders/river_debug.gdshader"
+# Shared pillow declarations moved here 2026-06-12 (river-refactor R3.1).
+const SURFACE_INCLUDE := "res://addons/waterways/shaders/river_surface_common.gdshaderinc"
 
 const SCENES := [
 	{"path": "res://Demo.tscn", "river_path": "WaterSystem/Water River", "name": "main demo"},
@@ -84,11 +89,14 @@ func _check_static_wiring() -> void:
 	for subgroup_name in ["Pillow Shape", "Pillow Mask Gates", "Pillow Surface", "Pillow Bands & Foam", "Pillow Height", "Pillow Seam Fades"]:
 		_expect(manager.contains("name = \"" + subgroup_name + "\""), "river inspector should expose subgroup " + subgroup_name)
 	_expect(manager.contains("_should_use_easing_curve_hint(cp)"), "inspector should preserve explicit shader hints before applying easing curve hints")
-	_expect(manager.contains("shader_parameter/"), "material revert wiring should use Godot 4 shader_parameter property names")
+	# R3.3 (2026-06-12): reverts read the live shader's declared defaults
+	# directly; the hand-mirrored override table is gone.
+	_expect(manager.contains("shader_get_parameter_default"), "material revert wiring should read live shader defaults via shader_get_parameter_default")
 	_expect(manager.contains("_sync_debug_material_from_visible_material()"), "debug material should sync from the visible material")
-	_expect(manager.contains("pillow_forward_reach_tiles = 0.0"), "pillow reach should have an explicit editor revert default")
-	_expect(manager.contains("pillow_contact_pull_tiles = 0.0"), "pillow contact pull should have an explicit editor revert default")
-	_expect(manager.contains("pillow_contact_pull_strength = 0.0"), "pillow contact pull strength should have an explicit editor revert default")
+	var surface_include := _read_text(SURFACE_INCLUDE)
+	_expect(surface_include.contains("pillow_forward_reach_tiles : hint_range(0.0, 0.25) = 0.0"), "pillow reach should declare an explicit shader default in the surface include")
+	_expect(surface_include.contains("pillow_contact_pull_tiles : hint_range(0.0, 0.25) = 0.0"), "pillow contact pull should declare an explicit shader default in the surface include")
+	_expect(surface_include.contains("pillow_contact_pull_strength : hint_range(0.0, 1.0) = 0.0"), "pillow contact pull strength should declare an explicit shader default in the surface include")
 
 
 func _check_shader_uniforms() -> void:

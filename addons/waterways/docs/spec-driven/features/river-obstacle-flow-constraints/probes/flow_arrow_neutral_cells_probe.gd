@@ -18,7 +18,8 @@ const OUT_DIR := "res://addons/waterways/docs/spec-driven/features/river-obstacl
 # Mirror river_debug.gdshader arrow constants.
 const ARROWS_PER_TILE := 8
 const NEAR_NEUTRAL := 0.05
-const SPEED_RAMP_FULL := 0.45
+# Read from river_surface_common.gdshaderinc - the declaring source (R3.5).
+var SPEED_RAMP_FULL := WaterHelperMethods.get_occupancy_speed_ramp_full()
 # Mirror occupancy bake constants.
 const PROTRUSION_THRESHOLD := 0.9
 const PROTRUSION_CONFIDENCE_MIN := 0.75

@@ -7,18 +7,23 @@ uniform sampler2D support_texture : repeat_disable, filter_linear;
 uniform sampler2D bank_response_texture : repeat_disable, filter_linear;
 uniform sampler2D terrain_contact_texture : repeat_disable, filter_linear;
 uniform sampler2D grade_energy_texture : repeat_disable, filter_linear;
-uniform float support_start = 0.18;
-uniform float support_full = 0.88;
-uniform float facing_start = 0.25;
-uniform float facing_full = 0.90;
+// Every uniform below is always overridden by apply_obstacle_feature_mask
+// (filter_renderer.gd) from river_manager's RIVER_OBSTACLE_FEATURE_*
+// constants - the canonical values. Defaults here match those constants
+// where the units agree (R3.4, 2026-06-12); the *_uv ones are tile-unit
+// constants converted to UV at the call site, so their defaults are dummies.
+uniform float support_start = 0.22;
+uniform float support_full = 0.82;
+uniform float facing_start = 0.35;
+uniform float facing_full = 0.92;
 uniform float pillow_support_start = 0.40;
 uniform float pillow_support_full = 0.88;
-uniform float pillow_contact_search_uv = 0.01;
+uniform float pillow_contact_search_uv = 0.01; // dummy: tiles -> UV at call site
 uniform float pillow_contact_gate_start = 0.08;
 uniform float pillow_contact_gate_full = 0.38;
-uniform float wake_length_uv = 0.04;
-uniform float wake_width_uv = 0.012;
-uniform float side_width_uv = 0.012;
+uniform float wake_length_uv = 0.04; // dummy: tiles -> UV at call site
+uniform float wake_width_uv = 0.012; // dummy: tiles -> UV at call site
+uniform float side_width_uv = 0.012; // dummy: tiles -> UV at call site
 uniform float wake_start = 0.045;
 uniform float wake_full = 0.20;
 uniform float bank_friction_suppression = 0.70;

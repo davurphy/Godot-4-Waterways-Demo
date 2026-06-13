@@ -374,6 +374,26 @@ static func calculate_side(steps : int) -> int:
 	return int(side_float)
 
 
+# R3.5 (2026-06-12): probes read OCCUPANCY_SPEED_RAMP_FULL from the shader
+# include that declares it instead of mirroring the value (it had drifted into
+# 7 hand-synced copies). Parses the single-line const declaration; returns
+# -1.0 (after push_error) when the include or declaration is missing so
+# callers fail loudly instead of comparing against a stale mirror.
+static func get_occupancy_speed_ramp_full() -> float:
+	const INCLUDE_PATH := "res://addons/waterways/shaders/river_surface_common.gdshaderinc"
+	var source := FileAccess.get_file_as_string(INCLUDE_PATH)
+	if source.is_empty():
+		push_error("Cannot read " + INCLUDE_PATH + " to resolve OCCUPANCY_SPEED_RAMP_FULL.")
+		return -1.0
+	var regex := RegEx.new()
+	regex.compile("const\\s+float\\s+OCCUPANCY_SPEED_RAMP_FULL\\s*=\\s*([0-9.]+)\\s*;")
+	var regex_match := regex.search(source)
+	if regex_match == null:
+		push_error("OCCUPANCY_SPEED_RAMP_FULL declaration not found in " + INCLUDE_PATH + ".")
+		return -1.0
+	return float(regex_match.get_string(1))
+
+
 # GDScript mirror of the canonical shader-side flow codec in
 # shaders/flow_pack.gdshaderinc (rg = v * 0.5 + 0.5, neutral 0.5) - GDScript
 # cannot consume a shader include, so keep the two in sync.

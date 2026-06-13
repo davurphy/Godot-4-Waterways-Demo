@@ -15,8 +15,9 @@ const OUT_DIR := "res://addons/waterways/docs/spec-driven/features/river-obstacl
 
 const ARROWS_PER_TILE := 8
 const NEAR_NEUTRAL := 0.05
-const SPEED_RAMP_FULL := 0.45
 const PROBE_OFFSET_CELLS := 0.3
+# Read from river_surface_common.gdshaderinc - the declaring source (R3.5).
+var SPEED_RAMP_FULL := WaterHelperMethods.get_occupancy_speed_ramp_full()
 const OUTLIER_ANGLE_DEGREES := 60.0
 const REPORT_LIMIT := 14
 

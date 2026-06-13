@@ -20,10 +20,12 @@ const OUT_DIR := "res://addons/waterways/probes/out"
 
 const ARROWS_PER_TILE := 8
 const NEAR_NEUTRAL := 0.05
-const SPEED_RAMP_FULL := 0.45
 const PROBE_OFFSET_CELLS := 0.3
 const OUTLIER_ANGLE_DEGREES := 60.0
 const REPORT_LIMIT := 14
+# Read from river_surface_common.gdshaderinc - the declaring source (R3.5);
+# -1.0 means the include could not be parsed and the run must fail.
+var SPEED_RAMP_FULL := WaterHelperMethods.get_occupancy_speed_ramp_full()
 
 var _flow_image: Image
 var _occupancy_image: Image
@@ -37,6 +39,10 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	if SPEED_RAMP_FULL <= 0.0:
+		push_error("OCCUPANCY_SPEED_RAMP_FULL could not be read from river_surface_common.gdshaderinc.")
+		quit(1)
+		return
 	var bake_path := BAKE_PATH
 	var out_dir := OUT_DIR
 	for arg in OS.get_cmdline_user_args():
