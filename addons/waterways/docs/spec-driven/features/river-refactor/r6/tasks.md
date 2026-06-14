@@ -6,33 +6,34 @@ Complete tasks in order unless `plan.md` is revised. Each task should be indepen
 
 ## Current Truth
 
-- Current status: Not started; documentation scaffold drafted on 2026-06-13.
-- Current implementation slice: R6.0 documentation and baseline preparation.
-- Remaining open task count: all implementation and validation tasks remain open.
-- Last passing validation: none for R6. Parent track last known pass is R5 on 2026-06-13.
-- Next recommended action: review and check in the R6 docs, then build/capture pre-R6 baseline probes before any implementation.
+- Current status: R6.1H abort-matrix coverage is complete, and the old R6.1A-G validation/probe set has been rerun after the abort-matrix work. The baker now observes cancellation around awaited renderer passes, RiverManager checks liveness after existing source-generation awaits, helper-internal collision/terrain waits stop safely when the river or mesh is freed, and `r6_abort_matrix_probe.gd` covers the automated abort buckets while naming the editor-only residual cases.
+- Current implementation slice: R6.1H covered pre-renderer abort, scene close before renderer setup, terrain-contact helper node-free, renderer-live/Jacobi-labelled cancellation, forced invalid filter output, renderer setup failure, duplicate requests, repeated `abort()`, success cleanup, synchronous image-postprocess strategy, and synchronous RiverManager result application strategy. RiverManager still owns source-generation timing, final dictionaries, resource saving, material binding, `valid_flowmap`, bake flag clearing, completion progress, and final result application.
+- Remaining open task count: constants table, final before/after diff, and final validation tasks remain open.
+- Last passing validation: 2026-06-14 R6.1A-G rerun after R6.1H passed `R6_BAKER_LIFECYCLE_OK`, `R6_BAKER_RUN_PASS_OK`, `R6_R61F_WARNING_POSTPROCESS_OK`, `R6_R61G_RESULT_APPLICATION_OK`, `R5_BEHAVIOR_PRESERVATION_PROBE_OK`, `R6_GENERATED_TEXTURE_HASH_OK out=res://.codex-research/r6-baselines/post-r6-r61ag-rerun-generated files=2`, `R6_R61G_RERUN_GENERATED_TEXTURE_DIFF_OK files=2 baseline=post-r6-r61g-generated current=post-r6-r61ag-rerun-generated`, `R6_R61G_RERUN_RT1_GENERATED_TEXTURE_DIFF_OK files=2 baseline=pre-r6-r61e-generated current=post-r6-r61ag-rerun-generated`, `R6_BASELINE_DUMP_OK out=res://.codex-research/r6-baselines/post-r6-r61ag-rerun files=10`, `R6_R61G_RERUN_SURFACE_PROPERTY_DIFF_OK files=10 baseline=post-r6-r61g current=post-r6-r61ag-rerun`, and `git diff --check`. The source-image rerun hit only the known obstacle collision-derived variant and matched the old-code fresh replay: `R6_R61D_COLLISION_VARIANT_RECONCILED_OK ignored_collision_probe_variants=4 baseline=pre-r6-r61d-fresh-rerun current=post-r6-r61ag-rerun-source`.
+- Next recommended action: start R6.2 constants-table work. Do not reopen the closed R6.1B-H bake extraction slices unless a later validation failure points back to them.
 - Known deferred work: parent docs are updated only after R6 validation runs; R7 remains out of scope.
 
 ## Open Work
 
-- [ ] Review and check in the R6 documentation gate: `spec.md`, `plan.md`, `validation.md`, `tasks.md`, `research.md`, `review.md`, and `session-handoff.md`.
-- [ ] Implement the canonical metadata/signature/settings dump probe before baseline capture.
-- [ ] Capture pre-R6 baselines for both demo river bakes.
-- [ ] Complete R6.1A bake pipeline inventory before adding the baker shell.
-- [ ] Decide whether R6.3 and R6.4 should land before the bake pipeline extraction.
-- [ ] Do not start R6 implementation until the documentation gate is reviewed and baseline evidence exists.
+- [x] Review and check in the R6 documentation gate: `spec.md`, `plan.md`, `validation.md`, `tasks.md`, `research.md`, `review.md`, and `session-handoff.md`.
+- [x] Implement the canonical metadata/signature/settings dump probe before baseline capture.
+- [x] Capture pre-R6 canonical dictionary/API/property/saved-RT.1 baselines for both demo river bakes.
+- [x] Complete R6.1A bake pipeline inventory before adding the baker shell.
+- [x] Decide whether R6.3 and R6.4 should land before the bake pipeline extraction. Decision: landed R6.3 and R6.4 first; R6.1B is the next recommended slice.
+- [x] Do not start bake-pipeline implementation until source-image/timing evidence and R6.1A inventory exist.
+- [x] Rerun the old R6.1A-G validation/probe set after R6.1H and before R6.2.
 
 ## Setup
 
-- [ ] Confirm the current workspace state and branch. Current assumption from `plan.md`: continue on `river-refactor` unless the user asks for a fresh phase branch.
-- [ ] Read `spec.md`, `plan.md`, and `validation.md`.
-- [ ] Read the parent river-refactor `roadmap.md`, `tasks.md`, `validation.md`, and latest handoff for track-wide constraints.
-- [ ] Check `addons/waterways/docs/research/river-research-citations.md` before research-driven changes.
-- [ ] For Godot-specific implementation work, search current official Godot documentation and API references online before patching; record sources that affect implementation in `research.md` or the shared citations index.
-- [ ] Check `addons/waterways/docs/audit/waterways-code-audit-2026-06-12.md` for relevant known risks if implementation details touch audited areas.
-- [ ] Confirm whether the task affects active code in `addons/waterways`, generated resources, demo scenes, docs, or validation tooling.
-- [ ] If running Godot, use the exact console/windowed launch instructions from `validation.md`; console probes should use repo-local `.codex-research` user-data folders.
-- [ ] Run the context challenge check: stale baselines, regenerated resources, or whole `.res` hash churn can look like R6 regressions.
+- [x] Confirm the current workspace state and branch. Current branch is `r6`; R6 docs were already tracked/clean before probe work.
+- [x] Read `spec.md`, `plan.md`, and `validation.md`.
+- [x] Read the parent river-refactor `roadmap.md`, `tasks.md`, `validation.md`, and latest handoff for track-wide constraints.
+- [x] Check `addons/waterways/docs/research/river-research-citations.md` before research-driven changes.
+- [x] For Godot-specific implementation work, search current official Godot documentation and API references online before patching; record sources that affect implementation in `research.md` or the shared citations index.
+- [x] Check `addons/waterways/docs/audit/waterways-code-audit-2026-06-12.md` for relevant known risks if implementation details touch audited areas.
+- [x] Confirm whether the task affects active code in `addons/waterways`, generated resources, demo scenes, docs, or validation tooling.
+- [x] If running Godot, use the exact console/windowed launch instructions from `validation.md`; console probes should use repo-local `.codex-research` user-data folders.
+- [x] Run the context challenge check: stale baselines, regenerated resources, or whole `.res` hash churn can look like R6 regressions.
 
 ## R6.0 Documentation and Baselines
 
@@ -45,73 +46,73 @@ Complete tasks in order unless `plan.md` is revised. Each task should be indepen
 - [x] Create R6 `tasks.md`, `research.md`, `review.md`, and `session-handoff.md` from the feature-folder template.
   - Validate: files exist and point future work to the true next action.
 
-- [ ] Check in the R6 documentation gate before implementation starts.
-  - Validate: git status shows the R6 docs staged/committed as intended.
+- [x] Check in the R6 documentation gate before implementation starts.
+  - Validate: R6 docs were tracked and clean on branch `r6` before validation-tool edits.
 
 - [ ] Add R6 row to the parent `river-refactor/validation.md` only after R6 validation runs.
   - Validate: parent row is not prematurely marked pass.
 
-- [ ] Capture pre-R6 dictionary dumps for both demo river bakes:
+- [x] Capture pre-R6 dictionary dumps for both demo river bakes:
   - `source_metadata`
   - `source_signature`
   - `bake_settings`
-  - Validate: dumps use the R6 canonical format.
+  - Validate: `r6_baseline_dump_probe.gd` wrote canonical dumps to `.codex-research/r6-baselines/pre-r6/`; `source_metadata.bake_revision` is the only filtered key.
 
-- [ ] Capture the full pre-R6 inspector property list.
-  - Validate: full dump exists; focused Baking/generated rows may be extra only.
+- [x] Capture the full pre-R6 inspector property list.
+  - Validate: full Demo and obstacle Demo RiverManager property-list dumps exist under `.codex-research/r6-baselines/pre-r6/`.
 
-- [ ] Capture pre-R6 generated texture hashes with RT.1 using fresh scratch rebakes where possible.
-  - Validate: both demo river bakes have recorded hashes.
+- [x] Capture pre-R6 generated texture hashes with RT.1 using fresh scratch rebakes where possible.
+  - Validate: saved-resource RT.1 hash logs exist for both demo river bakes under `.codex-research/r6-baselines/pre-r6/`; fresh scratch rebakes were not run in this baseline pass.
 
-- [ ] Record the full current `river_manager.gd` public method surface.
-  - Validate: explicitly assert R6-sensitive methods listed in `plan.md` remain callable.
+- [x] Record the full current `river_manager.gd` public method surface.
+  - Validate: `r6_baseline_dump_probe.gd` wrote `river_manager_public_methods.txt` and asserted the R6-sensitive methods listed in `plan.md`.
 
-- [ ] Record the public signal surface and progress semantics.
-  - Validate: `river_changed` and `progress_notified` exist and bake progress labels/order are documented.
+- [x] Record the public signal surface and progress semantics.
+  - Validate: signal surface baseline exists and asserts `river_changed` plus `progress_notified`; `r6_mid_bake_timing_probe.gd` recorded the Demo bake progress order through completion.
 
-- [ ] Add or extend a mid-bake edit probe, or record a named human-assisted case.
-  - Validate: the case covers `flow_speeds` at minimum and reports the targeted stage.
+- [x] Add or extend a mid-bake edit probe, or record a named human-assisted case.
+  - Validate: `r6_mid_bake_timing_probe.gd` covers `flow_speeds`, mutates at `Projecting flow 0/40 (stride 32)`, and records trap-vs-control texture hashes plus final metadata/signature reads.
 
 ## R6.1 Bake Pipeline Extraction
 
-- [ ] R6.1A: Mark every awaited operation in `_generate_flowmap()` and awaited helpers.
+- [x] R6.1A: Mark every awaited operation in `_generate_flowmap()` and awaited helpers.
   - Validate: inventory includes helper-internal waits in collision map generation, terrain contact generation, and `_await_bake_frame()`.
 
-- [ ] R6.1A: Record success order, abort points, live dependencies, final-write dependencies, and move/stay function candidates in `validation.md`.
+- [x] R6.1A: Record success order, abort points, live dependencies, final-write dependencies, and move/stay function candidates in `validation.md`.
   - Validate: the inventory is checked in before adding the baker shell.
 
-- [ ] R6.1A: Add the no-RiverManager-reach-back checklist to validation and implementation review.
+- [x] R6.1A: Add the no-RiverManager-reach-back checklist to validation and implementation review.
   - Validate: helper context exposes only named operations.
 
-- [ ] R6.1B: Add `addons/waterways/river_flowmap_baker.gd` with minimal `bake`, `abort`, `is_running`, and `cleanup` API.
+- [x] R6.1B: Add `addons/waterways/river_flowmap_baker.gd` with minimal `bake`, `abort`, `is_running`, and `cleanup` API.
   - Validate: parser/check-only passes; renderer ownership is thin and cleanup is explicit.
 
-- [ ] R6.1B: Move filter renderer ownership from RiverManager to the baker.
+- [x] R6.1B: Move filter renderer ownership from RiverManager to the baker.
   - Validate: renderer frees on success, abort, scene close, and RiverManager tree exit.
 
-- [ ] R6.1C: Add `_run_pass(label, pass_callable)` inside the baker.
+- [x] R6.1C: Add `_run_pass(label, pass_callable)` inside the baker.
   - Validate: null texture/readback errors become abort records with old warning text preserved.
 
-- [ ] R6.1D: Add intermediate source-image hash probe and capture pre-move hashes.
+- [x] R6.1D: Add intermediate source-image hash probe and capture pre-move hashes.
   - Validate: full raw-plus-margin source-image list is covered before helpers move.
 
-- [ ] R6.1D: Move source image synthesis helpers without algorithm changes.
-  - Validate: intermediate source-image hashes match before/after.
+- [x] R6.1D: Move source image synthesis helpers without algorithm changes.
+  - Validate: implementation moved blank source, margin image/texture, curve grade energy, bend bias, flow speed, and tiled flow offset noise helpers into the baker with explicit source config and no RiverManager reach-back. The full source-image gate now passes against the original pre-R6 baseline for both scenes. The prior obstacle mismatch was reconciled as collision-probe freshness/variant behavior in four untouched collision-derived rows (`collision_source`, `collision_with_margins`, `solid_occupancy_source`, `solid_occupancy_with_margins`), not a moved-helper regression.
 
-- [ ] R6.1E: Move filter pass sequencing behind the baker.
-  - Validate: pass order, progress messages, generation behavior branches, margin/crop geometry, solve path, and support fallback diagnostics are preserved.
+- [x] R6.1E: Move filter pass sequencing behind the baker.
+  - Validate: pass order, progress messages, generation behavior branches, margin/crop geometry, solve path, and support fallback diagnostics are preserved. RiverManager now passes explicit source textures/settings/callbacks into `river_flowmap_baker.gd` and resumes at image postprocess/result application.
 
-- [ ] R6.1E: Run RT.1 after pass sequencing before continuing.
-  - Validate: generated texture hashes match for both demo river bakes.
+- [x] R6.1E: Run RT.1 after pass sequencing before continuing.
+  - Validate: fresh generated texture hashes match for both demo river bakes with `R6_R61E_RT1_GENERATED_TEXTURE_DIFF_OK files=2 baseline=pre-r6-r61e-generated current=post-r6-r61e-generated`.
 
-- [ ] R6.1F: Move diagnostics and image postprocess.
-  - Validate: warning text, debug contrast warnings, near-neutral flow warnings, and diagnostics outputs match.
+- [x] R6.1F: Move diagnostics and image postprocess.
+  - Validate: warning text, debug contrast warnings, near-neutral flow warnings, diagnostics outputs, generated texture hashes, and surface/property dumps match.
 
-- [ ] R6.1G: Replace `_write_bake_data()` bake-internal assumptions with RiverManager result application.
-  - Validate: result application order from `validation.md` is preserved, with no new awaited gap unless rollback/staging is proven.
+- [x] R6.1G: Replace `_write_bake_data()` bake-internal assumptions with RiverManager result application.
+  - Validate: result application order from `validation.md` is preserved with no new awaited gap; `R6_R61G_RESULT_APPLICATION_OK`, generated-texture diffs, and surface/property diffs passed.
 
-- [ ] R6.1H: Implement or name abort-matrix cases.
-  - Validate: every counted abort point has automated coverage or a named human-assisted case.
+- [x] R6.1H: Implement or name abort-matrix cases.
+  - Validate: `r6_abort_matrix_probe.gd` reports `R6_R61H_ABORT_MATRIX_OK`; editor undo-delete and forced collision-helper null injection are explicitly named in `validation.md` instead of claimed as automated.
 
 ## R6.2 Constants Table and Dictionary Builders
 
@@ -132,34 +133,34 @@ Complete tasks in order unless `plan.md` is revised. Each task should be indepen
 
 ## R6.3 Runtime Ripple Material Ownership Extraction
 
-- [ ] Run or inspect existing ripple material ownership probe coverage.
-  - Validate: record whether it covers all R6.3 semantics.
+- [x] Run or inspect existing ripple material ownership probe coverage.
+  - Validate: pre-move and post-hardened `ripple_material_ownership_probe.gd` runs passed with `RIPPLE_MATERIAL_OWNERSHIP_PROBE_OK`.
 
-- [ ] Add focused owner-conflict/tree-exit probe if existing probes are incomplete.
-  - Validate: owner A/B conflict, owner clear, owner tree exit, RiverManager tree exit, and debug-view toggle behavior are covered.
+- [x] Add focused owner-conflict/tree-exit probe if existing probes are incomplete.
+  - Validate: existing probe coverage was hardened for owner A/B conflict, owner clear, owner tree exit, RiverManager tree exit, debug-view toggle behavior, and debug-material parameter ownership.
 
-- [ ] Add `addons/waterways/river_ripple_material_owner.gd`.
+- [x] Add `addons/waterways/river_ripple_material_owner.gd`.
   - Validate: RiverManager public ripple methods remain wrappers.
 
-- [ ] Move runtime ripple owner state and helper methods.
-  - Validate: non-owner clear warnings, material duplication/restoration, parameter validation, and debug material application are preserved.
+- [x] Move runtime ripple owner state and helper methods.
+  - Validate: non-owner clear warnings, material duplication/restoration, parameter validation, debug material application, and owner tree-exit restoration are preserved. Private RiverManager compatibility placeholders remain inert so the full property-list dump stays unchanged; live ownership state lives in `river_ripple_material_owner.gd`.
 
 ## R6.4 Editor Validation Harness Extraction
 
-- [ ] Run caller audit before moving validation helpers.
-  - Validate: plugin menu signal callers, probes/scripts, and marker consumers are recorded.
+- [x] Run caller audit before moving validation helpers.
+  - Validate: plugin menu signal callers, probes/scripts, and marker consumers are recorded in `validation.md`.
 
-- [ ] Inventory live RiverManager data dependencies for `validate_data_textures()` and `validate_filter_renderer()`.
-  - Validate: helper context is read-only where it should be.
+- [x] Inventory live RiverManager data dependencies for `validate_data_textures()` and `validate_filter_renderer()`.
+  - Validate: helper context is read-only where it should be and contains only named validation inputs/callbacks.
 
-- [ ] Add `addons/waterways/river_editor_validation.gd` or an equivalent editor-only path.
+- [x] Add `addons/waterways/river_editor_validation.gd` or an equivalent editor-only path.
   - Validate: runtime paths do not depend on editor-only singleton state.
 
-- [ ] Move editor validation implementation behind public RiverManager wrappers.
-  - Validate: direct wrapper calls and menu actions still emit the same markers.
+- [x] Move editor validation implementation behind public RiverManager wrappers.
+  - Validate: direct wrapper calls and menu actions still emit the same markers; `r6_editor_validation_probe.gd` reports `R6_EDITOR_VALIDATION_PROBE_OK`.
 
-- [ ] Keep all-19-pass coverage in `filter_renderer_load_check.gd` or equivalent.
-  - Validate: public menu marker is not silently expanded.
+- [x] Keep all-19-pass coverage in `filter_renderer_load_check.gd` or equivalent.
+  - Validate: public menu marker is not silently expanded; separate load check reports `FILTER_RENDERER_LOAD_OK shader_paths=19`.
 
 ## R6.5 Cleanup and Interface Tightening
 
@@ -203,4 +204,4 @@ Complete tasks in order unless `plan.md` is revised. Each task should be indepen
 
 ## Historical or Closed Tasks
 
-- 2026-06-13: Draft R6 feature-folder documents created from the template and populated from `plan.md`. Implementation and validation remain unstarted.
+- 2026-06-13: Draft R6 feature-folder documents created from the template and populated from `plan.md`. Decomposition implementation remains unstarted; baseline validation tooling started later the same day.

@@ -92,6 +92,11 @@ func _run() -> void:
 
 	river_a.call("set_debug_view", 1)
 	await _settle_frames(1)
+	var river_a_debug_material := _get_active_river_material(river_a)
+	_expect(river_a_debug_material != null and river_a_debug_material != river_a_runtime_material, "Debug view should switch River A to its debug runtime material")
+	_expect(_get_shader_param(river_a_debug_material, "i_ripple_simulation_texture") == texture_a, "River A debug runtime material should receive texture A")
+	_expect(_get_shader_param(river_a_debug_material, "i_ripple_impulse_texture") == texture_a, "River A debug runtime material should receive impulse/contact texture A")
+	_expect(_get_shader_param(river_a_debug_material, "i_ripple_normal_strength") == 0.61, "River A debug runtime material should receive strength A")
 	river_a.call("set_debug_view", 0)
 	await _settle_frames(1)
 	_expect(_get_shader_param(_get_river_material(river_a), "i_ripple_simulation_texture") == texture_a, "Debug view toggle should not drop River A visible ripple state")
@@ -252,6 +257,15 @@ func _get_river_material(river: Node) -> ShaderMaterial:
 	if mesh_instance == null or mesh_instance.mesh == null or mesh_instance.mesh.get_surface_count() == 0:
 		return null
 	return mesh_instance.mesh.surface_get_material(0) as ShaderMaterial
+
+
+func _get_active_river_material(river: Node) -> ShaderMaterial:
+	var mesh_instance := river.get("mesh_instance") as MeshInstance3D
+	if mesh_instance == null:
+		return null
+	if mesh_instance.material_override is ShaderMaterial:
+		return mesh_instance.material_override as ShaderMaterial
+	return _get_river_material(river)
 
 
 func _get_shader_param(material: ShaderMaterial, parameter_name: String) -> Variant:

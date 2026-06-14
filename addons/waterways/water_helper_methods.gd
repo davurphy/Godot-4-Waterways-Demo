@@ -1459,15 +1459,23 @@ static func generate_collisionmap(image : Image, mesh_instance : MeshInstance3D,
 	var image_height := image.get_height()
 	if image_width <= 0 or image_height <= 0 or steps <= 0 or sample_context.is_empty():
 		return image
+	if not _is_bake_context_alive(mesh_instance, river):
+		return image
 	var percentage = 0.0
 	river.emit_signal("progress_notified", percentage, "Calculating Collisions (" + str(image_width) + "x" + str(image_height) + ")")
 	await river.get_tree().process_frame
+	if not _is_bake_context_alive(mesh_instance, river):
+		return image
 	for x in image_width:
 		var cur_percentage = float(x) / float(image_width)
 		if cur_percentage > percentage + 0.1:
+			if not _is_bake_context_alive(mesh_instance, river):
+				return image
 			percentage += 0.1
 			river.emit_signal("progress_notified", percentage, "Calculating Collisions (" + str(image_width) + "x" + str(image_height) + ")")
 			await river.get_tree().process_frame
+			if not _is_bake_context_alive(mesh_instance, river):
+				return image
 		for y in image_height:
 			var sample := _get_uv2_world_sample(sample_context, image_width, image_height, x, y)
 			if bool(sample.get("outside_occupied_atlas", false)):
@@ -1539,15 +1547,23 @@ static func generate_terrain_contact_feature_map(image: Image, mesh_instance: Me
 	var physics_confidence := clampf(float(settings.get("physics_source_confidence", 0.5)), 0.0, 1.0)
 	var supersamples := clampi(int(settings.get("contact_supersamples", 1)), 1, 4)
 	var source_blend_band := maxf(0.0, float(settings.get("source_blend_band", 0.0)))
+	if not _is_bake_context_alive(mesh_instance, river):
+		return image
 	var percentage := 0.0
 	_emit_terrain_contact_progress(river, percentage, image_width, image_height)
 	await _await_bake_frame(mesh_instance, river)
+	if not _is_bake_context_alive(mesh_instance, river):
+		return image
 	for x in image_width:
 		var cur_percentage := float(x) / float(image_width)
 		if cur_percentage > percentage + 0.1:
+			if not _is_bake_context_alive(mesh_instance, river):
+				return image
 			percentage += 0.1
 			_emit_terrain_contact_progress(river, percentage, image_width, image_height)
 			await _await_bake_frame(mesh_instance, river)
+			if not _is_bake_context_alive(mesh_instance, river):
+				return image
 		for y in image_height:
 			var center_sample := _get_uv2_world_sample(sample_context, image_width, image_height, x, y)
 			if bool(center_sample.get("outside_occupied_atlas", false)):
@@ -1610,11 +1626,25 @@ static func _emit_terrain_contact_progress(river, percentage: float, image_width
 		river.emit_signal("progress_notified", percentage, "Calculating Terrain Contact (" + str(image_width) + "x" + str(image_height) + ")")
 
 
-static func _await_bake_frame(mesh_instance: MeshInstance3D, river) -> void:
-	if river != null and river is Node and (river as Node).is_inside_tree():
+static func _await_bake_frame(mesh_instance, river) -> void:
+	if river != null and is_instance_valid(river) and river is Node and not (river as Node).is_queued_for_deletion() and (river as Node).is_inside_tree():
 		await (river as Node).get_tree().process_frame
-	elif mesh_instance != null and mesh_instance.is_inside_tree():
+	elif mesh_instance != null and is_instance_valid(mesh_instance) and not mesh_instance.is_queued_for_deletion() and mesh_instance.is_inside_tree():
 		await mesh_instance.get_tree().process_frame
+
+
+static func _is_bake_context_alive(mesh_instance, river) -> bool:
+	if river != null:
+		if not is_instance_valid(river):
+			return false
+		if river is Node and (river as Node).is_queued_for_deletion():
+			return false
+	if mesh_instance != null:
+		if not is_instance_valid(mesh_instance):
+			return false
+		if mesh_instance.is_queued_for_deletion():
+			return false
+	return true
 
 
 static func _sample_hterrain_contact(hterrain_samplers: Array, water_position: Vector3, source_confidence: float) -> Dictionary:

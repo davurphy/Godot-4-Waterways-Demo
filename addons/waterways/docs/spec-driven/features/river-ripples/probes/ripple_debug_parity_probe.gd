@@ -4,8 +4,10 @@ const RiverManager = preload("res://addons/waterways/river_manager.gd")
 
 const RIVER_SHADER_PATH := "res://addons/waterways/shaders/river.gdshader"
 const DEBUG_SHADER_PATH := "res://addons/waterways/shaders/river_debug.gdshader"
+const SURFACE_COMMON_PATH := "res://addons/waterways/shaders/river_surface_common.gdshaderinc"
 const DEBUG_MENU_PATH := "res://addons/waterways/gui/debug_view_menu.gd"
 const RIVER_MANAGER_PATH := "res://addons/waterways/river_manager.gd"
+const RIVER_RIPPLE_MATERIAL_OWNER_PATH := "res://addons/waterways/river_ripple_material_owner.gd"
 const REVIEW_SCENE_PATH := "res://addons/waterways/docs/spec-driven/features/river-ripples/probes/ripple_river_shader_visible_normal_review.tscn"
 const VIEWPORT_SIZE := Vector2i(96, 96)
 
@@ -57,9 +59,13 @@ func _validate_shader_and_menu_contract() -> void:
 		_validate_uniforms(debug_shader, "debug shader")
 
 	var debug_source := _read_text(DEBUG_SHADER_PATH)
+	var surface_common_source := _read_text(SURFACE_COMMON_PATH)
 	var menu_source := _read_text(DEBUG_MENU_PATH)
 	var manager_source := _read_text(RIVER_MANAGER_PATH)
-	_expect(manager_source.find("\"i_ripple_impulse_texture\"") >= 0, "RiverManager runtime ripple set should allow the impulse/contact texture.")
+	var ripple_owner_source := _read_text(RIVER_RIPPLE_MATERIAL_OWNER_PATH)
+	var runtime_material_source := manager_source + "\n" + ripple_owner_source
+	var debug_shader_source := debug_source + "\n" + surface_common_source
+	_expect(runtime_material_source.find("\"i_ripple_impulse_texture\"") >= 0, "Runtime ripple material owner should allow the impulse/contact texture.")
 	for mode_name in DEBUG_MODES.keys():
 		var mode_id := int(DEBUG_MODES[mode_name])
 		_expect(debug_source.find("= " + str(mode_id) + ";") >= 0, "Debug shader should define ripple debug mode " + mode_name + ".")
@@ -67,7 +73,7 @@ func _validate_shader_and_menu_contract() -> void:
 		_expect(menu_source.find(str(mode_id)) >= 0, "Debug view menu should expose mode id " + str(mode_id) + ".")
 	_expect(debug_source.find("textureLod(i_ripple_simulation_texture") >= 0, "Debug shader should sample the raw ripple simulation texture.")
 	_expect(debug_source.find("textureLod(i_ripple_impulse_texture") >= 0, "Debug shader should sample the impulse/contact texture.")
-	_expect(debug_source.find("textureLod(i_ripple_boundary_mask") >= 0, "Debug shader should sample the boundary mask.")
+	_expect(debug_shader_source.find("textureLod(i_ripple_boundary_mask") >= 0, "Debug shader should sample the boundary mask.")
 	_expect(debug_source.find("ripple_normal_offset_at_uv") >= 0, "Debug shader should expose visible influence through the normal-offset helper.")
 	_results["shader_menu_contract"] = true
 
