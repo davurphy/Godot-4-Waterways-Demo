@@ -104,6 +104,59 @@ exits nonzero on mismatch with a per-channel delta summary and the bounding
 rect of differing pixels. Consumers: R1 ("metadata-only"), R5/R6 ("byte-identical").
 Markers: `BAKE_HASH_PROBE_OK` / `BAKE_HASH_COMPARE_OK` (mismatch: `BAKE_HASH_MISMATCH`).
 
+### `r6_baseline_dump_probe.gd` - R6 metadata/API/property baseline (headless OK)
+
+River-refactor R6. Writes canonical `source_metadata`, `source_signature`, and
+`bake_settings` dumps for the two demo river bakes, filtering only
+`source_metadata.bake_revision`; also writes the RiverManager public method
+surface, signal surface, and full demo RiverManager property lists. Default
+output is `res://.codex-research/r6-baselines/pre-r6`; pass `out=` for a
+post-R6 comparison folder. Marker: `R6_BASELINE_DUMP_OK`.
+
+### `r6_source_image_hash_probe.gd` - R6 source-image hash baseline (headless OK)
+
+River-refactor R6.1D. Mirrors RiverManager's source-generation path, exercises
+the baker-owned source-image helpers, and writes SHA-256 hashes for the full
+raw-plus-margin intermediate source-image list for the Demo and obstacle Demo
+rivers, stopping before filter renderer creation.
+Default output is `res://.codex-research/r6-baselines/pre-r6`; pass `out=` for
+a post-move comparison folder. Marker: `R6_SOURCE_IMAGE_HASH_OK`.
+
+### `r6_mid_bake_timing_probe.gd` - R6 source-timing trap (window required)
+
+River-refactor R6. Starts a Demo bake with neutral `flow_speeds`, mutates
+`flow_speeds` at the first `Projecting flow` progress label, and records the
+progress order plus trap-vs-control texture hashes and final metadata/signature
+reads. Use without `--headless` because filter renderer readback needs a real
+viewport. Marker: `R6_MID_BAKE_TIMING_OK`.
+
+### `r6_constants_shadow_probe.gd` - R6 constants-table shadow comparison (headless OK)
+
+River-refactor R6.2. Compares old saved `source_metadata`, `source_signature`,
+and `bake_settings` dictionaries plus live scene source signatures against
+`river_bake_constants.gd` table-generated dictionaries, using the R6 canonical
+dump rules and filtering only `source_metadata.bake_revision`. This does not
+switch live dictionary generation. Marker: `R6_R62_CONSTANTS_SHADOW_OK`.
+
+### `r6_editor_validation_probe.gd` - R6 editor validation markers (window required)
+
+River-refactor R6.4. Checks the River menu validation signals, then calls
+RiverManager's public `validate_data_textures()` and `validate_filter_renderer()`
+wrappers directly on the Demo river. Use without `--headless` because filter
+renderer readback needs a real viewport. Markers: `RIVER_DATA_TEXTURE_TEST`,
+`FILTER_RENDERER_TEST`, and `R6_EDITOR_VALIDATION_PROBE_OK`.
+
+### `r6_abort_matrix_probe.gd` - R6 abort matrix coverage (headless OK)
+
+River-refactor R6.1H. Covers the automated abort/lifecycle buckets: duplicate
+RiverManager and baker requests, repeated `abort()`, success cleanup, missing
+renderer scene, forced invalid filter output, awaited renderer/Jacobi-labelled
+cancellation, pre-renderer abort without partial generated-state overwrite,
+scene close before renderer setup, terrain-contact helper node-free, and static
+synchronous postprocess/result-application strategy checks. Marker:
+`R6_R61H_ABORT_MATRIX_OK`. Expected warnings include duplicate request, missing
+renderer scene, forced invalid output, and the known Demo invalid UID warning.
+
 ### `distmap_neutral_binding_probe.gd` — null-distmap neutral binding (headless OK)
 
 River-refactor R0.7. A fresh RiverManager binds the neutral `dist_pressure`

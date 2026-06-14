@@ -2,7 +2,7 @@
 
 ## Review Date
 
-No formal full-track review held yet. The pre-implementation adversarial review happened 2026-06-12; R4 implementation review closed as Pass on 2026-06-13 after the visible ripple fix; R5 structural-dedup review closed as Pass on 2026-06-13 with RT.1 scratch rebake hashes, property-list diff, and the R5 guard probe.
+No formal full-track review held yet. The pre-implementation adversarial review happened 2026-06-12; R4 implementation review closed as Pass on 2026-06-13 after the visible ripple fix; R5 structural-dedup review closed as Pass on 2026-06-13 with RT.1 scratch rebake hashes, property-list diff, and the R5 guard probe; R6 final automated validation and R6.5 cleanup validation passed on 2026-06-14.
 
 ## Scope Reviewed
 
@@ -11,11 +11,11 @@ No formal full-track review held yet. The pre-implementation adversarial review 
 
 ## Current Truth
 
-- Overall review status: In progress — Phases R0, RT, R1, R2, R3, R4, R5, and R8 implemented, validated, and closed against their gates. R4 implementation landed 2026-06-13 and passed automated/headless guards after the visible ripple scheduling fix. R5 implementation landed 2026-06-13 and passed behavior-preservation gates: RT.1 generated texture hashes identical across both demo river bakes, property-list dump matched exactly, and `r5_behavior_preservation_probe.gd` passed. No formal full-track phase-review session held yet (per-item validation + user confirmations stood in, recorded in `validation.md`). The `river-obstacle-flow-constraints` folder got its own `review.md` in R8.3
-- Blocking issues remaining: none known in landed code after R4 closure; process gates open: R6/R7 spec-plan-validation files not yet written; R7 compute decision not recorded; the formal Adversarial Plan Review in `plan.md` was never held (work proceeded with per-item user validation by accepted practice)
+- Overall review status: In progress — Phases R0, RT, R1, R2, R3, R4, R5, R6, and R8 implemented, validated, and closed against their gates. R6 final validation preserved generated output, canonical dictionaries, public API/signal surface, and inspector property lists; R6.5 removed only unreferenced private helpers and preserved surface/property shape. No formal full-track phase-review session held yet (per-item validation + user confirmations stood in, recorded in `validation.md`). The `river-obstacle-flow-constraints` folder got its own `review.md` in R8.3
+- Blocking issues remaining: none known in landed code after R6.5 closure; process gate open: R7 implementation needs official RenderingDevice research and baseline/fixture setup before code; the formal Adversarial Plan Review in `plan.md` was never held (work proceeded with per-item user validation by accepted practice)
 - Important issues remaining: two execution findings recorded in `spec.md` Resolved Questions (Defect-1 signature misattribution; dead ShaderMaterial revert fallback) — both resolved in code, and both now folded into the architecture docs by R8 (the obstacle mechanism rewrite + the revert behavior)
-- Last validation relied on: 2026-06-13 R5 sweep — `R5_BEHAVIOR_PRESERVATION_PROBE_OK`, RT.1 scratch rebake texture hashes identical across both generated demo river bakes, `R5_PROPERTY_LIST_MATCH=True`, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, `FILTER_RENDERER_LOAD_OK shader_paths=19`, `SYSTEM_FLOW_PROJECTED_GATE_OK`, and `git diff --check`.
-- Next action: write the required R6/R7 spec/plan/validation files before those phases start. R7 also needs the compute decision recorded.
+- Last validation relied on: 2026-06-14 R6.5 focused validation — `R6_R61F_PARSER_OK`, `R6_R62_CONSTANTS_SHADOW_OK comparisons=8 rows=109 signature_version=28`, `R6_BASELINE_DUMP_OK out=res://.codex-research/r6-baselines/post-r6-r65 files=10`, `R6_R65_SURFACE_PROPERTY_DIFF_OK files=4 baseline=post-r6-final current=post-r6-r65 surface_line_numbers=normalized`, `R5_BEHAVIOR_PRESERVATION_PROBE_OK`, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, and `git diff --check`.
+- Next action: before any R7 implementation, research current official Godot RenderingDevice docs and record the fixed baseline/fixture commands in `r7/validation.md`.
 - Historical detail starts at: nothing archived yet
 
 ## Findings
@@ -105,9 +105,9 @@ To be answered per reviewed phase:
 ## Follow-Up Tasks
 
 - [ ] Complete `plan.md`'s Adversarial Plan Review with the user before implementation starts.
-- [ ] Write R6's own spec/plan/validation before R6 starts (constitution rule 12).
-- [ ] Record the R7-vs-feature-Phase-5 compute decision, then write R7's own spec/plan/validation before R7 starts.
+- [x] Write R6's own spec/plan/validation before R6 starts (constitution rule 12).
+- [x] Record the R7-vs-feature-Phase-5 compute decision and create R7's own spec/plan/validation docs.
 
 ## Decision Updates
 
-Record any spec or plan changes discovered during review. None yet — pre-implementation corrections are already folded into `roadmap.md` and `spec.md` Resolved Questions.
+Record any spec or plan changes discovered during review. R7 decision update on 2026-06-14: use the compute-first Phase 5 RenderingDevice path and skip the throwaway SubViewport-resident interim.

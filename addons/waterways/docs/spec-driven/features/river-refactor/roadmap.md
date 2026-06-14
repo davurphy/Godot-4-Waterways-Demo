@@ -1,7 +1,7 @@
 # River Refactor Roadmap
 
-Status: In progress — Phases R0, RT, R1, R2, R3, **R4**, **R5**, and **R8** complete and validated (R2+R3+R8 on 2026-06-12; R4+R5 on 2026-06-13). R4's first visible ripple review failed, the impulse scheduling fix landed, and the full user-visible R4 suite later passed. R5's structural dedup is behavior-preserving by RT.1 texture hashes, property-list diff, and the new R5 guard probe. R2's original numeric gate was found misattributed during execution — see the R2 heading note. Next: write the required R6/R7 phase docs; R6/R7 stay blocked on their own spec/plan/validation files.
-Date: 2026-06-12
+Status: In progress - Phases R0, RT, R1, R2, **R3**, **R4**, **R5**, **R6**, and **R8** have implementation/automated validation complete (R2+R3+R8 on 2026-06-12; R4+R5 on 2026-06-13; R6 final automated validation and R6.5 cleanup validation on 2026-06-14). R6's final generated-output, canonical dictionary/API/signal/property, R5/R4/filter-renderer/system-flow, parser/check-only, whitespace, and R6.5 surface/property gates passed; full-Demo human-assisted editor undo-delete was attempted but infeasible due bake load, and lower-cost editor/visible review remains optional. R7 compute-first decision is recorded and R7 docs exist; next before implementation is official RenderingDevice research plus baseline/fixture setup.
+Date: 2026-06-14
 Source: `docs/audit/waterways-code-audit-2026-06-12.md` (full-addon audit, bake signature v27), hardened by an adversarial code review (2026-06-12) in which every load-bearing claim below was verified against source at the cited lines. Where the audit and the code disagreed, the code won — those corrections are noted inline.
 Related: `docs/spec-driven/features/river-future/Roadmap.md` (feature roadmap, Phases 0–5), `docs/spec-driven/00-constitution.md`
 
@@ -149,30 +149,34 @@ Behavior-preserving consolidation. Audit refs: §1 (filter/system renderers), §
 
 **Validation:** RT.1 hash-compare shows byte-identical bake outputs before/after on the demo scenes; inspector property list unchanged (dump+diff); flow_speeds/widths undo round-trip probe.
 
-## Phase R6 — `river_manager.gd` Decomposition (weeks; needs its own spec/plan)
+## Phase R6 - `river_manager.gd` Decomposition (weeks; own spec/plan complete; final automated validation passed)
 
 The god-object split, sequenced after R1/R3/R5 so the extraction moves already-deduplicated code. Audit refs: §1, Recommendation 16. Extraction seams in value order:
 
-- [ ] **R6.1 `river_flowmap_baker.gd` (RefCounted)** owning the ~1,400-line bake pipeline (preflight 1594-1664, `_generate_flowmap` 1865-2255 — 391 lines, ~30 awaits, 21 abort points — source-image synthesis 2281-2618, diagnostics 2621-3012). Node dependencies reduce to a config object (curve/mesh/steps/baking properties) + the progress signal. Wrap passes in a run-pass helper so the `if not _filter_output_is_valid(...): return` idiom (currently correct in all 21 sites, but only by vigilance) is owned in one place. The baker owns renderer lifecycle and abort semantics — the R0.3 `tree_exiting` cleanup moves here.
-- [ ] **R6.2 Canonical bake-constants table** generating all three metadata dictionaries (~95/~115/~95 keys currently echoing ~80 `RIVER_*` constants by hand, `river_manager.gd:3245-3801`). One row per constant: name, value, which of metadata/signature/settings it feeds. Ends the 4-edits-per-constant tax and makes R1.2-class signature misses **reviewable in one place** (the "feeds signature?" column is still hand-set, so misses become visible, not impossible — the table's review checklist must include "does this row feed the signature, and why not if not").
-- [ ] **R6.3 Runtime ripple material ownership** (~200 self-contained lines, 3-method interface) to its own script.
-- [ ] **R6.4 Editor validation harnesses** (~230 lines, menu-only) to an editor-only script.
+- [x] **R6.1 `river_flowmap_baker.gd` (RefCounted)** owning the ~1,400-line bake pipeline (preflight 1594-1664, `_generate_flowmap` 1865-2255 — 391 lines, ~30 awaits, 21 abort points — source-image synthesis 2281-2618, diagnostics 2621-3012). Node dependencies reduce to a config object (curve/mesh/steps/baking properties) + the progress signal. Wrap passes in a run-pass helper so the `if not _filter_output_is_valid(...): return` idiom (currently correct in all 21 sites, but only by vigilance) is owned in one place. The baker owns renderer lifecycle and abort semantics — the R0.3 `tree_exiting` cleanup moves here. *Done through R6.1H with source-image, pass-sequencing, diagnostics/postprocess, result handoff, and abort-matrix validation.*
+- [x] **R6.2 Canonical bake-constants table** generating all three metadata dictionaries (~95/~115/~95 keys currently echoing ~80 `RIVER_*` constants by hand, `river_manager.gd:3245-3801`). One row per constant: name, value, which of metadata/signature/settings it feeds. Ends the 4-edits-per-constant tax and makes R1.2-class signature misses **reviewable in one place** (the "feeds signature?" column is still hand-set, so misses become visible, not impossible — the table's review checklist must include "does this row feed the signature, and why not if not"). *Done with `river_bake_constants.gd`; live switch passed shadow and canonical comparisons with signature version 28.*
+- [x] **R6.3 Runtime ripple material ownership** (~200 self-contained lines, 3-method interface) to its own script. *Done with public RiverManager wrappers preserved and ripple ownership/debug probes passing.*
+- [x] **R6.4 Editor validation harnesses** (~230 lines, menu-only) to an editor-only script. *Done with public wrappers/menu markers preserved and all-19-pass filter load coverage kept separate.*
+- [x] **R6.5 Cleanup/interface tightening.** Removed dead private RiverManager helpers after active-reference audit, kept serialized private slots that affect property-list compatibility, and tightened comments around the baker-owned renderer boundary. *Done with parser, constants shadow, surface/property diff, R5/R4 guards, and whitespace validation.*
 
-**Gate before starting:** spec/plan/validation files in this folder, including the Lifecycle/Cleanup/Re-entry section from the plan template — the bake pipeline's 21 abort points are exactly what that template section exists for.
+**Gate before starting:** spec/plan/validation files in this folder, including the Lifecycle/Cleanup/Re-entry section from the plan template — the bake pipeline's 21 abort points are exactly what that template section exists for. *Done in `features/river-refactor/r6/`.*
 
-**Validation:** RT.1 byte-identical bake outputs (signature unchanged by extraction); mid-bake abort matrix (scene close, node free, undo-delete at multiple await points) leaves no stuck flags, leaked renderers, or orphan viewports; metadata/signature/settings dictionaries diff empty against pre-extraction dumps.
+**Validation:** RT.1 byte-identical bake outputs (signature unchanged by extraction); mid-bake abort matrix (scene close, node free, undo-delete at multiple await points) leaves no stuck flags, leaked renderers, or orphan viewports; metadata/signature/settings dictionaries diff empty against pre-extraction dumps. *Final automated R6 validation passed 2026-06-14: generated textures match both the post-R6.1H rerun and fresh old-code comparator; canonical dictionaries/API/signal/property lists match pre-R6 with only method/signal line numbers normalized and `bake_revision` filtered; R5/R4/filter-renderer/system-flow/parser/whitespace gates passed. Full-Demo human-assisted editor undo-delete was attempted but infeasible due bake load; any future editor-stack closure should use a lower-cost fixture or targeted harness, with visible review separate.*
 
-## Phase R7 — Bake Performance: GPU-Resident Solve (weeks; needs its own spec/plan; decision gate first)
+## Phase R7 — Bake Performance: GPU-Resident Solve (weeks; docs gate open; compute-first decision recorded)
 
 Audit refs: §5, Recommendation 17. Sequenced after R6 so it modifies the extracted baker, not the god object.
 
-**Decision gate:** feature-roadmap Phase 5 already plans "RenderingDevice compute migration — move the bake filter stack (and ripple sim) … to compute" (`river-future/Roadmap.md:61-66`). R7's SubViewport-resident ping-pong is an interim optimization of a pipeline Phase 5 replaces wholesale. Before starting R7, decide explicitly: either (a) Phase 5 compute is near-term — fold R7 into that spec and skip the SubViewport work, or (b) Phase 5 is distant — do R7 as specced below and accept it as throwaway-by-design. Record the decision in this folder.
+**Decision gate:** feature-roadmap Phase 5 already plans "RenderingDevice compute migration — move the bake filter stack (and ripple sim) … to compute" (`river-future/Roadmap.md:61-66`). R7's SubViewport-resident ping-pong is an interim optimization of a pipeline Phase 5 replaces wholesale. Decision recorded 2026-06-14: choose the compute-first path, fold R7 into the Phase 5 RenderingDevice compute migration, and skip the throwaway SubViewport-resident interim. R7 docs now exist in `features/river-refactor/r7/`; implementation remains blocked until current official RenderingDevice research and baseline/fixture setup are recorded.
 
-- [ ] **R7.1 GPU ping-pong for the Jacobi solve.** Today: 8 strides × 5 iterations = 40 passes (`river_manager.gd:2086-2094`, strides at `:265`), each pass = render + full-res CPU readback + re-upload + 2 awaited frames (`filter_renderer.gd`) = 80 awaited editor frames + 40 readback round-trips. Target: keep the intermediate textures GPU-resident across iterations and read back once after the solve. **The naive "two SubViewports sampling each other, both flagged `UPDATE_ONCE` per frame" is exactly the Defect-6 mechanism (non-dependency render order → stale reads) — the spec must fence each iteration with ≥1 awaited frame (alternate viewports across frames), or drive draws explicitly via `RenderingServer`.** Realistic win: eliminate all 40 readback/re-upload round-trips and roughly halve awaited frames (~80 → ~40); not "readback once" as a frame-count claim.
-- [ ] **R7.2 Test `RenderingServer.frame_post_draw`** as the await primitive to further reduce per-pass wait across the whole pipeline (potentially ~40 → ~20-frame-equivalents for the solve, and proportional gains elsewhere).
-- [ ] **R7.3 Kill the CPU pixel loops:** per-pixel `get_pixel` diagnostics (tens of millions of Color allocations at 1024²) move to GPU reduction passes or become opt-in debug-menu actions; flow-vector stats drop the per-bake Variant array sort; `_get_system_map_diagnostics` stops allocating 2 Arrays per pixel at up to 2048². Check first whether any probe or validation doc parses the removed diagnostic output, and migrate those consumers in the same change.
+- [x] **R7.0 Compute-vs-SubViewport decision/docs gate.** The SubViewport-resident Jacobi ping-pong interim is rejected. R7 now uses the compute-first Phase 5 path, with `r7/spec.md`, `r7/plan.md`, and `r7/validation.md` created on 2026-06-14.
+- [ ] **R7.1 RenderingDevice research + baseline fixture.** Before code changes, research current official Godot 4.6+ RenderingDevice documentation, then record a fixed low-cost scene/fixture, bake settings, wall-clock method, generated-texture compare method, and editor-responsiveness observation in `r7/validation.md`.
+- [ ] **R7.2 Compute backend skeleton behind the extracted baker.** Keep RiverManager's public API/resource-writing/material-binding boundary intact; let RiverFlowmapBaker select a legacy or future compute backend while preserving existing result handoff semantics.
+- [ ] **R7.3 GPU-resident solve/filter migration.** Today: 8 strides × 5 iterations = 40 passes (`river_manager.gd:2086-2094`, strides at `:265`), each pass = render + full-res CPU readback + re-upload + 2 awaited frames (`filter_renderer.gd`) = 80 awaited editor frames + 40 readback round-trips. Target: keep intermediate textures GPU-resident through the solve/filter stack and read back only at required result boundaries.
+- [ ] **R7.4 Kill the CPU pixel loops:** per-pixel `get_pixel` diagnostics (tens of millions of Color allocations at 1024²) move to GPU reduction passes or become opt-in debug-menu actions; flow-vector stats drop the per-bake Variant array sort; `_get_system_map_diagnostics` stops allocating 2 Arrays per pixel at up to 2048². Check first whether any probe or validation doc parses the removed diagnostic output, and migrate those consumers in the same change.
+- [ ] **R7.5 Compute cleanup/abort/editor responsiveness.** Add targeted coverage for mid-bake abort/free/scene-close around compute resources, stale dispatch/readback ordering, and editor responsiveness using the low-cost fixture rather than the infeasible full-Demo undo-delete workflow.
 
-**Validation:** solve output within f16 epsilon of the CPU round-trip path on the demo scenes (bit-identity is not expected — GPU-resident intermediates skip the per-pass quantize/readback the legacy path performs); an adversarial ordering test — force both viewports to update in one frame and prove the fence prevents the stale read (demonstrate the Defect-6 failure mode is guarded, not assumed away); bake wall-clock measured before/after on a fixed scene (record in validation.md as the regression budget); editor remains responsive during bake.
+**Validation:** solve output within documented f16/format tolerance of the legacy path on fixed scenes (bit-identity is not expected — GPU-resident intermediates skip the per-pass quantize/readback the legacy path performs); a synchronization/readback stress test proves compute dispatches cannot consume stale iterations; bake wall-clock is measured before/after on a fixed scene and recorded in validation.md as the regression budget; editor remains responsive during bake.
 
 ## Phase R8 — Documentation Coherence (days; can run parallel to any phase after R1)
 
@@ -211,18 +215,18 @@ Any time after R0 (independent of R2/R3):
   R4 (runtime robustness)
   R5.1 / R5.4 / R5.5 (GDScript dedup)        R5.2 / R5.3 too, but R5.3 pairs well with R3.5
 
-R5 ──► R6 (river_manager split)  [own spec/plan]
-R6 ──► R7 (GPU solve)            [own spec/plan + Phase-5 decision gate]
+R5 ──► R6 (river_manager split)  [own spec/plan; automated gates passed]
+R6 ──► R7 (GPU solve)            [own docs + compute-first decision; research/baseline before code]
 
 R9 stays on the feature roadmap (Phase 5); R9.1 may ride with R3.
 ```
 
 - R0 items are independent of everything and each other — land first, any order. RT runs in parallel.
 - R2 and R3 are best merged (the flow include *is* the structural fix for Defect 1); keep R2 separable only if buoyancy work needs the tactical fix sooner.
-- R4 and R5 are complete and validated. R6 can now extract already-deduplicated code instead of duplicated code.
-- R6 before R7: optimize the extracted baker, not the god object.
+- R4 and R5 are complete and validated. R6 has extracted already-deduplicated code, passed final automated validation, and completed R6.5 cleanup.
+- R6 before R7: optimize the extracted baker, not the god object. R7 uses the compute-first path and has phase docs; implementation still needs official RenderingDevice research and baseline/fixture setup first.
 - R8 can interleave anywhere after R1.
-- Feature-roadmap interaction: R5.2 *is* feature Phase 2's channel-table item (the unchecked one); feature Phase 3 (flow-advected displacement) should not start until R3 lands (it would otherwise add a third+ hand-synced shader surface); R7 must not start without the Phase-5 compute decision recorded.
+- Feature-roadmap interaction: R5.2 *is* feature Phase 2's channel-table item (the unchecked one); feature Phase 3 (flow-advected displacement) should not start until R3 lands (it would otherwise add a third+ hand-synced shader surface); R7 uses the recorded Phase-5 compute decision.
 
 ## Effort Summary
 
@@ -248,8 +252,8 @@ R9 stays on the feature roadmap (Phase 5); R9.1 may ride with R3.
 | R1's signature bump invalidates user bakes mid-feature-work | Lost bake time, confusion | Land R1 at a quiet point; everything bake-affecting rides the one bump; changelog entry |
 | R2 fixes the shader but stale system maps persist in saved scenes | Ducks keep reading corrupted flow with no warning | R2.4 version field + load warning + migration note |
 | R6 extraction breaks one of the 21 abort points | Stuck flags / leaked renderers, the exact Defect-3 class | Run-pass helper owns the abort idiom; abort-matrix validation at multiple await points; own spec/plan first |
-| R7 ping-pong hits the Defect-6 ordering hazard (two UPDATE_ONCE viewports, one frame) | Solve consumes stale iterations — wrong flow fields, hard to notice | Spec must fence every iteration (alternate viewports across awaited frames or RenderingServer-driven draws); adversarial ordering test in validation |
-| R7 duplicates feature-Phase-5 compute migration | Weeks of throwaway work | Decision gate recorded before R7 starts |
+| R7 compute dispatch/readback synchronization is wrong | Solve consumes stale iterations — wrong flow fields, hard to notice | Research current RenderingDevice synchronization rules before code; add a compute ordering/readback stress test in validation |
+| R7 duplicates feature-Phase-5 compute migration | Weeks of throwaway work | Decision recorded 2026-06-14: fold R7 into the Phase 5 RenderingDevice compute migration and skip the SubViewport interim |
 | R5.2 channel generalization breaks verified-clean undo integrity | Editor data loss on undo | Port the existing flow_speeds undo probe to the generic helper before switching widths over |
 | Headless validation overstates confidence (constitution rule 8) | "Verified" visuals that were never seen | RT.2 is windowed/human-assisted by design; every phase checklist names its human-assisted checks; record outcomes in validation.md, not as assumed-pass |
 | R2 metadata plumbing adds a key without signature coverage | New silent stale-bake gap (Defect-class §8) | R2 lands after R1; new metadata/signature keys go through R6.2's table once it exists, or get explicit signature entries |
@@ -257,4 +261,4 @@ R9 stays on the feature roadmap (Phase 5); R9.1 may ride with R3.
 
 ## Tracking
 
-Work the checklists above in place (edit this file). When a phase starts, note its branch name next to the phase heading; when it completes, record validation results in this folder's `validation.md` and update `docs/handoffs/handoff-latest.md`. R6 and R7 must not start without their own spec/plan/validation files in this folder; R7 additionally requires the Phase-5 compute decision recorded.
+Work the checklists above in place (edit this file). When a phase starts, note its branch name next to the phase heading; when it completes, record validation results in this folder's `validation.md` and update `docs/handoffs/handoff-latest.md`. R6 and R7 must not start without their own spec/plan/validation files in this folder; R7 additionally uses the recorded compute-first Phase-5 decision.

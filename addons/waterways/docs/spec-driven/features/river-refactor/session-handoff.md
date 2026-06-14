@@ -1,14 +1,14 @@
 # Session Handoff: River Refactor (Hardening + Refactor Track)
 
-Latest update, 2026-06-13: R5 structural dedup is implemented and validated on `river-refactor`. Scratch baseline-vs-R5 rebakes produced identical RT.1 texture hashes for both demo river bakes, the inspector property-list dump matched exactly, and `r5_behavior_preservation_probe.gd` passed. Next: write the required R6/R7 phase docs before those phases start.
+Latest update, 2026-06-14: R6 `river_manager.gd` decomposition and R6.5 cleanup/interface tightening have validation on branch `r6`. Generated-output, canonical dictionary/API/signal/property, R5/R4/filter-renderer/system-flow, parser/check-only, whitespace, and R6.5 surface/property gates passed. R7 compute-first decision is recorded and R7 docs exist; next before implementation is official RenderingDevice research plus baseline/fixture setup.
 
 ## Date
 
-2026-06-13
+2026-06-14
 
 ## Current Focus
 
-Execute the hardening/refactor track derived from the 2026-06-12 full-addon code audit. Phases R0, RT, R1, **R2, R3, R4, R5, and R8** are complete and **fully closed**. R5 implementation landed 2026-06-13 on `river-refactor` with table-driven filter passes, generic per-point channel helpers, consolidated system-map grabs/readback preflight, `RiverBakeData.finalize()`, and the property/dup sweep. Next: write the required R6/R7 phase docs. R6/R7 stay blocked on their own spec/plan/validation files.
+Execute the hardening/refactor track derived from the 2026-06-12 full-addon code audit. Phases R0, RT, R1, **R2, R3, R4, R5, R6, and R8** have implementation/automated validation complete. R6 implementation landed on branch `r6` with the extracted baker, constants table, runtime ripple owner, editor validation helper, and R6.5 private cleanup, while preserving bake signature version 28 and final generated/canonical/surface behavior. R7 docs exist with the compute-first decision; next before implementation is official RenderingDevice research plus baseline/fixture setup.
 
 - Feature folder:
   - `addons\waterways\docs\spec-driven\features\river-refactor\`
@@ -17,9 +17,10 @@ Execute the hardening/refactor track derived from the 2026-06-12 full-addon code
 
 ## Current Truth
 
-- Overall status: In progress — **Phases R0, RT, R1, R2, R3, R4, R5, and R8 complete and validated**. R5 implemented the structural GDScript dedup pass and preserved bake output/inspector/undo behavior under the R5 gates.
-- Highest-priority open task: write R6/R7's required spec/plan/validation files before those phases start. R6/R7 stay blocked on their own docs and R7 also on the compute decision.
-- Last passing validation: 2026-06-13 R5 sweep — `R5_BEHAVIOR_PRESERVATION_PROBE_OK`, RT.1 texture hashes identical across both generated demo river bakes, `R5_PROPERTY_LIST_MATCH=True`, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, `FILTER_RENDERER_LOAD_OK shader_paths=19`, `SYSTEM_FLOW_PROJECTED_GATE_OK`, and `git diff --check`.
+- Overall status: In progress — **Phases R0, RT, R1, R2, R3, R4, R5, R6, and R8 have implementation/automated validation complete**. R6 preserved generated texture output, canonical dictionaries, public API/signal surface, and full inspector property lists under final automated gates; R6.5 private cleanup preserved surface/property shape.
+- Highest-priority open task: before any R7 implementation, research current official Godot RenderingDevice docs and record baseline/fixture commands in `r7/validation.md`.
+- Last passing validation: 2026-06-14 R6.5 focused validation — `R6_R61F_PARSER_OK`, `R6_R62_CONSTANTS_SHADOW_OK comparisons=8 rows=109 signature_version=28`, `R6_BASELINE_DUMP_OK out=res://.codex-research/r6-baselines/post-r6-r65 files=10`, `R6_R65_SURFACE_PROPERTY_DIFF_OK files=4 baseline=post-r6-final current=post-r6-r65 surface_line_numbers=normalized`, `R5_BEHAVIOR_PRESERVATION_PROBE_OK`, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, and `git diff --check`.
+- R6 manual residual: the user attempted the full `res://Demo.tscn` editor undo-delete check on 2026-06-14, but the bake saturated CPU/GPU enough that the editor lag prevented deleting `WaterSystem/Water River`. Treat this as an infeasible full-scene manual check, not a product-behavior failure; do not ask for the same full-Demo check again.
 - **Major execution finding (attribution correction):** the "Defect-1 signature" (pre-R2 influence p90 25.5°/28.9°) was NOT the slide — A/B rendering (slide gated vs forced) measures the slide at 0 differing texels on Demo and 4.6k texels at mean 3.3° on the obstacle scene; the 23–27° floor is sampling/quantization noise of the stilled low-magnitude ring and survives the (correct, landed) fix. RT.3's influence gate is now a 35° gross-divergence guard; the mechanism is gated by `probes/system_flow_projected_gate_probe.gd` (windowed A/B). Full detail in validation.md's 2026-06-12 R2+R3 entry
 - Second execution finding: `ShaderMaterial.property_can_revert/get_revert` never worked for the internal river material (remap cache only fills when the material itself is inspected) — the deleted revert table was the only working source; replacement calls `RenderingServer.shader_get_parameter_default` directly. That API returns null under the headless dummy renderer, so revert checks are windowed
 - Known failing or unproven check: none in R5 after the structural-dedup sweep. Pre-existing quirk remaining: ripple_debug_parity_probe is windowed-only (dummy renderer headless)
@@ -52,7 +53,8 @@ Read these first:
 
 Then do this next:
 
-- R5 is closed: the structural GDScript dedup landed and passed RT.1 scratch rebake texture hashes, property-list diff, `r5_behavior_preservation_probe.gd`, R4 runtime guard, filter load check, and system-flow mechanism probe. Next session, write the required R6/R7 phase docs. R6/R7 stay blocked on their own spec/plan/validation files (R7 also on the recorded compute decision).
+- R6 final automated validation and R6.5 cleanup validation are closed: generated-output, canonical dictionary/API/signal/property, R5/R4/filter-renderer/system-flow, parser/check-only, whitespace, and R6.5 surface/property gates passed. R7 docs exist; next session should research official RenderingDevice docs and record baseline/fixture commands before implementation.
+- If R6 editor-stack undo-delete still needs closure, use a lower-cost fixture or targeted editor harness. The full `res://Demo.tscn` manual workflow was attempted and is impractical on the user's machine.
 - For Godot-specific implementation work, search current official Godot documentation and API references online before patching. Prefer official docs first, and record any source that affects implementation in `research.md` or `addons\waterways\docs\research\river-research-citations.md`.
 - If this requires human-assisted Godot validation, include the exact scene path, plugin state, steps, expected visible result, and Output/console text to relay. The next agent should paste those steps into its user-facing message instead of telling the user to read `validation.md`. The per-phase steps live in each roadmap phase's **Validation** block.
 - If the next action might be based on a false premise or overlooked context, tell the user before patching. The adversarial review already overturned several audit claims (see `spec.md` Resolved Questions); the standing rule from that miss: before deleting any shader uniform or function, grep shaders *and* probes *and* feature specs.
@@ -123,7 +125,7 @@ Previous implementation session (2026-06-12, branch `river-refactor`, all commit
 
 ## Current Changes Summary
 
-- Phases R0 + RT + R1 + R2 + R3 + R4 + R5 + R8 complete and fully closed (signature v28; system maps v1; three shared shader includes; docs coherent with code; all gates green incl. the 2026-06-12 user editor round). R5 structural dedup landed 2026-06-13 and behavior-preservation gates pass. Next: write the required R6/R7 phase docs.
+- Phases R0 + RT + R1 + R2 + R3 + R4 + R5 + R6 + R8 have implementation/automated validation complete (signature v28; system maps v1; three shared shader includes; docs coherent with code; all automated gates green). R6 final validation and R6.5 cleanup validation landed 2026-06-14 on branch `r6`. R7 compute-first decision is recorded and R7 docs exist; next work is RenderingDevice research plus baseline/fixture setup.
 
 ## Historical Change Log
 
@@ -135,13 +137,13 @@ Previous implementation session (2026-06-12, branch `river-refactor`, all commit
 | Decision | Reason | Follow-up |
 | --- | --- | --- |
 | Keep `roadmap.md` as the canonical item-level work plan; templates wrap it rather than duplicate it | The roadmap's checklists, line references, and gates are already the verified source of truth; duplicating them invites drift — the exact failure mode this track exists to kill | Check items off in the roadmap; record results in `validation.md` |
-| One track-level spec/plan now; R6 and R7 get their own spec/plan/validation later | Constitution rule 12 requires per-phase docs only for the heavyweight phases | Write them before R6/R7 start; R7 also needs the compute decision recorded |
+| One track-level spec/plan now; R6 and R7 get their own spec/plan/validation later | Constitution rule 12 requires per-phase docs only for the heavyweight phases | R6 docs are complete; R7 docs exist with the compute-first decision |
 
 ## Current State
 
 Implementation status:
 
-- In progress — Phases R0, RT, R1, R2, R3, R4, R5, and R8 complete and validated; R6/R7 blocked on their own docs
+- In progress — Phases R0, RT, R1, R2, R3, R4, R5, R6, and R8 have implementation/automated validation complete; R7 is blocked on RenderingDevice research and baseline/fixture setup before implementation
 
 Spec/plan status:
 
@@ -175,10 +177,10 @@ Validation status:
 ## Artifact Hygiene
 
 - Scratch folders or temporary projects created (all under `.codex-research\`, excluded from packaging): `capture_diff_fixture.gd` + `capture-diff-fixture/`, `capture_diff_heatmap.gd`, `stale_metadata_inspect.gd`, `probe-out/rt2/` and `probe-out/rt2-r3/` (parity capture PNGs — rt2-r3 is the R3 byte-identity evidence; keep until the user round closes), `filter_renderer_load_check.gd` (reusable; R5.1), `river_shader_load_check.gd` + `uniform_set_compare.gd` (R3 load/uniform-set checks, reusable), `revert_default_check.gd` (R3.3 windowed revert check, reusable), `scene_render_smoke.gd` (3-renderer smoke, reusable), `shader_func_diff.ps1` + `shader_func_diff_detail.ps1` + `r3_extract.ps1` (the R3 extraction tooling, kept for reference), `system_map_diff_check.gd` (system-bake image diff)
-- Generated bakes/resources created: regenerated v1 system bakes committed in place (`waterways_bakes/Demo_28018/`, `waterways_bakes/Demo_obstacle_flow_test/`); river bakes untouched (one accidental overwrite restored from HEAD — see validation.md hazard note)
+- Generated bakes/resources created: regenerated v1 system bakes committed in place (`waterways_bakes/Demo_28018/`, `waterways_bakes/Demo_obstacle_flow_test/`); river bakes untouched in the earlier committed track (one accidental overwrite restored from HEAD — see validation.md hazard note). The later full-Demo editor attempt left saved bake resources dirty before R6.5; do not revert them automatically.
 - Active files mirrored into scratch validation: n/a
 - Files/folders that must be excluded from packaging: `.codex-research\` (standing), capture PNGs/baselines
-- Files/folders safe to delete now: `probe-out/rt2/` (RT.2-era captures; superseded by rt2-r3); the .ps1 extraction tooling once R3 review interest ends. Deleted this session: `r1-baseline/`, `r3-pre/`, one-off diagnosis scripts
+- Files/folders safe to delete now: `probe-out/rt2/` (RT.2-era captures; superseded by rt2-r3), R6.5-specific `.codex-research/r6-baselines/post-r6-r65/` and `.codex-research/godot-user-r65-*`; the .ps1 extraction tooling once R3 review interest ends. Deleted this session: `r1-baseline/`, `r3-pre/`, one-off diagnosis scripts
 
 ## Known Risks and Open Issues
 
@@ -194,7 +196,7 @@ Relevant audit sections:
 
 - Adversarial Plan Review (`plan.md`) not yet completed with the user — process debt to close before future high-risk phases.
 - Local Godot editor/visual access is unreliable for the agent: pixel-parity and editor-interaction gates are human-assisted by design. Local parser/headless editor-load signal is not a substitute for visible editor/runtime validation.
-- R7 is blocked on the recorded compute decision; R6/R7 are blocked on their own spec/plan/validation files.
+- R7 implementation is blocked on official RenderingDevice research and baseline/fixture setup.
 
 ## Files To Inspect Before Editing
 
@@ -219,11 +221,13 @@ Result summary:
 - [x] (User, editor) Post-R2+R3 round. *Done 2026-06-12: scenes and debug views passed inspection, ducks unremarkable near the rocks; only the two expected `.uid` sidecars generated (committed `1d9c91a`); scenes/bakes byte-unchanged.*
 - [x] R8 — docs coherence (architecture-and-features rewrite; Data Contract neutrals + `system_flow_map_version`; obstacle-constraints spec/validation/review backfill; probe consolidation + RT index; vertex-cost figure). *Done 2026-06-12; code grep gates clean, shared probe re-run green.*
 - [x] R4 visible validation — implementation/headless guard and full user-visible stress suite closed 2026-06-13.
-- [ ] R5 — independent GDScript items as time allows (R5.3 pairs with the now-done R3.5).
+- [x] R5 — structural dedup. *Done 2026-06-13.*
+- [x] R6 — `river_manager.gd` decomposition. *Final automated validation passed 2026-06-14.*
+- [x] R6.5 — dead-private-method/comment cleanup and interface tightening. *Done 2026-06-14; focused validation passed.*
 
 ## Do Not Do Yet
 
-- R6 or R7 — blocked on their own spec/plan/validation files; R7 additionally on the recorded compute decision.
+- R7 — blocked on official RenderingDevice research and baseline/fixture setup before implementation.
 - Any deletion of the ripple-displacement interface (`ripple_height_at_*`, `i_ripple_*`) — R1.4 annotates only; deletion requires a per-uniform pass updating the river-ripples spec contract list and all asserting probes.
 - Any "improvement" to audit-verified-clean areas (§10): f16 solve bracketing, atlas column clamps, ripple material ownership, undo registration order, export-safety.
 - A second signature bump — v27→v28 (R1.7) is the only one; later bake-content changes must ride it or be explicitly justified.

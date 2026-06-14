@@ -7,13 +7,13 @@ The canonical per-item checklists live in `roadmap.md` (phases R0, RT, R1–R8) 
 
 ## Current Truth
 
-- Latest update, 2026-06-13: R5 structural dedup is implemented and validated on `river-refactor`; scratch baseline-vs-R5 rebakes produced identical RT.1 texture hashes for both demo river bakes, the inspector property-list dump matched exactly, and `r5_behavior_preservation_probe.gd` passed.
+- Latest update, 2026-06-14: R6 `river_manager.gd` decomposition and R6.5 cleanup/interface tightening have validation on branch `r6`. Generated-output, canonical dictionary/API/signal/property, R5/R4/filter-renderer/system-flow, parser/check-only, whitespace, and R6.5 surface/property gates passed.
 - Current status: In progress
-- Current implementation slice: Phases R0, RT, R1, R2, R3, R4, R5, and R8 complete and validated. R5 landed 2026-06-13 with table-driven filter/system renderer consolidation, generic per-point channel helpers, `RiverBakeData.finalize()`, and the property/dup sweep.
-- Remaining open task count: R6/R7 blocked on their own spec/plan/validation files (R7 also on the compute decision)
-- Last passing validation: 2026-06-13 R5 sweep (`R5_BEHAVIOR_PRESERVATION_PROBE_OK`, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, `FILTER_RENDERER_LOAD_OK shader_paths=19`, `SYSTEM_FLOW_PROJECTED_GATE_OK`, `R5_PROPERTY_LIST_MATCH=True`, RT.1 texture hashes identical across both generated demo river bakes, `git diff --check`)
-- Next recommended action: write the required phase docs before R6/R7
-- Known deferred work: R9 (vertex pillow stack) stays on the feature roadmap; R7 blocked on the feature-Phase-5 compute decision gate; optional user decision logged in validation.md — whether system_flow should also apply occupancy stilling/wake damping to match duck-read magnitudes to the river surface
+- Current implementation slice: Phases R0, RT, R1, R2, R3, R4, R5, R6, and R8 have implementation/automated validation complete. R6 keeps bake signature version 28 and preserves RiverManager public/surface behavior while moving bake, constants, runtime ripple ownership, and editor validation internals behind helper scripts.
+- Remaining open task count: optional lower-cost editor/visible R6 checks, R7 implementation research/baseline setup, and R7 implementation remain open.
+- Last passing validation: 2026-06-14 R6.5 focused validation (`R6_R61F_PARSER_OK`, `R6_R62_CONSTANTS_SHADOW_OK comparisons=8 rows=109 signature_version=28`, `R6_BASELINE_DUMP_OK out=res://.codex-research/r6-baselines/post-r6-r65 files=10`, `R6_R65_SURFACE_PROPERTY_DIFF_OK files=4 baseline=post-r6-final current=post-r6-r65 surface_line_numbers=normalized`, `R5_BEHAVIOR_PRESERVATION_PROBE_OK`, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, `git diff --check`)
+- Next recommended action: before any R7 code, research current official Godot RenderingDevice docs and fill the R7 baseline/fixture commands in `r7/validation.md`
+- Known deferred work: R9 (vertex pillow stack) stays on the feature roadmap; R7 implementation is blocked on official RenderingDevice research and baseline setup; optional user decision logged in validation.md — whether system_flow should also apply occupancy stilling/wake damping to match duck-read magnitudes to the river surface
 
 ## Open Work
 
@@ -27,10 +27,11 @@ Use this section as the canonical checklist for unfinished *process* work. When 
 - [x] Phase R3 — Shared shader includes (landed merged with R2, 2026-06-12; RT.2 byte-identity across the whole phase).
 - [x] Phase R4 — Runtime/editor robustness (implementation landed 2026-06-13; automated/headless guard pass recorded; first visible ripple run failed, the impulse scheduling fix landed, and the full user-visible suite passed later the same session).
 - [x] Phase R5 — Structural dedup (R5.1-R5.5 landed 2026-06-13; gate closed by RT.1 scratch rebake texture hashes, property-list diff, and `r5_behavior_preservation_probe.gd`).
-- [ ] Write R6's own `spec.md`/`plan.md`/`validation.md` (constitution rule 12) — gate before R6 starts; must include the Lifecycle/Cleanup/Re-entry section (21 abort points).
-- [ ] Phase R6 — `river_manager.gd` decomposition (after R1/R3/R5).
-- [ ] Record the R7-vs-feature-Phase-5 compute decision in this folder — gate before R7 starts.
-- [ ] Write R7's own `spec.md`/`plan.md`/`validation.md` — gate before R7 starts.
+- [x] Write R6's own `spec.md`/`plan.md`/`validation.md` (constitution rule 12) — gate before R6 starts; must include the Lifecycle/Cleanup/Re-entry section (21 abort points).
+- [x] Phase R6 — `river_manager.gd` decomposition (after R1/R3/R5); final automated validation passed 2026-06-14.
+- [x] R6.5 cleanup/interface tightening — dead private helpers removed, boundary comments tightened, focused validation passed 2026-06-14.
+- [x] Record the R7-vs-feature-Phase-5 compute decision in this folder — compute-first path chosen 2026-06-14; fold R7 into feature Phase 5 RenderingDevice compute migration and skip SubViewport interim.
+- [x] Write R7's own `spec.md`/`plan.md`/`validation.md` — docs gate created 2026-06-14 with compute-first decision.
 - [ ] Phase R7 — GPU-resident solve (after R6).
 - [x] Phase R8 — Documentation coherence (R8.1–R8.5 + stale-constant cleanup, 2026-06-12). architecture-and-features rewrite, Data Contract neutrals + system_flow_map_version, obstacle-constraints spec/validation/review backfill, probe consolidation + RT index, vertex-cost figure; code grep gates clean.
 - [ ] Complete the Adversarial Plan Review section of `plan.md` with the user before implementation starts.
