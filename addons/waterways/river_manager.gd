@@ -8,6 +8,7 @@ const RiverBakeDataResource = preload("res://addons/waterways/resources/river_ba
 const RiverRippleMaterialOwner = preload("res://addons/waterways/river_ripple_material_owner.gd")
 const RiverEditorValidation = preload("res://addons/waterways/river_editor_validation.gd")
 const RiverFlowmapBaker = preload("res://addons/waterways/river_flowmap_baker.gd")
+const RiverBakeConstants = preload("res://addons/waterways/river_bake_constants.gd")
 
 const FILTER_RENDERER_PATH = "res://addons/waterways/filter_renderer.tscn"
 const FLOW_OFFSET_NOISE_TEXTURE_PATH = "res://addons/waterways/textures/flow_offset_noise.png"
@@ -510,8 +511,8 @@ var _selected_shader : int = SHADER_TYPES.WATER
 var _uv2_sides : int
 var _suppress_property_change_notifications := false
 var _flowmap_bake_in_progress := false
-# Tracks the live bake renderer so a mid-bake scene close can free it and
-# unstick _flowmap_bake_in_progress (the coroutine never resumes to clean up).
+# Kept for serialized property-list compatibility. RiverFlowmapBaker owns the
+# live bake renderer during R6 bakes.
 var _flowmap_bake_renderer: Node = null
 # Compatibility placeholders keep the full RiverManager property list stable;
 # live runtime ripple ownership state lives in RiverRippleMaterialOwner.
@@ -1433,12 +1434,6 @@ func _get_flowmap_baker():
 	return flowmap_baker
 
 
-func _cleanup_flowmap_baker() -> void:
-	var flowmap_baker = _flowmap_bakers.get(get_instance_id())
-	if flowmap_baker != null:
-		flowmap_baker.cleanup()
-
-
 func _get_flowmap_source_image_config() -> Dictionary:
 	return {
 		"curve": curve,
@@ -2042,14 +2037,6 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 	_apply_flowmap_bake_result(image_postprocess_result)
 
 
-func _filter_output_is_valid(texture: Texture2D, label: String, _renderer_instance_for_compat: Node) -> bool:
-	var pass_result: Dictionary = _get_flowmap_baker().validate_pass_result(label, texture)
-	if bool(pass_result.get("ok", false)):
-		return true
-	_finish_flowmap_bake_after_failure()
-	return false
-
-
 func _emit_flowmap_bake_progress(percentage: float, label: String) -> void:
 	emit_signal("progress_notified", percentage, label)
 
@@ -2365,12 +2352,11 @@ func _write_bake_data(result: Dictionary) -> void:
 	var obstacle_feature_stats: Dictionary = bake_diagnostics.get("obstacle_feature_stats", {})
 	var terrain_contact_feature_stats: Dictionary = bake_diagnostics.get("terrain_contact_feature_stats", {})
 	var bank_response_feature_stats: Dictionary = bake_diagnostics.get("bank_response_feature_stats", {})
-	var source_metadata := {
+	var source_metadata := RiverBakeConstants.build_source_metadata({
 		"bake_revision": _make_bake_revision(),
 		"generation_behavior": sanitized_generation_behavior,
 		"generation_mode": _get_generation_mode_label(sanitized_generation_behavior),
 		"downstream_baseline_applied": _uses_downstream_baseline_generation(sanitized_generation_behavior),
-		"downstream_baseline_strength": RIVER_DOWNSTREAM_BASELINE_STRENGTH,
 		"legacy_collision_only": sanitized_generation_behavior == RIVER_FLOW_GENERATION_BEHAVIOR_LEGACY_COLLISION_ONLY,
 		"collision_hit_pixel_count": int(collision_stats.get("hit_pixel_count", 0)),
 		"collision_total_pixel_count": int(collision_stats.get("total_pixel_count", 0)),
@@ -2381,126 +2367,19 @@ func _write_bake_data(result: Dictionary) -> void:
 		"obstacle_avoidance_applied": bool(bake_diagnostics.get("obstacle_avoidance_applied", false)),
 		"flow_projected": bool(bake_diagnostics.get("flow_projected", false)),
 		"water_occupancy_baked": bool(bake_diagnostics.get("water_occupancy_baked", false)),
-		"water_occupancy_ramp_tiles": RIVER_OCCUPANCY_RAMP_TILES,
-		"water_occupancy_protrusion_threshold": RIVER_OCCUPANCY_PROTRUSION_THRESHOLD,
-		"water_occupancy_protrusion_confidence_min": RIVER_OCCUPANCY_PROTRUSION_CONFIDENCE_MIN,
-		"flow_projection_strides": RIVER_FLOW_PROJECTION_STRIDES.duplicate(),
-		"flow_projection_iterations_per_stride": RIVER_FLOW_PROJECTION_ITERATIONS_PER_STRIDE,
-		# Fallback when obstacle-avoidance generation is off: normal_to_flow + blur.
-		"obstacle_avoidance_algorithm": "pressure_projection_free_slip_jacobi_with_normal_to_flow_blur_fallback",
-		"obstacle_avoidance_uses_bank_response_context": true,
-		"obstacle_features_baked": true,
-		"obstacle_features_algorithm": "direct_terrain_contact_anchored_pillow_tight_support_bank_context_flow_feature_classification_debug_only",
-		"obstacle_features_neutral_value": Color(0.0, 0.0, 0.0, 0.0),
-		"obstacle_features_support_start": RIVER_OBSTACLE_FEATURE_SUPPORT_START,
-		"obstacle_features_support_full": RIVER_OBSTACLE_FEATURE_SUPPORT_FULL,
-		"obstacle_features_facing_start": RIVER_OBSTACLE_FEATURE_FACING_START,
-		"obstacle_features_facing_full": RIVER_OBSTACLE_FEATURE_FACING_FULL,
-		"obstacle_features_pillow_support_start": RIVER_OBSTACLE_FEATURE_PILLOW_SUPPORT_START,
-		"obstacle_features_pillow_support_full": RIVER_OBSTACLE_FEATURE_PILLOW_SUPPORT_FULL,
-		"obstacle_features_pillow_contact_search_tiles": RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_SEARCH_TILES,
-		"obstacle_features_pillow_contact_gate_start": RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_GATE_START,
-		"obstacle_features_pillow_contact_gate_full": RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_GATE_FULL,
-		"obstacle_features_pillow_anchor_source": "terrain_contact_features.b_direct_search",
-		"obstacle_features_pillow_bank_response_role": "weak_context_only_not_anchor",
-		"obstacle_features_wake_length_tiles": RIVER_OBSTACLE_FEATURE_WAKE_LENGTH_TILES,
-		"obstacle_features_wake_width_tiles": RIVER_OBSTACLE_FEATURE_WAKE_WIDTH_TILES,
-		"obstacle_features_side_width_tiles": RIVER_OBSTACLE_FEATURE_SIDE_WIDTH_TILES,
-		"obstacle_features_wake_start": RIVER_OBSTACLE_FEATURE_WAKE_START,
-		"obstacle_features_wake_full": RIVER_OBSTACLE_FEATURE_WAKE_FULL,
-		"obstacle_features_bank_friction_suppression": RIVER_OBSTACLE_FEATURE_BANK_FRICTION_SUPPRESSION,
-		"obstacle_features_hard_boundary_wake_gate": RIVER_OBSTACLE_FEATURE_HARD_BOUNDARY_WAKE_GATE,
-		"obstacle_features_confidence_start": RIVER_OBSTACLE_FEATURE_CONFIDENCE_START,
-		"obstacle_features_confidence_full": RIVER_OBSTACLE_FEATURE_CONFIDENCE_FULL,
-		"obstacle_features_eddy_line_edge_start": RIVER_OBSTACLE_FEATURE_EDDY_LINE_EDGE_START,
-		"obstacle_features_eddy_line_edge_full": RIVER_OBSTACLE_FEATURE_EDDY_LINE_EDGE_FULL,
-		"obstacle_features_eddy_line_wake_start": RIVER_OBSTACLE_FEATURE_EDDY_LINE_WAKE_START,
-		"obstacle_features_eddy_line_wake_full": RIVER_OBSTACLE_FEATURE_EDDY_LINE_WAKE_FULL,
-		"obstacle_features_eddy_line_hard_gate_start": RIVER_OBSTACLE_FEATURE_EDDY_LINE_HARD_GATE_START,
-		"obstacle_features_eddy_line_hard_gate_full": RIVER_OBSTACLE_FEATURE_EDDY_LINE_HARD_GATE_FULL,
-		"obstacle_features_eddy_line_energy_gate_start": RIVER_OBSTACLE_FEATURE_EDDY_LINE_ENERGY_GATE_START,
-		"obstacle_features_eddy_line_energy_gate_full": RIVER_OBSTACLE_FEATURE_EDDY_LINE_ENERGY_GATE_FULL,
-		"obstacle_features_eddy_line_support_reject_start": RIVER_OBSTACLE_FEATURE_EDDY_LINE_SUPPORT_REJECT_START,
-		"obstacle_features_eddy_line_support_reject_full": RIVER_OBSTACLE_FEATURE_EDDY_LINE_SUPPORT_REJECT_FULL,
-		"obstacle_features_uses_tight_support": true,
-		"obstacle_features_uses_bank_response_context": true,
-		"obstacle_features_uses_terrain_protrusion_context": true,
-		"obstacle_features_uses_grade_energy_context": true,
-		"obstacle_features_pillow_uses_contact_anchor": true,
-		"filtered_feature_edge_sync_depth_pixels": RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS,
 		"obstacle_feature_stats": obstacle_feature_stats.duplicate(true),
-		"terrain_contact_features_baked": true,
-		"terrain_contact_features_algorithm": "uv2_world_height_delta_supersampled_blended_sources_debug_only",
-		"terrain_contact_features_neutral_value": Color(0.0, 0.0, 0.0, 0.0),
-		"terrain_contact_full_band": RIVER_TERRAIN_CONTACT_FULL_BAND,
-		"terrain_contact_fade_distance": RIVER_TERRAIN_CONTACT_FADE_DISTANCE,
-		"terrain_contact_shallow_full_depth": RIVER_TERRAIN_SHALLOW_FULL_DEPTH,
-		"terrain_contact_shallow_fade_depth": RIVER_TERRAIN_SHALLOW_FADE_DEPTH,
-		"terrain_contact_protrusion_fade_height": RIVER_TERRAIN_PROTRUSION_FADE_HEIGHT,
-		"terrain_contact_protrusion_full_height": RIVER_TERRAIN_PROTRUSION_FULL_HEIGHT,
-		"terrain_contact_raycast_up_offset": RIVER_TERRAIN_CONTACT_RAYCAST_UP_OFFSET,
-		"terrain_contact_raycast_down_distance": RIVER_TERRAIN_CONTACT_RAYCAST_DOWN_DISTANCE,
-		"terrain_contact_hterrain_source_confidence": RIVER_TERRAIN_HTERRAIN_SOURCE_CONFIDENCE,
-		"terrain_contact_physics_source_confidence": RIVER_TERRAIN_PHYSICS_SOURCE_CONFIDENCE,
-		"terrain_contact_supersamples": RIVER_TERRAIN_CONTACT_SUPERSAMPLES,
-		"terrain_contact_source_blend_band": RIVER_TERRAIN_CONTACT_SOURCE_BLEND_BAND,
-		"terrain_contact_edge_smooth_passes": RIVER_TERRAIN_CONTACT_EDGE_SMOOTH_PASSES,
-		"filter_passes_column_clamped": true,
 		"terrain_contact_feature_stats": terrain_contact_feature_stats.duplicate(true),
-		"bank_response_features_baked": true,
-		"bank_response_features_algorithm": "terrain_contact_depth_bend_grade_flow_semantic_response_debug_only",
-		"bank_response_features_neutral_value": Color(0.0, 0.0, 0.0, 0.0),
-		"bank_response_probe_tiles": RIVER_BANK_RESPONSE_PROBE_TILES,
-		"bank_response_friction_contact_weight": RIVER_BANK_RESPONSE_FRICTION_CONTACT_WEIGHT,
-		"bank_response_friction_shallow_weight": RIVER_BANK_RESPONSE_FRICTION_SHALLOW_WEIGHT,
-		"bank_response_hard_protrusion_weight": RIVER_BANK_RESPONSE_HARD_PROTRUSION_WEIGHT,
-		"bank_response_outside_bend_start": RIVER_BANK_RESPONSE_OUTSIDE_BEND_START,
-		"bank_response_outside_bend_full": RIVER_BANK_RESPONSE_OUTSIDE_BEND_FULL,
-		"bank_response_inside_bend_start": RIVER_BANK_RESPONSE_INSIDE_BEND_START,
-		"bank_response_inside_bend_full": RIVER_BANK_RESPONSE_INSIDE_BEND_FULL,
-		"bank_response_uses_obstacle_features": false,
 		"bank_response_feature_stats": bank_response_feature_stats.duplicate(true),
 		"support_fallback_applied": bool(bake_diagnostics.get("support_fallback_applied", false)),
 		"support_fallback_reason": String(bake_diagnostics.get("support_fallback_reason", "")),
 		"no_collider_curve_only_fallback": String(bake_diagnostics.get("support_fallback_reason", "")) == "no_collision_hits",
-		"blank_support_foam_value": RIVER_BLANK_SUPPORT_VALUE,
-		"blank_support_dist_pressure": Vector2(RIVER_BLANK_SUPPORT_VALUE, RIVER_BLANK_SUPPORT_VALUE),
-		"grade_energy_baked": true,
-		"grade_energy_algorithm": "curve_height_drop_vertex_aligned_longitudinal_lerp",
-		"grade_energy_lookahead_tiles": RIVER_GRADE_ENERGY_LOOKAHEAD_TILES,
-		"grade_energy_smooth_radius_tiles": RIVER_GRADE_ENERGY_SMOOTH_RADIUS_TILES,
-		"grade_energy_reference_grade": RIVER_GRADE_ENERGY_REFERENCE_GRADE,
-		"neutral_grade_energy_feature_value": RIVER_NEUTRAL_GRADE_ENERGY_VALUE,
 		"grade_energy_stats": grade_energy_stats.duplicate(true),
-		"neutral_bend_bias_feature_value": RIVER_NEUTRAL_BEND_BIAS_VALUE,
-		"bend_bias_baked": true,
-		"bend_bias_algorithm": "curve_planar_curvature_vertex_aligned_longitudinal_lerp_cross_river_bias",
-		"bend_bias_sign_convention": "dist_pressure.a packed signed bias; values above 0.5 mean outside bend faster, below 0.5 mean inside bend slower",
-		"bend_bias_lookahead_tiles": RIVER_BEND_BIAS_LOOKAHEAD_TILES,
-		"bend_bias_smooth_radius_tiles": RIVER_BEND_BIAS_SMOOTH_RADIUS_TILES,
-		"bend_bias_reference_radians": RIVER_BEND_BIAS_REFERENCE_RADIANS,
 		"bend_bias_stats": bend_bias_stats.duplicate(true),
 		"flow_speed_scaled": _any_flow_speed_non_neutral(),
-		"flow_speed_factor_max": RIVER_FLOW_SPEED_FACTOR_MAX,
 		"flat_foam_support_reduced": foam_support_reduced,
-		"flat_foam_support_value": RIVER_FLAT_FOAM_SUPPORT_VALUE,
 		"flat_pressure_support_reduced": pressure_support_reduced,
-		"flat_pressure_support_value": RIVER_FLAT_PRESSURE_SUPPORT_VALUE,
-		"near_neutral_threshold": WaterHelperMethods.FLOW_VECTOR_NEAR_NEUTRAL_THRESHOLD,
 		"flow_vector_diagnostics": flow_vector_diagnostics.duplicate(true),
-		"supported_future_source_kinds": PackedStringArray([
-			"generated_spline_collision_bake",
-			"generated_downstream_baseline_collision_bake",
-			"generated_curve_collision_modifiers_bake",
-			"generated_curve_only_bake",
-			"imported_linear_data_map",
-			"hand_painted_flow_map",
-			"dcc_or_simulation_flow_map",
-			"shore_distance_field",
-			"terrain_slope_field",
-			"obstacle_influence_field"
-		])
-	}
+	})
 	data.flow_foam_noise = result.get("flow_foam_noise_texture") as Texture2D
 	data.dist_pressure = result.get("dist_pressure_texture") as Texture2D
 	data.obstacle_features = result.get("obstacle_features_texture") as Texture2D
@@ -2534,16 +2413,12 @@ func get_bake_source_signature() -> Dictionary:
 				"flow_speed": _signature_float(_get_flow_speed_for_point(point_index))
 			})
 	var step_count := _calculate_step_count()
-	return {
-		"version": RIVER_BAKE_SOURCE_SIGNATURE_VERSION,
+	return RiverBakeConstants.build_source_signature({
 		"curve_bake_interval": _signature_float(curve.bake_interval) if curve != null else 0.0,
 		"points": points,
 		"shape_step_length_divs": shape_step_length_divs,
 		"shape_step_width_divs": shape_step_width_divs,
 		"shape_smoothness": _signature_float(shape_smoothness),
-		# Edge-overlap resolution shapes the mesh the bake derives from.
-		"river_edge_smooth_radius": WaterHelperMethods.RIVER_EDGE_SMOOTH_RADIUS,
-		"river_edge_smooth_iterations": WaterHelperMethods.RIVER_EDGE_SMOOTH_ITERATIONS,
 		"baking_resolution": baking_resolution,
 		"baking_raycast_distance": _signature_float(baking_raycast_distance),
 		"baking_raycast_layers": baking_raycast_layers,
@@ -2553,91 +2428,9 @@ func get_bake_source_signature() -> Dictionary:
 		"baking_foam_offset": _signature_float(baking_foam_offset),
 		"baking_foam_blur": _signature_float(baking_foam_blur),
 		"bake_generation_behavior": _sanitize_bake_generation_behavior(bake_generation_behavior),
-		"downstream_baseline_strength": _signature_float(RIVER_DOWNSTREAM_BASELINE_STRENGTH),
-		"flow_speed_factor_max": _signature_float(RIVER_FLOW_SPEED_FACTOR_MAX),
-		# A code constant, so it is the same stable literal in every load context
-		# (unlike texture resource paths, which flip container between scene saves
-		# and bake binding — see water_system_manager's stale comparator). Catches
-		# the texture being repointed; in-place PNG edits still need a manual rebake.
-		"flow_offset_noise_texture_path": FLOW_OFFSET_NOISE_TEXTURE_PATH,
-		"obstacle_feature_support_start": _signature_float(RIVER_OBSTACLE_FEATURE_SUPPORT_START),
-		"obstacle_feature_support_full": _signature_float(RIVER_OBSTACLE_FEATURE_SUPPORT_FULL),
-		"obstacle_feature_facing_start": _signature_float(RIVER_OBSTACLE_FEATURE_FACING_START),
-		"obstacle_feature_facing_full": _signature_float(RIVER_OBSTACLE_FEATURE_FACING_FULL),
-		"obstacle_feature_pillow_support_start": _signature_float(RIVER_OBSTACLE_FEATURE_PILLOW_SUPPORT_START),
-		"obstacle_feature_pillow_support_full": _signature_float(RIVER_OBSTACLE_FEATURE_PILLOW_SUPPORT_FULL),
-		"obstacle_feature_pillow_contact_search_tiles": _signature_float(RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_SEARCH_TILES),
-		"obstacle_feature_pillow_contact_gate_start": _signature_float(RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_GATE_START),
-		"obstacle_feature_pillow_contact_gate_full": _signature_float(RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_GATE_FULL),
-		"obstacle_feature_pillow_anchor_source": "terrain_contact_features.b_direct_search",
-		"obstacle_feature_pillow_bank_response_role": "weak_context_only_not_anchor",
-		"obstacle_feature_wake_length_tiles": _signature_float(RIVER_OBSTACLE_FEATURE_WAKE_LENGTH_TILES),
-		"obstacle_feature_wake_width_tiles": _signature_float(RIVER_OBSTACLE_FEATURE_WAKE_WIDTH_TILES),
-		"obstacle_feature_side_width_tiles": _signature_float(RIVER_OBSTACLE_FEATURE_SIDE_WIDTH_TILES),
-		"obstacle_feature_wake_start": _signature_float(RIVER_OBSTACLE_FEATURE_WAKE_START),
-		"obstacle_feature_wake_full": _signature_float(RIVER_OBSTACLE_FEATURE_WAKE_FULL),
-		"obstacle_feature_bank_friction_suppression": _signature_float(RIVER_OBSTACLE_FEATURE_BANK_FRICTION_SUPPRESSION),
-		"obstacle_feature_hard_boundary_wake_gate": _signature_float(RIVER_OBSTACLE_FEATURE_HARD_BOUNDARY_WAKE_GATE),
-		"obstacle_feature_confidence_start": _signature_float(RIVER_OBSTACLE_FEATURE_CONFIDENCE_START),
-		"obstacle_feature_confidence_full": _signature_float(RIVER_OBSTACLE_FEATURE_CONFIDENCE_FULL),
-		"obstacle_feature_eddy_line_edge_start": _signature_float(RIVER_OBSTACLE_FEATURE_EDDY_LINE_EDGE_START),
-		"obstacle_feature_eddy_line_edge_full": _signature_float(RIVER_OBSTACLE_FEATURE_EDDY_LINE_EDGE_FULL),
-		"obstacle_feature_eddy_line_wake_start": _signature_float(RIVER_OBSTACLE_FEATURE_EDDY_LINE_WAKE_START),
-		"obstacle_feature_eddy_line_wake_full": _signature_float(RIVER_OBSTACLE_FEATURE_EDDY_LINE_WAKE_FULL),
-		"obstacle_feature_eddy_line_hard_gate_start": _signature_float(RIVER_OBSTACLE_FEATURE_EDDY_LINE_HARD_GATE_START),
-		"obstacle_feature_eddy_line_hard_gate_full": _signature_float(RIVER_OBSTACLE_FEATURE_EDDY_LINE_HARD_GATE_FULL),
-		"obstacle_feature_eddy_line_energy_gate_start": _signature_float(RIVER_OBSTACLE_FEATURE_EDDY_LINE_ENERGY_GATE_START),
-		"obstacle_feature_eddy_line_energy_gate_full": _signature_float(RIVER_OBSTACLE_FEATURE_EDDY_LINE_ENERGY_GATE_FULL),
-		"obstacle_feature_eddy_line_support_reject_start": _signature_float(RIVER_OBSTACLE_FEATURE_EDDY_LINE_SUPPORT_REJECT_START),
-		"obstacle_feature_eddy_line_support_reject_full": _signature_float(RIVER_OBSTACLE_FEATURE_EDDY_LINE_SUPPORT_REJECT_FULL),
-		"water_occupancy_ramp_tiles": _signature_float(RIVER_OCCUPANCY_RAMP_TILES),
-		"water_occupancy_protrusion_threshold": _signature_float(RIVER_OCCUPANCY_PROTRUSION_THRESHOLD),
-		"water_occupancy_protrusion_confidence_min": _signature_float(RIVER_OCCUPANCY_PROTRUSION_CONFIDENCE_MIN),
-		"flow_projection_strides": ",".join(RIVER_FLOW_PROJECTION_STRIDES.map(func(stride: int) -> String: return str(stride))),
-		"flow_projection_iterations_per_stride": RIVER_FLOW_PROJECTION_ITERATIONS_PER_STRIDE,
-		"flow_tangency_passes": RIVER_FLOW_TANGENCY_PASSES,
-		"terrain_contact_full_band": _signature_float(RIVER_TERRAIN_CONTACT_FULL_BAND),
-		"terrain_contact_fade_distance": _signature_float(RIVER_TERRAIN_CONTACT_FADE_DISTANCE),
-		"terrain_contact_shallow_full_depth": _signature_float(RIVER_TERRAIN_SHALLOW_FULL_DEPTH),
-		"terrain_contact_shallow_fade_depth": _signature_float(RIVER_TERRAIN_SHALLOW_FADE_DEPTH),
-		"terrain_contact_protrusion_fade_height": _signature_float(RIVER_TERRAIN_PROTRUSION_FADE_HEIGHT),
-		"terrain_contact_protrusion_full_height": _signature_float(RIVER_TERRAIN_PROTRUSION_FULL_HEIGHT),
-		"terrain_contact_raycast_up_offset": _signature_float(RIVER_TERRAIN_CONTACT_RAYCAST_UP_OFFSET),
-		"terrain_contact_raycast_down_distance": _signature_float(RIVER_TERRAIN_CONTACT_RAYCAST_DOWN_DISTANCE),
-		"terrain_contact_hterrain_source_confidence": _signature_float(RIVER_TERRAIN_HTERRAIN_SOURCE_CONFIDENCE),
-		"terrain_contact_physics_source_confidence": _signature_float(RIVER_TERRAIN_PHYSICS_SOURCE_CONFIDENCE),
-		"terrain_contact_supersamples": RIVER_TERRAIN_CONTACT_SUPERSAMPLES,
-		"terrain_contact_source_blend_band": _signature_float(RIVER_TERRAIN_CONTACT_SOURCE_BLEND_BAND),
-		"terrain_contact_edge_smooth_passes": RIVER_TERRAIN_CONTACT_EDGE_SMOOTH_PASSES,
-		"uv2_world_sample_tile_classifier": "floor_partition_match_tile_rect",
-		"filter_passes_column_clamped": true,
-		"filtered_feature_edge_sync_depth_pixels": RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS,
-		"bank_response_probe_tiles": _signature_float(RIVER_BANK_RESPONSE_PROBE_TILES),
-		"bank_response_friction_contact_weight": _signature_float(RIVER_BANK_RESPONSE_FRICTION_CONTACT_WEIGHT),
-		"bank_response_friction_shallow_weight": _signature_float(RIVER_BANK_RESPONSE_FRICTION_SHALLOW_WEIGHT),
-		"bank_response_hard_protrusion_weight": _signature_float(RIVER_BANK_RESPONSE_HARD_PROTRUSION_WEIGHT),
-		"bank_response_outside_bend_start": _signature_float(RIVER_BANK_RESPONSE_OUTSIDE_BEND_START),
-		"bank_response_outside_bend_full": _signature_float(RIVER_BANK_RESPONSE_OUTSIDE_BEND_FULL),
-		"bank_response_inside_bend_start": _signature_float(RIVER_BANK_RESPONSE_INSIDE_BEND_START),
-		"bank_response_inside_bend_full": _signature_float(RIVER_BANK_RESPONSE_INSIDE_BEND_FULL),
-		"blank_support_value": _signature_float(RIVER_BLANK_SUPPORT_VALUE),
-		"neutral_grade_energy_value": _signature_float(RIVER_NEUTRAL_GRADE_ENERGY_VALUE),
-		"grade_energy_source_sampling": "vertex_aligned_longitudinal_lerp",
-		"grade_energy_lookahead_tiles": _signature_float(RIVER_GRADE_ENERGY_LOOKAHEAD_TILES),
-		"grade_energy_smooth_radius_tiles": RIVER_GRADE_ENERGY_SMOOTH_RADIUS_TILES,
-		"grade_energy_reference_grade": _signature_float(RIVER_GRADE_ENERGY_REFERENCE_GRADE),
-		"neutral_bend_bias_value": _signature_float(RIVER_NEUTRAL_BEND_BIAS_VALUE),
-		"bend_bias_source_sampling": "vertex_aligned_longitudinal_lerp",
-		"bend_bias_lateral_sampling": "vertex_aligned_cross_river_ratio",
-		"bend_bias_lookahead_tiles": _signature_float(RIVER_BEND_BIAS_LOOKAHEAD_TILES),
-		"bend_bias_smooth_radius_tiles": RIVER_BEND_BIAS_SMOOTH_RADIUS_TILES,
-		"bend_bias_reference_radians": _signature_float(RIVER_BEND_BIAS_REFERENCE_RADIANS),
-		"flat_foam_support_value": _signature_float(RIVER_FLAT_FOAM_SUPPORT_VALUE),
-		"flat_pressure_support_value": _signature_float(RIVER_FLAT_PRESSURE_SUPPORT_VALUE),
-		"near_neutral_threshold": _signature_float(WaterHelperMethods.FLOW_VECTOR_NEAR_NEUTRAL_THRESHOLD),
 		"step_count": step_count,
 		"uv2_sides": WaterHelperMethods.calculate_side(step_count)
-	}
+	})
 
 
 func _bake_data_matches_current_source() -> bool:
@@ -2722,7 +2515,7 @@ func _get_mesh_global_aabb(instance: MeshInstance3D) -> AABB:
 
 
 func _get_bake_settings(source_texture_size: Vector2i, texture_size: Vector2i, content_rect: Rect2i, texture_layout: String) -> Dictionary:
-	return {
+	return RiverBakeConstants.build_bake_settings({
 		"shape_step_length_divs": shape_step_length_divs,
 		"shape_step_width_divs": shape_step_width_divs,
 		"shape_smoothness": shape_smoothness,
@@ -2735,77 +2528,12 @@ func _get_bake_settings(source_texture_size: Vector2i, texture_size: Vector2i, c
 		"baking_foam_offset": baking_foam_offset,
 		"baking_foam_blur": baking_foam_blur,
 		"bake_generation_behavior": _sanitize_bake_generation_behavior(bake_generation_behavior),
-		"downstream_baseline_strength": RIVER_DOWNSTREAM_BASELINE_STRENGTH,
-		"obstacle_feature_support_start": RIVER_OBSTACLE_FEATURE_SUPPORT_START,
-		"obstacle_feature_support_full": RIVER_OBSTACLE_FEATURE_SUPPORT_FULL,
-		"obstacle_feature_facing_start": RIVER_OBSTACLE_FEATURE_FACING_START,
-		"obstacle_feature_facing_full": RIVER_OBSTACLE_FEATURE_FACING_FULL,
-		"obstacle_feature_pillow_support_start": RIVER_OBSTACLE_FEATURE_PILLOW_SUPPORT_START,
-		"obstacle_feature_pillow_support_full": RIVER_OBSTACLE_FEATURE_PILLOW_SUPPORT_FULL,
-		"obstacle_feature_pillow_contact_search_tiles": RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_SEARCH_TILES,
-		"obstacle_feature_pillow_contact_gate_start": RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_GATE_START,
-		"obstacle_feature_pillow_contact_gate_full": RIVER_OBSTACLE_FEATURE_PILLOW_CONTACT_GATE_FULL,
-		"obstacle_feature_pillow_anchor_source": "terrain_contact_features.b_direct_search",
-		"obstacle_feature_pillow_bank_response_role": "weak_context_only_not_anchor",
-		"obstacle_feature_wake_length_tiles": RIVER_OBSTACLE_FEATURE_WAKE_LENGTH_TILES,
-		"obstacle_feature_wake_width_tiles": RIVER_OBSTACLE_FEATURE_WAKE_WIDTH_TILES,
-		"obstacle_feature_side_width_tiles": RIVER_OBSTACLE_FEATURE_SIDE_WIDTH_TILES,
-		"obstacle_feature_wake_start": RIVER_OBSTACLE_FEATURE_WAKE_START,
-		"obstacle_feature_wake_full": RIVER_OBSTACLE_FEATURE_WAKE_FULL,
-		"obstacle_feature_bank_friction_suppression": RIVER_OBSTACLE_FEATURE_BANK_FRICTION_SUPPRESSION,
-		"obstacle_feature_hard_boundary_wake_gate": RIVER_OBSTACLE_FEATURE_HARD_BOUNDARY_WAKE_GATE,
-		"obstacle_feature_confidence_start": RIVER_OBSTACLE_FEATURE_CONFIDENCE_START,
-		"obstacle_feature_confidence_full": RIVER_OBSTACLE_FEATURE_CONFIDENCE_FULL,
-		"obstacle_feature_eddy_line_edge_start": RIVER_OBSTACLE_FEATURE_EDDY_LINE_EDGE_START,
-		"obstacle_feature_eddy_line_edge_full": RIVER_OBSTACLE_FEATURE_EDDY_LINE_EDGE_FULL,
-		"obstacle_feature_eddy_line_wake_start": RIVER_OBSTACLE_FEATURE_EDDY_LINE_WAKE_START,
-		"obstacle_feature_eddy_line_wake_full": RIVER_OBSTACLE_FEATURE_EDDY_LINE_WAKE_FULL,
-		"obstacle_feature_eddy_line_hard_gate_start": RIVER_OBSTACLE_FEATURE_EDDY_LINE_HARD_GATE_START,
-		"obstacle_feature_eddy_line_hard_gate_full": RIVER_OBSTACLE_FEATURE_EDDY_LINE_HARD_GATE_FULL,
-		"obstacle_feature_eddy_line_energy_gate_start": RIVER_OBSTACLE_FEATURE_EDDY_LINE_ENERGY_GATE_START,
-		"obstacle_feature_eddy_line_energy_gate_full": RIVER_OBSTACLE_FEATURE_EDDY_LINE_ENERGY_GATE_FULL,
-		"obstacle_feature_eddy_line_support_reject_start": RIVER_OBSTACLE_FEATURE_EDDY_LINE_SUPPORT_REJECT_START,
-		"obstacle_feature_eddy_line_support_reject_full": RIVER_OBSTACLE_FEATURE_EDDY_LINE_SUPPORT_REJECT_FULL,
-		"terrain_contact_full_band": RIVER_TERRAIN_CONTACT_FULL_BAND,
-		"terrain_contact_fade_distance": RIVER_TERRAIN_CONTACT_FADE_DISTANCE,
-		"terrain_contact_shallow_full_depth": RIVER_TERRAIN_SHALLOW_FULL_DEPTH,
-		"terrain_contact_shallow_fade_depth": RIVER_TERRAIN_SHALLOW_FADE_DEPTH,
-		"terrain_contact_protrusion_fade_height": RIVER_TERRAIN_PROTRUSION_FADE_HEIGHT,
-		"terrain_contact_protrusion_full_height": RIVER_TERRAIN_PROTRUSION_FULL_HEIGHT,
-		"terrain_contact_raycast_up_offset": RIVER_TERRAIN_CONTACT_RAYCAST_UP_OFFSET,
-		"terrain_contact_raycast_down_distance": RIVER_TERRAIN_CONTACT_RAYCAST_DOWN_DISTANCE,
-		"terrain_contact_hterrain_source_confidence": RIVER_TERRAIN_HTERRAIN_SOURCE_CONFIDENCE,
-		"terrain_contact_physics_source_confidence": RIVER_TERRAIN_PHYSICS_SOURCE_CONFIDENCE,
-		"terrain_contact_supersamples": RIVER_TERRAIN_CONTACT_SUPERSAMPLES,
-		"terrain_contact_source_blend_band": RIVER_TERRAIN_CONTACT_SOURCE_BLEND_BAND,
-		"terrain_contact_edge_smooth_passes": RIVER_TERRAIN_CONTACT_EDGE_SMOOTH_PASSES,
-		"bank_response_probe_tiles": RIVER_BANK_RESPONSE_PROBE_TILES,
-		"bank_response_friction_contact_weight": RIVER_BANK_RESPONSE_FRICTION_CONTACT_WEIGHT,
-		"bank_response_friction_shallow_weight": RIVER_BANK_RESPONSE_FRICTION_SHALLOW_WEIGHT,
-		"bank_response_hard_protrusion_weight": RIVER_BANK_RESPONSE_HARD_PROTRUSION_WEIGHT,
-		"bank_response_outside_bend_start": RIVER_BANK_RESPONSE_OUTSIDE_BEND_START,
-		"bank_response_outside_bend_full": RIVER_BANK_RESPONSE_OUTSIDE_BEND_FULL,
-		"bank_response_inside_bend_start": RIVER_BANK_RESPONSE_INSIDE_BEND_START,
-		"bank_response_inside_bend_full": RIVER_BANK_RESPONSE_INSIDE_BEND_FULL,
-		"blank_support_value": RIVER_BLANK_SUPPORT_VALUE,
-		"neutral_grade_energy_value": RIVER_NEUTRAL_GRADE_ENERGY_VALUE,
-		"grade_energy_lookahead_tiles": RIVER_GRADE_ENERGY_LOOKAHEAD_TILES,
-		"grade_energy_smooth_radius_tiles": RIVER_GRADE_ENERGY_SMOOTH_RADIUS_TILES,
-		"grade_energy_reference_grade": RIVER_GRADE_ENERGY_REFERENCE_GRADE,
-		"neutral_bend_bias_value": RIVER_NEUTRAL_BEND_BIAS_VALUE,
-		"bend_bias_lookahead_tiles": RIVER_BEND_BIAS_LOOKAHEAD_TILES,
-		"bend_bias_smooth_radius_tiles": RIVER_BEND_BIAS_SMOOTH_RADIUS_TILES,
-		"bend_bias_reference_radians": RIVER_BEND_BIAS_REFERENCE_RADIANS,
-		"flat_foam_support_value": RIVER_FLAT_FOAM_SUPPORT_VALUE,
-		"flat_pressure_support_value": RIVER_FLAT_PRESSURE_SUPPORT_VALUE,
-		"near_neutral_threshold": WaterHelperMethods.FLOW_VECTOR_NEAR_NEUTRAL_THRESHOLD,
-		"filtered_feature_edge_sync_depth_pixels": RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS,
 		"uv2_sides": _uv2_sides,
 		"source_texture_size": source_texture_size,
 		"texture_size": texture_size,
 		"content_rect": content_rect,
 		"texture_layout": texture_layout
-	}
+	})
 
 
 # Signal Methods

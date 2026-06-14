@@ -8,10 +8,10 @@ This phase is intentionally behavior-preserving. It must not change bake output,
 
 ## Current Truth
 
-- Status: R6.3 runtime ripple material ownership, R6.4 editor validation extraction, R6.1B baker lifecycle ownership, R6.1C run-pass helper, R6.1D source-helper implementation, R6.1E pass sequencing, R6.1F diagnostics/image postprocess, R6.1G result assembly/application, and R6.1H abort-matrix coverage have landed with focused validation. The old R6.1A-G validation/probe set was rerun after R6.1H and remains green; R6.1D source-image validation is reconciled with the known obstacle collision-derived variant, R6.1E/R6.1F/R6.1G generated-texture validation is closed, R6.1H abort coverage is closed with named residual editor/source-helper cases, and constants-table extraction remains open.
+- Status: R6.3 runtime ripple material ownership, R6.4 editor validation extraction, R6.1B baker lifecycle ownership, R6.1C run-pass helper, R6.1D source-helper implementation, R6.1E pass sequencing, R6.1F diagnostics/image postprocess, R6.1G result assembly/application, R6.1H abort-matrix coverage, R6.2 constants-table live dictionary switch, final automated validation, and R6.5 cleanup/interface tightening have landed with focused validation. R6.1D source-image validation is reconciled with the known obstacle collision-derived variant, R6.1E/R6.1F/R6.1G generated-texture validation is closed, R6.1H abort coverage is closed with named residual editor/source-helper cases, and R6.5 surface/property validation is closed.
 - Source of truth for open work: `tasks.md` in this folder, backed by `plan.md`.
 - Last meaningful decision: R6.1H kept result application and image postprocess synchronous/non-awaited for interruption strategy, added cancellation/liveness checks around existing awaited bake boundaries, and named editor undo-delete plus forced collision-helper null injection instead of overclaiming automation. R6 preserves the existing mixed source-timing contract by default; any deliberate freeze-at-start change must be documented here and validated by a mid-bake edit probe or named human-assisted case.
-- Known deferred items: R7 GPU-resident solve is out of scope. Parent docs are updated only after R6 validation runs.
+- Known deferred items: R7 GPU-resident solve is out of scope for R6 and must start with the compute-vs-SubViewport decision plus its own docs. Parent docs were updated after final R6 validation and R6.5 cleanup.
 - Current non-goals that are easy to accidentally reopen: no bake algorithm changes, no signature bump, no filter-pass changes, no shader output changes, and no changes to runtime ripple simulation itself.
 
 ## Goals
@@ -184,6 +184,7 @@ Shared systems must not hard-code:
 | Should R6.3 land before bake-pipeline extraction? | Yes. | 2026-06-13 | Runtime ripple ownership was a small, well-covered slice. |
 | Did existing ripple probes need hardening before R6.3 moved code? | Yes. | 2026-06-13 | The material ownership probe was hardened for debug-material parameter ownership, and debug parity source checks now follow the extracted owner helper and shared shader include. |
 | Should R6.4 land before bake-pipeline extraction? | Yes. | 2026-06-14 | Editor validation was a small slice with focused caller/marker coverage; R6.1B is now the next recommended bake slice. |
+| Can R6.5 remove private helpers after extraction? | Yes, only if they have no active call sites and public/property surfaces stay stable. | 2026-06-14 | `_cleanup_flowmap_baker()` and `_filter_output_is_valid()` were removed; serialized private compatibility slots stayed. |
 
 ## Decision Log
 

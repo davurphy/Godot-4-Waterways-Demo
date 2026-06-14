@@ -6,12 +6,12 @@ Complete tasks in order unless `plan.md` is revised. Each task should be indepen
 
 ## Current Truth
 
-- Current status: R6.1H abort-matrix coverage is complete, and the old R6.1A-G validation/probe set has been rerun after the abort-matrix work. The baker now observes cancellation around awaited renderer passes, RiverManager checks liveness after existing source-generation awaits, helper-internal collision/terrain waits stop safely when the river or mesh is freed, and `r6_abort_matrix_probe.gd` covers the automated abort buckets while naming the editor-only residual cases.
-- Current implementation slice: R6.1H covered pre-renderer abort, scene close before renderer setup, terrain-contact helper node-free, renderer-live/Jacobi-labelled cancellation, forced invalid filter output, renderer setup failure, duplicate requests, repeated `abort()`, success cleanup, synchronous image-postprocess strategy, and synchronous RiverManager result application strategy. RiverManager still owns source-generation timing, final dictionaries, resource saving, material binding, `valid_flowmap`, bake flag clearing, completion progress, and final result application.
-- Remaining open task count: constants table, final before/after diff, and final validation tasks remain open.
-- Last passing validation: 2026-06-14 R6.1A-G rerun after R6.1H passed `R6_BAKER_LIFECYCLE_OK`, `R6_BAKER_RUN_PASS_OK`, `R6_R61F_WARNING_POSTPROCESS_OK`, `R6_R61G_RESULT_APPLICATION_OK`, `R5_BEHAVIOR_PRESERVATION_PROBE_OK`, `R6_GENERATED_TEXTURE_HASH_OK out=res://.codex-research/r6-baselines/post-r6-r61ag-rerun-generated files=2`, `R6_R61G_RERUN_GENERATED_TEXTURE_DIFF_OK files=2 baseline=post-r6-r61g-generated current=post-r6-r61ag-rerun-generated`, `R6_R61G_RERUN_RT1_GENERATED_TEXTURE_DIFF_OK files=2 baseline=pre-r6-r61e-generated current=post-r6-r61ag-rerun-generated`, `R6_BASELINE_DUMP_OK out=res://.codex-research/r6-baselines/post-r6-r61ag-rerun files=10`, `R6_R61G_RERUN_SURFACE_PROPERTY_DIFF_OK files=10 baseline=post-r6-r61g current=post-r6-r61ag-rerun`, and `git diff --check`. The source-image rerun hit only the known obstacle collision-derived variant and matched the old-code fresh replay: `R6_R61D_COLLISION_VARIANT_RECONCILED_OK ignored_collision_probe_variants=4 baseline=pre-r6-r61d-fresh-rerun current=post-r6-r61ag-rerun-source`.
-- Next recommended action: start R6.2 constants-table work. Do not reopen the closed R6.1B-H bake extraction slices unless a later validation failure points back to them.
-- Known deferred work: parent docs are updated only after R6 validation runs; R7 remains out of scope.
+- Current status: R6.5 cleanup/interface tightening is complete after final automated R6 validation. `river_bake_constants.gd` owns reviewable constant rows; RiverManager still owns source-generation timing, final dynamic dictionary reads, resource saving, material binding, `valid_flowmap`, bake flag clearing, completion progress, and final result application.
+- Current implementation slice: R6 is closed for automated/code cleanup purposes. Dynamic values remain explicit in RiverManager: curve points, widths, flow speeds, texture stats, diagnostics, content rect, and revision timestamp.
+- Remaining open task count: optional lower-cost editor/visible checks remain outside R6 code cleanup; R7 decision/docs are the next track work.
+- Last passing validation: 2026-06-14 R6.5 focused validation passed `R6_R61F_PARSER_OK`, `R6_R62_CONSTANTS_SHADOW_OK comparisons=8 rows=109 signature_version=28`, `R6_BASELINE_DUMP_OK out=res://.codex-research/r6-baselines/post-r6-r65 files=10`, `R6_R65_SURFACE_PROPERTY_DIFF_OK files=4 baseline=post-r6-final current=post-r6-r65 surface_line_numbers=normalized`, `R5_BEHAVIOR_PRESERVATION_PROBE_OK`, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, and `git diff --check`. The known `Demo.tscn` invalid UID warning repeated during scene-loading probes.
+- Next recommended action: move to the R7 compute-vs-SubViewport decision/docs gate. Do not start R7 implementation until the decision is recorded and R7 `spec.md`, `plan.md`, and `validation.md` exist.
+- Known deferred work: full-Demo editor undo-delete was attempted and infeasible; use a lower-cost fixture or targeted editor harness if that editor-stack case needs future closure.
 
 ## Open Work
 
@@ -22,6 +22,8 @@ Complete tasks in order unless `plan.md` is revised. Each task should be indepen
 - [x] Decide whether R6.3 and R6.4 should land before the bake pipeline extraction. Decision: landed R6.3 and R6.4 first; R6.1B is the next recommended slice.
 - [x] Do not start bake-pipeline implementation until source-image/timing evidence and R6.1A inventory exist.
 - [x] Rerun the old R6.1A-G validation/probe set after R6.1H and before R6.2.
+- [x] Run final full-R6 generated-output, canonical dictionary/API/signal/property, R5, R4, filter-renderer, system-flow, parser/check-only, and whitespace gates.
+- [x] Complete R6.5 dead-private-method/comment cleanup and focused validation.
 
 ## Setup
 
@@ -49,7 +51,7 @@ Complete tasks in order unless `plan.md` is revised. Each task should be indepen
 - [x] Check in the R6 documentation gate before implementation starts.
   - Validate: R6 docs were tracked and clean on branch `r6` before validation-tool edits.
 
-- [ ] Add R6 row to the parent `river-refactor/validation.md` only after R6 validation runs.
+- [x] Add R6 row to the parent `river-refactor/validation.md` only after R6 validation runs.
   - Validate: parent row is not prematurely marked pass.
 
 - [x] Capture pre-R6 dictionary dumps for both demo river bakes:
@@ -116,20 +118,20 @@ Complete tasks in order unless `plan.md` is revised. Each task should be indepen
 
 ## R6.2 Constants Table and Dictionary Builders
 
-- [ ] Add `addons/waterways/river_bake_constants.gd`.
+- [x] Add `addons/waterways/river_bake_constants.gd`.
   - Validate: one row per constant or generated literal that participates in metadata, signature, or settings.
 
-- [ ] Include row types for raw values, signature-snapped floats, stable joined arrays, string literals, booleans, and values sourced from `WaterHelperMethods`.
+- [x] Include row types for raw values, signature-snapped floats, stable joined arrays, string literals, booleans, and values sourced from `WaterHelperMethods`.
   - Validate: rows are reviewable and dynamic values are excluded.
 
-- [ ] Add `reason` and `review_decision` fields for non-signature rows.
+- [x] Add `reason` and `review_decision` fields for non-signature rows.
   - Validate: signature coverage decisions are explicit.
 
-- [ ] Add shadow-builder probe comparing old and table-generated dictionaries.
+- [x] Add shadow-builder probe comparing old and table-generated dictionaries.
   - Validate: exact source-signature match, exact bake-settings match, metadata match except `bake_revision`.
 
-- [ ] Switch live dictionary paths only after the shadow probe passes.
-  - Validate: bake signature version remains 28.
+- [x] Switch live dictionary paths only after the shadow probe passes.
+  - Validate: bake signature version remains 28; live switch rerun reported `R6_R62_CONSTANTS_SHADOW_OK comparisons=8 rows=109 signature_version=28` and canonical dictionary diff marker `R6_R62_LIVE_CANONICAL_DICTIONARY_DIFF_OK files=6 baseline=post-r6-r61ag-rerun current=post-r6-r62-live metadata_filter=bake_revision`.
 
 ## R6.3 Runtime Ripple Material Ownership Extraction
 
@@ -164,16 +166,16 @@ Complete tasks in order unless `plan.md` is revised. Each task should be indepen
 
 ## R6.5 Cleanup and Interface Tightening
 
-- [ ] Remove dead private methods left behind in RiverManager after extraction.
-  - Validate: public method surface diff remains empty.
+- [x] Remove dead private methods left behind in RiverManager after extraction.
+  - Validate: R6.5 removed `_cleanup_flowmap_baker()` and `_filter_output_is_valid()` after active-reference audit; only Godot engine virtuals remain as single-occurrence private methods. Public method/signal surface matched after line-number normalization.
 
-- [ ] Rename only where it clarifies the new boundary.
-  - Validate: no public churn and no avoidable doc drift.
+- [x] Rename only where it clarifies the new boundary.
+  - Validate: no public rename was needed; the only interface tightening was deleting unreferenced private helpers.
 
-- [ ] Keep comments that explain Godot-specific async/rendering quirks.
-  - Validate: comments are sparse and useful.
+- [x] Keep comments that explain Godot-specific async/rendering quirks.
+  - Validate: the stale `_flowmap_bake_renderer` comment now records serialized property-list compatibility while naming `RiverFlowmapBaker` as the live renderer owner.
 
-- [ ] Update parent docs and handoffs after R6 validation runs:
+- [x] Update parent docs and handoffs after R6 validation runs:
   - parent `roadmap.md`
   - parent `tasks.md`
   - parent `validation.md`
@@ -181,26 +183,26 @@ Complete tasks in order unless `plan.md` is revised. Each task should be indepen
   - `addons/waterways/docs/handoffs/handoff-latest.md`
   - Validate: parent docs point to the true next task.
 
-- [ ] Record scratch artifact paths and cleanup status.
-  - Validate: disposable `.codex-research` outputs are listed.
+- [x] Record scratch artifact paths and cleanup status.
+  - Validate: R6.5 artifacts are listed in `validation.md`; they are disposable `.codex-research` outputs.
 
 ## Validation
 
-- [ ] Run automated checks listed in `validation.md`.
-- [ ] Revisit the context challenge check after validation.
-- [ ] For visible Godot/editor/menu/runtime checks, ask the user in chat with exact steps and expected output.
-- [ ] Do not rely on `validation.md` alone for human-assisted checks.
-- [ ] Record results in `validation.md` and `review.md`.
+- [x] Run automated checks listed in `validation.md`.
+- [x] Revisit the context challenge check after validation.
+- [x] For visible Godot/editor/menu/runtime checks, ask the user in chat with exact steps and expected output.
+- [x] Do not rely on `validation.md` alone for human-assisted checks.
+- [x] Record results in `validation.md` and `review.md`.
 
 ## Cleanup
 
-- [ ] Remove temporary debug code that is not part of planned validation tooling.
-- [ ] List scratch/generated artifacts created during validation and decide whether to keep, exclude, or delete them.
-- [ ] Confirm packaging excludes disposable folders, generated bakes, editor caches, validation fixtures, and local probe outputs.
-- [ ] Update docs for any changed decisions.
-- [ ] Confirm generated data and resources remain explicit and inspectable.
-- [ ] Confirm editor-only state did not leak into runtime-only code.
-- [ ] Confirm no obsolete Godot 3 APIs were introduced into active Godot 4.6+ code.
+- [x] Remove temporary debug code that is not part of planned validation tooling.
+- [x] List scratch/generated artifacts created during validation and decide whether to keep, exclude, or delete them.
+- [x] Confirm packaging excludes disposable folders, generated bakes, editor caches, validation fixtures, and local probe outputs.
+- [x] Update docs for any changed decisions.
+- [x] Confirm generated data and resources remain explicit and inspectable.
+- [x] Confirm editor-only state did not leak into runtime-only code.
+- [x] Confirm no obsolete Godot 3 APIs were introduced into active Godot 4.6+ code.
 
 ## Historical or Closed Tasks
 

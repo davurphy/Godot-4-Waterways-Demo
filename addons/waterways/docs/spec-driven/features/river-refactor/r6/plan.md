@@ -2,22 +2,22 @@
 
 ## Current Truth
 
-- Status: R6 plan and companion docs. R6.3 runtime ripple material ownership, R6.4 editor validation extraction, R6.1B baker shell/lifecycle ownership, R6.1C run-pass helper, R6.1D source-helper implementation, R6.1E pass sequencing, R6.1F diagnostics/image postprocess, R6.1G result assembly/application, and R6.1H abort-matrix coverage have landed with focused validation. The old R6.1A-G validation/probe set was rerun after R6.1H and remains green, with only the already-documented obstacle collision-derived source-image variant; constants-table extraction remains open.
+- Status: R6 plan and companion docs. R6.3 runtime ripple material ownership, R6.4 editor validation extraction, R6.1B baker shell/lifecycle ownership, R6.1C run-pass helper, R6.1D source-helper implementation, R6.1E pass sequencing, R6.1F diagnostics/image postprocess, R6.1G result assembly/application, R6.1H abort-matrix coverage, and R6.2 constants-table extraction/live dictionary switch have landed with focused validation. The old R6.1A-G validation/probe set was rerun after R6.1H and remains green, with only the already-documented obstacle collision-derived source-image variant.
 - Parent track: `addons/waterways/docs/spec-driven/features/river-refactor/roadmap.md`
-- Gate before bake implementation: companion docs, pre-R6 baselines, source-image hashes, flow-speed timing proof, and R6.1A inventory exist. Bake movement still waits on the specific task/plan section for each slice. R6.1B, R6.1C, R6.1D, R6.1E, R6.1F, R6.1G, and R6.1H are complete, and the R6.1A-G rerun is recorded in `validation.md`; R6.2 constants-table work is next. This plan is the roadmap/implementation plan, not the whole R6 documentation gate by itself.
+- Gate before bake implementation: companion docs, pre-R6 baselines, source-image hashes, flow-speed timing proof, and R6.1A inventory exist. Bake movement still waits on the specific task/plan section for each slice. R6.1B, R6.1C, R6.1D, R6.1E, R6.1F, R6.1G, R6.1H, and R6.2 constants-table extraction/live switch are complete, and the R6.1A-G rerun plus R6.2 validation results are recorded in `validation.md`. This plan is the roadmap/implementation plan, not the whole R6 documentation gate by itself.
 - Current branch assumption: continue on `r6` unless the user asks for a fresh phase branch.
 - Last completed prerequisite: R5 structural dedup closed on 2026-06-13 with RT.1 texture hashes, exact property-list diff, and `R5_BEHAVIOR_PRESERVATION_PROBE_OK`.
 - Primary objective: move low-coupling responsibilities out of `river_manager.gd` without changing river bake output, metadata, public API behavior, inspector behavior, or runtime ripple behavior.
 
 ## Source Scope
 
-Current scan of `addons/waterways/river_manager.gd` after R5:
+Current scan of `addons/waterways/river_manager.gd` after R6.5:
 
 - Bake entry and guards: `bake_texture()` around line 1103; `_begin_flowmap_bake_request()` / `_clear_flowmap_bake_request()` around 1622.
 - Runtime ripple material ownership: public wrappers remain in `river_manager.gd`; live owner/material state and helpers now live in `river_ripple_material_owner.gd`. Inert private compatibility placeholders remain in RiverManager so the full property-list dump stays unchanged.
 - Bake preflight: `_get_bake_preflight_failures()` around 1561.
 - Bake pipeline: `_generate_flowmap()` around 1900-2257.
-- Filter validation: `_filter_output_is_valid()` around 2296.
+- Filter validation: baker-owned `_run_pass()` / `validate_pass_result()`; the old RiverManager `_filter_output_is_valid()` compatibility hook was removed in R6.5 after it became unreferenced.
 - Source image, diagnostics, and bake helper cluster: roughly 2327-3047.
 - Editor validation wrappers: `validate_data_textures()` and `validate_filter_renderer()` remain in `river_manager.gd` around line 2930; implementation lives in `river_editor_validation.gd`.
 - Bake writing and generated dictionaries: `_write_bake_data()` around 3327; `get_bake_source_signature()` around 3496; `_get_bake_settings()` around 3695.
@@ -460,9 +460,9 @@ Expected result for every abort:
 
 ### R6.2A Canonical Constants Table Design
 
-- [ ] Do not start this substep until the R6.0 dictionary dump probe exists and can dump old metadata/signature/settings in the canonical validation format.
-- [ ] Add `addons/waterways/river_bake_constants.gd`.
-- [ ] Define one row per constant or generated literal that participates in metadata, signature, or settings.
+- [x] Do not start this substep until the R6.0 dictionary dump probe exists and can dump old metadata/signature/settings in the canonical validation format.
+- [x] Add `addons/waterways/river_bake_constants.gd`.
+- [x] Define one row per constant or generated literal that participates in metadata, signature, or settings.
 - [ ] Recommended row shape:
 
 ```gdscript
@@ -479,16 +479,16 @@ Expected result for every abort:
 }
 ```
 
-- [ ] Include row types for:
+- [x] Include row types for:
   - raw values
   - signature-snapped floats
   - arrays joined as stable strings
   - stable string literals
   - booleans
   - values sourced from `WaterHelperMethods`
-- [ ] Add a `reason` for every row that does not feed `source_signature`, regardless of whether it feeds metadata, settings, or both.
-- [ ] Add a `review_decision` or equivalent field for non-signature rows so future maintainers cannot mistake the table for automatic signature coverage.
-- [ ] Keep dynamic values out of the table:
+- [x] Add a `reason` for every row that does not feed `source_signature`, regardless of whether it feeds metadata, settings, or both.
+- [x] Add a `review_decision` or equivalent field for non-signature rows so future maintainers cannot mistake the table for automatic signature coverage.
+- [x] Keep dynamic values out of the table:
   - curve points
   - widths and flow speeds per point
   - texture stats
@@ -498,19 +498,19 @@ Expected result for every abort:
 
 ### R6.2B Dictionary Builders
 
-- [ ] Do not switch any live dictionary path until the shadow-builder probe compares old and table-generated dictionaries with the R6.0 canonical dump rules.
-- [ ] Generate the constant portions of:
+- [x] Do not switch any live dictionary path until the shadow-builder probe compares old and table-generated dictionaries with the R6.0 canonical dump rules.
+- [x] Generate the constant portions of:
   - source metadata
   - source signature
   - bake settings
-- [ ] Keep dynamic dictionary assembly explicit and small in RiverManager or a bake-data assembler.
-- [ ] Sort generated keys in validation dumps, not necessarily in runtime dictionaries.
-- [ ] Add a probe that compares old and table-generated dictionaries before switching the live path.
-- [ ] Switch live path only after the probe reports:
+- [x] Keep dynamic dictionary assembly explicit and small in RiverManager or a bake-data assembler.
+- [x] Sort generated keys in validation dumps, not necessarily in runtime dictionaries.
+- [x] Add a probe that compares old and table-generated dictionaries before switching the live path.
+- [x] Switch live path only after the probe reports:
   - exact source-signature match,
   - exact bake-settings match,
   - source-metadata match except the validation-doc dynamic allow-list, currently `bake_revision`.
-- [ ] The bake signature version remains 28.
+- [x] The bake signature version remains 28.
 
 ### R6.2C Review Checklist for Signature Coverage
 
@@ -585,16 +585,16 @@ R6.3 implementation note: the live state moved into `river_ripple_material_owner
 
 ### R6.5 Cleanup and Interface Tightening
 
-- [ ] Remove dead private methods left behind in RiverManager after extraction.
-- [ ] Rename only where it clarifies the new boundary; avoid churn in public names.
-- [ ] Keep comments that explain Godot-specific async/rendering quirks.
-- [ ] Update parent docs:
+- [x] Remove dead private methods left behind in RiverManager after extraction.
+- [x] Rename only where it clarifies the new boundary; avoid churn in public names.
+- [x] Keep comments that explain Godot-specific async/rendering quirks.
+- [x] Update parent docs:
   - `river-refactor/roadmap.md` R6 checklist
   - `river-refactor/tasks.md`
   - `river-refactor/validation.md`
   - `river-refactor/session-handoff.md`
   - `addons/waterways/docs/handoffs/handoff-latest.md`
-- [ ] Record scratch artifact paths and cleanup status.
+- [x] Record scratch artifact paths and cleanup status.
 
 ## Lifecycle, Cleanup, and Re-entry
 
@@ -756,7 +756,7 @@ R6 is not closed until all of these are true:
 14. Move diagnostics and image postprocess. Done for R6.1F.
 15. Switch RiverManager to apply `BakeResult` only after result-application order and final-write dependency timing are documented. Done for R6.1G.
 16. Add or name abort-matrix coverage for the remaining old abort/early-return paths. Done for R6.1H.
-17. Add the constants table in shadow mode.
+17. Add the constants table in shadow mode. Done for R6.2 shadow with `R6_R62_CONSTANTS_SHADOW_OK`.
 18. Switch metadata/signature/settings generation to the table after canonical diffs pass.
 19. Run full R6 gates and update parent docs.
 
@@ -776,20 +776,20 @@ The smaller extractions can land before the bake pipeline if the user wants incr
 
 ## Review Checklist
 
-- [ ] Public RiverManager API unchanged.
-- [ ] Public RiverManager signals unchanged, especially `river_changed` and `progress_notified`.
-- [ ] No signature bump.
-- [ ] No shader output change.
-- [ ] No generated texture hash change.
+- [x] Public RiverManager API unchanged.
+- [x] Public RiverManager signals unchanged, especially `river_changed` and `progress_notified`.
+- [x] No signature bump.
+- [x] No shader output change.
+- [x] No generated texture hash change.
 - [x] Raw and margin-padded intermediate source-image hashes match for the full R6.1D list.
-- [ ] Source-signature and bake-settings diffs empty; source-metadata diff empty except the explicit dynamic allow-list.
-- [ ] Full public RiverManager API surface unchanged.
-- [ ] Full inspector property-list unchanged.
+- [x] Source-signature and bake-settings diffs empty; source-metadata diff empty except the explicit dynamic allow-list.
+- [x] Full public RiverManager API surface unchanged.
+- [x] Full inspector property-list unchanged.
 - [x] All 21-plus old abort points represented by controlled baker exits.
 - [x] Abort coverage crosses pre-renderer, renderer-live, post-renderer, and result-application stages.
-- [ ] Source snapshot timing is documented and validated, including mid-bake edits or a named human-assisted fallback.
+- [x] Source snapshot timing is documented and validated, including mid-bake edits or a named human-assisted fallback.
 - [x] Terrain-contact source failure has a controlled abort path.
 - [x] Renderer cleanup happens on success, failure, scene close, node free, and duplicate abort.
-- [ ] Runtime ripple owner still restores original materials on owner clear and owner tree exit.
-- [ ] Editor validation still reports the same stable markers through menu wrappers and direct RiverManager calls.
-- [ ] Docs updated before handoff.
+- [x] Runtime ripple owner still restores original materials on owner clear and owner tree exit.
+- [x] Editor validation still reports the same stable markers through menu wrappers and direct RiverManager calls.
+- [x] Docs updated before handoff.

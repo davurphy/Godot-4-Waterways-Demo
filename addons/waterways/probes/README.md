@@ -130,6 +130,14 @@ progress order plus trap-vs-control texture hashes and final metadata/signature
 reads. Use without `--headless` because filter renderer readback needs a real
 viewport. Marker: `R6_MID_BAKE_TIMING_OK`.
 
+### `r6_constants_shadow_probe.gd` - R6 constants-table shadow comparison (headless OK)
+
+River-refactor R6.2. Compares old saved `source_metadata`, `source_signature`,
+and `bake_settings` dictionaries plus live scene source signatures against
+`river_bake_constants.gd` table-generated dictionaries, using the R6 canonical
+dump rules and filtering only `source_metadata.bake_revision`. This does not
+switch live dictionary generation. Marker: `R6_R62_CONSTANTS_SHADOW_OK`.
+
 ### `r6_editor_validation_probe.gd` - R6 editor validation markers (window required)
 
 River-refactor R6.4. Checks the River menu validation signals, then calls

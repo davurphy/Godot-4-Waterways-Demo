@@ -6,7 +6,7 @@
 
 ## Current Focus
 
-R6.1H abort-matrix coverage is complete, and the old R6.1A-G validation/probe set has been rerun after the abort-matrix work. `river_flowmap_baker.gd` observes cancellation before and after awaited renderer pass callables, RiverManager checks liveness after existing source-generation awaits, helper-internal collision/terrain waits stop safely when the river or mesh is freed, and `r6_abort_matrix_probe.gd` covers the automated abort buckets while naming editor undo-delete and forced collision-helper null injection instead of overclaiming them. RiverManager still owns source-generation timing, final `RiverBakeData` write/final-read dictionaries, resource saving, material binding, `valid_flowmap`, bake flag clearing, completion progress, and synchronous final result application. R6.1D source-image validation remains reconciled with the known obstacle collision-derived variant, and R6.1E/R6.1F/R6.1G fresh generated-texture RT.1 validation remains closed for both demo scenes.
+R6.5 cleanup/interface tightening is complete after final automated R6 validation. `river_bake_constants.gd` owns the reviewable constants table, and RiverManager now passes explicit dynamic values into the table builders while still owning source-generation timing, final `RiverBakeData` write/final-read dynamic values, resource saving, material binding, `valid_flowmap`, bake flag clearing, completion progress, and synchronous final result application. The final gates prove generated-output parity, canonical dictionary/API/signal/property parity, R5/R4/filter-renderer/system-flow health, parser/check-only health, and whitespace cleanliness while keeping bake signature version 28. R6.5 removed only unreferenced private helpers and preserved public surface/property shape.
 
 - Feature folder:
   - `addons\waterways\docs\spec-driven\features\river-refactor\r6\`
@@ -15,12 +15,12 @@ R6.1H abort-matrix coverage is complete, and the old R6.1A-G validation/probe se
 
 ## Current Truth
 
-- Overall status: R6.1H abort-matrix coverage is complete; the post-R6.1H R6.1A-G rerun passed the old generated-texture, warning/postprocess, result-boundary, surface/property, lifecycle/run-pass, and R5 preservation gates.
-- Highest-priority open task: start R6.2 constants-table extraction in shadow mode without changing live metadata/signature/settings output.
-- Last passing validation: 2026-06-14 R6.1A-G rerun after R6.1H passed `R6_BAKER_LIFECYCLE_OK`, `R6_BAKER_RUN_PASS_OK`, `R6_R61F_WARNING_POSTPROCESS_OK`, `R6_R61G_RESULT_APPLICATION_OK`, `R5_BEHAVIOR_PRESERVATION_PROBE_OK`, `R6_GENERATED_TEXTURE_HASH_OK out=res://.codex-research/r6-baselines/post-r6-r61ag-rerun-generated files=2`, `R6_R61G_RERUN_GENERATED_TEXTURE_DIFF_OK files=2 baseline=post-r6-r61g-generated current=post-r6-r61ag-rerun-generated`, `R6_R61G_RERUN_RT1_GENERATED_TEXTURE_DIFF_OK files=2 baseline=pre-r6-r61e-generated current=post-r6-r61ag-rerun-generated`, `R6_BASELINE_DUMP_OK out=res://.codex-research/r6-baselines/post-r6-r61ag-rerun files=10`, `R6_R61G_RERUN_SURFACE_PROPERTY_DIFF_OK files=10 baseline=post-r6-r61g current=post-r6-r61ag-rerun`, and `git diff --check`. The R6.1D source-image rerun repeated only the known four obstacle collision-derived rows and matched the old-code fresh replay exactly with `R6_R61D_COLLISION_VARIANT_RECONCILED_OK ignored_collision_probe_variants=4 baseline=pre-r6-r61d-fresh-rerun current=post-r6-r61ag-rerun-source`.
-- Known failing or unproven check: constants-table extraction, final before/after diffs, system-flow projected gate, final full bake-pipeline gates, and human-assisted editor undo-delete/visible checks remain unrun.
-- Next recommended action: start R6.2 constants-table work only after rereading `tasks.md`, `validation.md`, and the R6.2 sections of `plan.md`. Keep `validation.md` open to canonical dictionary rules, dynamic metadata allow-list, no-RiverManager-reach-back, and final resource-writing sections.
-- Packaging/artifact hygiene status: R6 baseline artifacts live under `.codex-research/r6-baselines/pre-r6/`, `.codex-research/r6-baselines/pre-r6-r61d-fresh/`, `.codex-research/r6-baselines/post-r6-r63/`, `.codex-research/r6-baselines/post-r6-r64/`, `.codex-research/r6-baselines/post-r6-r61b/`, `.codex-research/r6-baselines/post-r6-r61d/`, `.codex-research/r6-baselines/post-r6-r61d-rerun/`, `.codex-research/r6-baselines/post-r6-r61d-final/`, `.codex-research/r6-baselines/post-r6-r61e/`, `.codex-research/r6-baselines/post-r6-r61e-generated/`, `.codex-research/r6-baselines/post-r6-r61f/`, `.codex-research/r6-baselines/post-r6-r61f-generated/`, `.codex-research/r6-baselines/post-r6-r61g/`, `.codex-research/r6-baselines/post-r6-r61g-generated/`, `.codex-research/r6-baselines/post-r6-r61ag-rerun/`, `.codex-research/r6-baselines/post-r6-r61ag-rerun-source/`, `.codex-research/r6-baselines/post-r6-r61ag-rerun-generated/`, and scratch old-code generated/source hashes under `.codex-research/r6-pre-r61d-origin-fresh/.codex-research/r6-baselines/`; rerun logs live under `.codex-research/r6-r61ag-rerun-logs/`; repo-local Godot profiles live under `.codex-research/godot-user-*`.
+- Overall status: R6.5 cleanup/interface tightening is complete. R6.2 constants-table extraction and live dictionary switch are in place, the post-R6.1H R6.1A-G rerun remains green, final full-R6 generated-output/canonical/surface/runtime gates passed, and R6.5 private cleanup preserved the public RiverManager surface/property list.
+- Highest-priority open task: before any R7 implementation, research current official Godot RenderingDevice docs and record baseline/fixture commands in `r7/validation.md`.
+- Last passing validation: 2026-06-14 R6.5 focused validation passed `R6_R61F_PARSER_OK`, `R6_R62_CONSTANTS_SHADOW_OK comparisons=8 rows=109 signature_version=28`, `R6_BASELINE_DUMP_OK out=res://.codex-research/r6-baselines/post-r6-r65 files=10`, `R6_R65_SURFACE_PROPERTY_DIFF_OK files=4 baseline=post-r6-final current=post-r6-r65 surface_line_numbers=normalized`, `R5_BEHAVIOR_PRESERVATION_PROBE_OK`, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, and `git diff --check`; the known `Demo.tscn` invalid UID warning repeated.
+- Known failing or unproven check: full-Demo human-assisted editor undo-delete was attempted on 2026-06-14, but the bake load made the editor too laggy to delete the river during the awaited phase. Treat this as an infeasible manual check on the full Demo scene, not a product-behavior failure; use a lower-cost fixture or targeted editor harness if this editor-stack variant needs future closure. Visible editor/menu review remains separate.
+- Next recommended action: start R7 implementation prep by researching current official Godot RenderingDevice docs, then fill the fixed baseline/fixture commands in `r7/validation.md`.
+- Packaging/artifact hygiene status: R6 baseline artifacts live under `.codex-research/r6-baselines/pre-r6/`, `.codex-research/r6-baselines/pre-r6-r61d-fresh/`, `.codex-research/r6-baselines/post-r6-r63/`, `.codex-research/r6-baselines/post-r6-r64/`, `.codex-research/r6-baselines/post-r6-r61b/`, `.codex-research/r6-baselines/post-r6-r61d/`, `.codex-research/r6-baselines/post-r6-r61d-rerun/`, `.codex-research/r6-baselines/post-r6-r61d-final/`, `.codex-research/r6-baselines/post-r6-r61e/`, `.codex-research/r6-baselines/post-r6-r61e-generated/`, `.codex-research/r6-baselines/post-r6-r61f/`, `.codex-research/r6-baselines/post-r6-r61f-generated/`, `.codex-research/r6-baselines/post-r6-r61g/`, `.codex-research/r6-baselines/post-r6-r61g-generated/`, `.codex-research/r6-baselines/post-r6-r61ag-rerun/`, `.codex-research/r6-baselines/post-r6-r61ag-rerun-source/`, `.codex-research/r6-baselines/post-r6-r61ag-rerun-generated/`, `.codex-research/r6-baselines/post-r6-r62-live/`, `.codex-research/r6-baselines/post-r6-r62-live-generated/`, `.codex-research/r6-baselines/post-r6-final/`, `.codex-research/r6-baselines/post-r6-r65/`, and scratch old-code generated/source hashes under `.codex-research/r6-pre-r61d-origin-fresh/.codex-research/r6-baselines/`; rerun logs live under `.codex-research/r6-r61ag-rerun-logs/`; repo-local Godot profiles live under `.codex-research/godot-user-*`. R6.5-specific `post-r6-r65` and `godot-user-r65-*` outputs are disposable after this record.
 - Historical detail starts at: none.
 
 ## How To Use This Feature Folder
@@ -49,8 +49,9 @@ Read these first:
 
 Then do this next:
 
-- R6.1H implementation and abort-matrix validation are complete, and the old R6.1A-G validation/probe set has been rerun after R6.1H. Do not redo the baker shell, `_run_pass`, source-helper move, pass-sequencing move, diagnostics/image postprocess move, result-application boundary, or abort-matrix coverage; start the next session at R6.2 constants-table work if continuing implementation.
-- Keep `validation.md` open to canonical dictionary rules, dynamic metadata allow-list, no-RiverManager-reach-back, result-application boundary, and final resource-writing sections. The next slice should add constants-table shadow coverage only within the R6.2 contract.
+- R6.5 cleanup is complete. Do not redo the baker shell, `_run_pass`, source-helper move, pass-sequencing move, diagnostics/image postprocess move, result-application boundary, abort-matrix coverage, constants-table live switch, final generated/canonical validation, or R6.5 private-method cleanup unless a new probe failure points back to them.
+- R7 compute-first decision and docs gate are complete. Do not start R7 implementation until official RenderingDevice research and baseline/fixture setup are recorded.
+- Keep `validation.md` open to canonical dictionary rules, dynamic metadata allow-list, no-RiverManager-reach-back, result-application boundary, final resource-writing sections, and the final R6 validation result.
 - For Godot-specific implementation work, search current official Godot documentation and API references online before patching. Prefer official docs first, and record any source that affects implementation in `research.md` or the shared citations index.
 - If human-assisted Godot validation is required, include the exact scene path, plugin state, steps, expected visible result, and Output/console text to relay. Paste the steps into the user-facing message instead of telling the user to read `validation.md`.
 - If a mismatch appears before R6 logic changes, treat stale or non-fresh baselines as the first suspect and explain that before patching.
@@ -118,10 +119,20 @@ Then do this next:
 - `addons/waterways/probes/r6_abort_matrix_probe.gd`: added R6.1H abort-matrix probe for pre-renderer abort, scene close, terrain helper node-free, renderer-live/Jacobi-labelled cancellation, invalid filter output, renderer setup failure, duplicate requests, repeated abort, success cleanup, and synchronous postprocess/result-application strategies.
 - R6.1H abort-matrix gate: recorded `R6_R61H_ABORT_MATRIX_OK` plus follow-up `R6_BAKER_LIFECYCLE_OK`, `R6_BAKER_RUN_PASS_OK`, and `R6_R61G_RESULT_APPLICATION_OK`.
 - R6.1A-G validation rerun after R6.1H: reran the old parser/check-only, baker lifecycle, run-pass, source-image, generated-texture, warning/postprocess, result-application, baseline/surface, R5 preservation, and `git diff --check` gates. Fresh outputs live under `.codex-research/r6-baselines/post-r6-r61ag-rerun/`, `.codex-research/r6-baselines/post-r6-r61ag-rerun-source/`, and `.codex-research/r6-baselines/post-r6-r61ag-rerun-generated/`; logs live under `.codex-research/r6-r61ag-rerun-logs/`. The source-image rerun repeated only the known four obstacle collision-derived rows and matched the old-code fresh replay exactly.
+- `addons/waterways/river_bake_constants.gd`: added R6.2 shadow constants table with 109 metadata/signature/settings rows, required row-type validation, explicit dynamic-key lists, and non-signature `reason`/`review_decision` fields.
+- `addons/waterways/probes/r6_constants_shadow_probe.gd`: added R6.2 shadow-builder comparison for saved Demo/obstacle metadata, signature, and settings dictionaries plus live scene source signatures.
+- R6.2 shadow constants gate: recorded `R6_R62_CONSTANTS_SHADOW_OK comparisons=8 rows=109 signature_version=28` plus final `git diff --check`.
+- `addons/waterways/river_manager.gd`: switched only live metadata/signature/settings constant dictionary rows to `RiverBakeConstants`; dynamic final-read values remain explicit in RiverManager.
+- R6.2 live constants gate: recorded `R6_R62_CONSTANTS_SHADOW_OK comparisons=8 rows=109 signature_version=28`, `R6_BASELINE_DUMP_OK out=res://.codex-research/r6-baselines/post-r6-r62-live files=10`, `R6_R62_LIVE_CANONICAL_DICTIONARY_DIFF_OK files=6 baseline=post-r6-r61ag-rerun current=post-r6-r62-live metadata_filter=bake_revision`, and final `git diff --check`.
+- Final R6 generated-texture gate: recorded `R6_GENERATED_TEXTURE_HASH_OK out=res://.codex-research/r6-baselines/post-r6-r62-live-generated files=2`, `R6_FINAL_GENERATED_TEXTURE_DIFF_OK files=2 baseline=post-r6-r61ag-rerun-generated current=post-r6-r62-live-generated`, and `R6_FINAL_RT1_GENERATED_TEXTURE_DIFF_OK files=2 baseline=pre-r6-r61e-generated current=post-r6-r62-live-generated`.
+- Final R6 canonical/surface gate: recorded `R6_BASELINE_DUMP_OK out=res://.codex-research/r6-baselines/post-r6-final files=10` and `R6_FINAL_CANONICAL_SURFACE_DIFF_OK files=10 baseline=pre-r6 current=post-r6-final surface_line_numbers=normalized metadata_filter=bake_revision`.
+- Final R6 regression gates: check-only parser passed for `river_manager.gd`, `river_flowmap_baker.gd`, `river_bake_constants.gd`, and `r6_constants_shadow_probe.gd`; `R5_BEHAVIOR_PRESERVATION_PROBE_OK`, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, `FILTER_RENDERER_LOAD_OK shader_paths=19`, `SYSTEM_FLOW_PROJECTED_GATE_OK`, and final `git diff --check` passed.
+- `addons/waterways/river_manager.gd`: R6.5 removed dead private `_cleanup_flowmap_baker()` and `_filter_output_is_valid()` after active-reference audit; the serialized `_flowmap_bake_renderer` slot remains for property-list compatibility, with a corrected comment naming `RiverFlowmapBaker` as the live renderer owner.
+- R6.5 cleanup gate: recorded `R6_R61F_PARSER_OK`, `R6_R62_CONSTANTS_SHADOW_OK comparisons=8 rows=109 signature_version=28`, `R6_BASELINE_DUMP_OK out=res://.codex-research/r6-baselines/post-r6-r65 files=10`, `R6_R65_SURFACE_PROPERTY_DIFF_OK files=4 baseline=post-r6-final current=post-r6-r65 surface_line_numbers=normalized`, `R5_BEHAVIOR_PRESERVATION_PROBE_OK`, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, and `git diff --check`.
 
 ## Current Changes Summary
 
-- R6 feature-folder companion documents exist beside the pre-existing `plan.md`. Pre-move baseline validation tooling and R6.1A inventory are recorded; R6.3, R6.4, R6.1B, R6.1C, R6.1D source-helper, R6.1E pass-sequencing, R6.1F diagnostics/image postprocess, R6.1G result application, and R6.1H abort-matrix implementation/validation are in place. The post-R6.1H R6.1A-G rerun passed and is recorded. The next bake-pipeline step is R6.2 constants-table extraction.
+- R6 feature-folder companion documents exist beside the pre-existing `plan.md`. Pre-move baseline validation tooling and R6.1A inventory are recorded; R6.3, R6.4, R6.1B, R6.1C, R6.1D source-helper, R6.1E pass-sequencing, R6.1F diagnostics/image postprocess, R6.1G result application, R6.1H abort-matrix implementation/validation, R6.2 constants-table extraction/live switch, and R6.5 dead-private-method/comment cleanup are in place. The post-R6.1H R6.1A-G rerun passed, final automated R6 validation passed, and parent docs/handoffs point to R7 RenderingDevice research plus baseline/fixture setup.
 
 ## Historical Change Log
 
@@ -142,37 +153,38 @@ Empty.
 | Treat the R6.1D obstacle collision mismatch as collision-probe freshness/variant evidence. | A scratch `origin/r6` replay produced the alternate four collision-derived rows with old helpers, and the final current R6.1D dump matches the original pre-R6 full source-image baseline. | Do not turn this into a broad ignore rule; R6.1E still needs RT.1/generated-output validation. |
 | Keep R6.1F as an image-only diagnostics/postprocess slice with warning and diagnostic callbacks. | It proves warning text, CPU image edits, diagnostic output, and generated-output parity while preserving RiverManager's final result application boundary. | Start R6.1G next; do not fold final write/save/material binding into R6.1F. |
 | Keep R6.1G result application synchronous and RiverManager-owned. | It proves the `BakeResult` handoff without adding an awaited gap or moving save/material/valid-flowmap behavior into the baker. | Done; R6.1H kept this as the result-application interruption strategy. |
-| Keep R6.1H abort coverage focused on cancellation/liveness and named residuals. | The automated probe covers lifecycle buckets without moving algorithms; editor undo-delete and forced collision-helper null injection require editor stack or future narrow injection seams. | Start R6.2 constants-table work next. |
+| Keep R6.1H abort coverage focused on cancellation/liveness and named residuals. | The automated probe covers lifecycle buckets without moving algorithms; editor undo-delete and forced collision-helper null injection require editor stack or future narrow injection seams. | Done; R6.2 shadow constants-table work has started and passed. |
+| Start R6.2 in shadow mode only. | It exposes signature-coverage decisions and proves old/table dictionary parity before changing live output. | Done; superseded by the live dictionary switch validation. |
 
 ## Current State
 
 Implementation status:
 
-- R6.3 runtime ripple material ownership extraction, R6.4 editor validation extraction, R6.1B baker shell/filter-renderer lifecycle extraction, R6.1C run-pass helper extraction, R6.1D source-helper implementation/validation, R6.1E pass-sequencing implementation/validation, R6.1F diagnostics/image postprocess implementation/validation, R6.1G result assembly/application implementation/validation, and R6.1H abort-matrix implementation/validation complete. The old R6.1A-G validation/probe set has been rerun after R6.1H. Constants-table decomposition remains open.
+- R6.3 runtime ripple material ownership extraction, R6.4 editor validation extraction, R6.1B baker shell/filter-renderer lifecycle extraction, R6.1C run-pass helper extraction, R6.1D source-helper implementation/validation, R6.1E pass-sequencing implementation/validation, R6.1F diagnostics/image postprocess implementation/validation, R6.1G result assembly/application implementation/validation, R6.1H abort-matrix implementation/validation, and R6.2 constants-table extraction/live switch complete. The old R6.1A-G validation/probe set has been rerun after R6.1H.
 
 Spec/plan status:
 
-- Research: Drafted and updated with R6.3, R6.4, R6.1C, R6.1D, R6.1E, R6.1F, R6.1G, and R6.1H Godot API sources.
+- Research: Drafted and updated with R6.3, R6.4, R6.1C, R6.1D, R6.1E, R6.1F, R6.1G, R6.1H, and R6.2 Godot API sources.
 - Spec: Drafted and updated for R6.1H status plus the post-R6.1H R6.1A-G rerun.
-- Plan: Existing detailed R6 plan remains the implementation roadmap; R6.3, R6.4, and R6.1B-H checklists marked complete; R6.2 constants-table work remains next.
-- Tasks: Updated for R6.1A-G rerun completion and R6.2 next.
-- Validation: Pre-move baseline runs, R6.1A inventory, R6.3 validation, R6.4 validation, R6.1B validation, R6.1C focused validation, R6.1D focused/final validation, R6.1E pass-sequencing/generated-texture validation, R6.1F diagnostics/image postprocess validation, R6.1G result application validation, R6.1H abort-matrix validation, and post-R6.1H R6.1A-G rerun recorded.
-- Review: Pre-move gate, R6.3, R6.4, R6.1B, R6.1C, R6.1D source-image validation, R6.1E pass-sequencing validation, R6.1F diagnostics/image postprocess validation, R6.1G result application validation, R6.1H abort-matrix validation, and R6.1A-G rerun reviewed.
+- Plan: Existing detailed R6 plan remains the implementation roadmap; R6.3, R6.4, R6.1B-H, and R6.2 checklists marked complete where applicable.
+- Tasks: Updated for R6.2 live switch completion.
+- Validation: Pre-move baseline runs, R6.1A inventory, R6.3 validation, R6.4 validation, R6.1B validation, R6.1C focused validation, R6.1D focused/final validation, R6.1E pass-sequencing/generated-texture validation, R6.1F diagnostics/image postprocess validation, R6.1G result application validation, R6.1H abort-matrix validation, post-R6.1H R6.1A-G rerun, and R6.2 live constants validation recorded.
+- Review: Pre-move gate, R6.3, R6.4, R6.1B, R6.1C, R6.1D source-image validation, R6.1E pass-sequencing validation, R6.1F diagnostics/image postprocess validation, R6.1G result application validation, R6.1H abort-matrix validation, R6.1A-G rerun, and R6.2 live constants validation reviewed.
 
 Validation status:
 
 - Automated: 2026-06-13 baseline pass (`r6_baseline_dump_probe.gd`; `r6_source_image_hash_probe.gd`; `r6_mid_bake_timing_probe.gd`; `bake_hash_probe.gd` on both saved demo river bakes), plus R6.3 pass, R6.4 pass, R6.1B pass, R6.1C pass, R6.1D focused/final validation, R6.1E pass-sequencing validation (`R6_R61E_RT1_GENERATED_TEXTURE_DIFF_OK files=2 baseline=pre-r6-r61e-generated current=post-r6-r61e-generated`), R6.1F diagnostics/image postprocess validation (`R6_R61F_WARNING_POSTPROCESS_OK`, `R6_R61F_RT1_GENERATED_TEXTURE_DIFF_OK files=2 baseline=pre-r6-r61e-generated current=post-r6-r61f-generated`), R6.1G result application validation (`R6_R61G_RESULT_APPLICATION_OK`, `R6_R61G_RT1_GENERATED_TEXTURE_DIFF_OK files=2 baseline=pre-r6-r61e-generated current=post-r6-r61g-generated`), R6.1H abort-matrix validation (`R6_R61H_ABORT_MATRIX_OK`), and post-R6.1H R6.1A-G rerun (`R6_R61G_RERUN_GENERATED_TEXTURE_DIFF_OK`, `R6_R61G_RERUN_RT1_GENERATED_TEXTURE_DIFF_OK`, `R6_R61G_RERUN_SURFACE_PROPERTY_DIFF_OK`, `R6_R61F_WARNING_POSTPROCESS_OK`, `R6_R61G_RESULT_APPLICATION_OK`, `R6_BAKER_LIFECYCLE_OK`, `R6_BAKER_RUN_PASS_OK`, `R5_BEHAVIOR_PRESERVATION_PROBE_OK`).
-- Human-assisted: none for R6.
+- Human-assisted: full-Demo editor undo-delete attempted on 2026-06-14, but bake load made the editor too laggy to perform the delete; treat as infeasible on the full scene, not as a behavior failure.
 - Shader: no R6 shader change intended.
-- Editor: R6.4 rendered console marker/menu-signal probe passed; human-visible editor click review remains unrun.
+- Editor: R6.4 rendered console marker/menu-signal probe passed; full-Demo editor undo-delete was attempted but infeasible due bake load; human-visible editor click review remains unrun.
 - Visual: unrun.
-- Runtime: R6.4 reran R4 runtime robustness and R5 behavior preservation; R6.1H abort checks are automated, with editor undo-delete still human-assisted.
+- Runtime: R6.4 reran R4 runtime robustness and R5 behavior preservation; R6.1H abort checks are automated, with the full-Demo editor undo-delete variant recorded as infeasible and future closure requiring a lower-cost fixture or targeted harness.
 - Performance: unrun.
 - Manual: docs scaffolded from plan; R6 docs were tracked/clean before validation-tool edits; R6.3 and R6.4 reviewed against their plan sections.
 
 ## Important Context
 
-- R6 docs, source-image hashes, timing/progress evidence, R6.1A inventory, R6.3 runtime validation, R6.4 editor validation, R6.1B baker lifecycle validation, R6.1C run-pass validation, R6.1D source-helper validation, R6.1E pass-sequencing validation, R6.1F diagnostics/image postprocess validation, R6.1G result application validation, R6.1H abort-matrix validation, and post-R6.1H R6.1A-G rerun evidence exist; bake-code movement can continue with R6.2 constants-table work after reading the plan section.
+- R6 docs, source-image hashes, timing/progress evidence, R6.1A inventory, R6.3 runtime validation, R6.4 editor validation, R6.1B baker lifecycle validation, R6.1C run-pass validation, R6.1D source-helper validation, R6.1E pass-sequencing validation, R6.1F diagnostics/image postprocess validation, R6.1G result application validation, R6.1H abort-matrix validation, post-R6.1H R6.1A-G rerun evidence, and R6.2 shadow constants validation exist; bake-code movement can continue with the R6.2 live dictionary switch after reading the plan section.
 - `plan.md` forbids passing a general RiverManager reference into the baker. Named dependencies/callbacks only.
 - The default source-timing contract preserves current mixed timing. Do not freeze everything at bake start unless the spec and validation are deliberately updated.
 - Whole-resource `.res` hashes are not the gate; use per-texture RT.1 hashes and canonical dictionary dumps.
@@ -191,10 +203,10 @@ Validation status:
 
 - Source timing can drift if the baker accidentally snapshots live values earlier than the old path; the `flow_speeds` trap is now the minimum comparison case. R6.1D passes curve and a point-in-time `flow_speeds` copy into source helpers at the old source-helper execution point, not at bake start.
 - Collision-derived source-image probe rows can vary across fresh obstacle collision runs. R6.1D is closed because the final current run matches the original pre-R6 full source-image baseline and the alternate rows were reproduced by old `origin/r6` helpers; do not treat this as permission to ignore generated-output diffs in later slices.
-- Abort cleanup now has R6.1H coverage for helper-internal terrain awaits and renderer/Jacobi-labelled awaits, but editor undo-delete remains a human-assisted final gate.
-- Constants-table rows can make signature coverage look automatic.
+- Abort cleanup now has R6.1H coverage for helper-internal terrain awaits and renderer/Jacobi-labelled awaits. The full-Demo editor undo-delete manual gate was attempted but infeasible due bake load; do not ask for the same full-scene check again.
+- Constants-table rows can make signature coverage look automatic; R6.2 shadow rows now include `reason` and `review_decision` fields for non-signature rows, but new rows still need manual review.
 - Future editor validation changes can still drift marker text or menu behavior; R6.4 current extraction is validated.
-- Parent docs are not updated yet and should not claim R6 pass until validation runs.
+- Parent docs and latest handoff are updated to point at final R6 automated validation, R6.5 cleanup validation, and R7 decision/docs next work.
 
 Relevant audit sections:
 
@@ -202,8 +214,8 @@ Relevant audit sections:
 
 ## Blockers
 
-- Fresh scratch RT.1 rebake hashes exist through R6.1G for both demo scenes; final full-R6 generated-output comparison remains open until later bake moves finish.
-- Local visible/editor validation may require human assistance. Headless/parser checks are not enough for visible editor, menu, or shader behavior.
+- No automated R6 validation blocker remains after the final generated-output, canonical/surface, R5, R4, filter-renderer, system-flow, parser/check-only, and whitespace gates.
+- Local visible/editor validation may require human assistance. Headless/rendered-console/parser checks are not enough for editor undo-delete or a human-visible menu/viewport review, but the full-Demo undo-delete check is now known to be impractical on the user's machine.
 
 ## Files To Inspect Before Editing
 
@@ -306,7 +318,7 @@ R6 baseline commands run with repo-local `APPDATA`/`LOCALAPPDATA` under `.codex-
 
 Result summary:
 
-- Canonical dictionary/API/signal/property baselines, saved-resource RT.1 hashes, source-image hashes, flow-speed timing/progress trap evidence, and R6.1A inventory captured before bake-code moves. R6.3 runtime ripple extraction, R6.4 editor validation extraction, R6.1B baker lifecycle extraction, R6.1C run-pass helper extraction, R6.1D source-helper implementation, R6.1E pass-sequencing implementation, R6.1F diagnostics/image postprocess implementation, R6.1G result application implementation, and R6.1H abort-matrix coverage passed validation. The post-R6.1H R6.1A-G rerun passed, including generated-output and surface/property parity against post-R6.1G; the only source-image caveat was the known obstacle collision-derived variant matching old code. R6.1D full source-image gate plus R6.1E/R6.1F/R6.1G generated-texture gates remain closed; final full-R6 diffs remain open. Non-fatal `Demo.tscn` invalid UID warning recorded in `validation.md`.
+- Canonical dictionary/API/signal/property baselines, saved-resource RT.1 hashes, source-image hashes, flow-speed timing/progress trap evidence, and R6.1A inventory captured before bake-code moves. R6.3 runtime ripple extraction, R6.4 editor validation extraction, R6.1B baker lifecycle extraction, R6.1C run-pass helper extraction, R6.1D source-helper implementation, R6.1E pass-sequencing implementation, R6.1F diagnostics/image postprocess implementation, R6.1G result application implementation, R6.1H abort-matrix coverage, and R6.2 shadow/live constants-table extraction passed validation. The post-R6.1H R6.1A-G rerun passed, including generated-output and surface/property parity against post-R6.1G; the only source-image caveat was the known obstacle collision-derived variant matching old code. Final R6 generated-output, canonical dictionary/API/signal/property, R5, R4, filter-renderer, system-flow, parser/check-only, and whitespace gates passed. Non-fatal `Demo.tscn` invalid UID warning recorded in `validation.md`.
 
 ## Next Tasks
 
@@ -326,7 +338,12 @@ Result summary:
 - [x] Start R6.1F diagnostics/image postprocess.
 - [x] Start R6.1G result assembly/application.
 - [x] Start R6.1H abort-matrix coverage.
-- [ ] Start R6.2 constants-table extraction.
+- [x] Start R6.2 constants-table extraction in shadow mode.
+- [x] Switch live metadata/signature/settings generation after reviewing the R6.2 shadow table.
+- [x] Run final full-R6 generated-output, canonical dictionary/API/signal/property, R5, R4, filter-renderer, system-flow, parser/check-only, and whitespace gates.
+- [x] Complete R6.5 dead-private-method/comment cleanup/interface tightening.
+- [x] Record the R7 compute-vs-SubViewport decision and create R7 `spec.md`, `plan.md`, and `validation.md`.
+- [ ] Research official Godot RenderingDevice docs and fill R7 baseline/fixture commands before implementation.
 
 ## Do Not Do Yet
 
@@ -338,12 +355,12 @@ Result summary:
 - Do not move bake code without keeping the recorded source-image hashes, timing/progress evidence, and R6.1A inventory as the comparison gate.
 - Do not pass RiverManager or `self` through the baker as a generic dependency.
 - Do not add a new awaited result-application gap without staging/rollback validation.
-- Do not update parent validation docs as R6 pass until the full R6 gate runs.
-- Do not start R7 GPU-resident solve work in this phase.
+- Do not update parent validation docs casually; final R6 automated validation, R6.5 cleanup validation, and R7 docs-gate validation have run, so parent updates should point at R7 implementation prep.
+- Do not start R7 GPU-resident solve implementation until official RenderingDevice research and baseline/fixture setup are recorded.
 
 ## Notes for the Next Agent
 
-R6 is a preservation phase. The important habit is to prove the old behavior before moving it. The canonical dictionary/API/property/saved-hash baseline, source-image baseline, timing/progress trap, R6.1A inventory, R6.3 runtime validation, R6.4 editor validation, R6.1D final source-image reconciliation, R6.1E generated-texture RT.1 comparison, R6.1F warning/postprocess/generated-output comparison, R6.1G result-application/generated-output comparison, R6.1H abort-matrix coverage, and post-R6.1H R6.1A-G rerun evidence exist now; keep each extraction behind narrow helper boundaries. If a validation result looks surprising, suspect stale resources and baseline setup before changing code. The next implementation move is R6.2 constants-table extraction.
+R6 is a preservation phase. The important habit is to prove the old behavior before moving it. The canonical dictionary/API/property/saved-hash baseline, source-image baseline, timing/progress trap, R6.1A inventory, R6.3 runtime validation, R6.4 editor validation, R6.1D final source-image reconciliation, R6.1E generated-texture RT.1 comparison, R6.1F warning/postprocess/generated-output comparison, R6.1G result-application/generated-output comparison, R6.1H abort-matrix coverage, post-R6.1H R6.1A-G rerun evidence, R6.2 live constants-table validation, and final R6 automated validation exist now; keep each extraction behind narrow helper boundaries. If a validation result looks surprising, suspect stale resources and baseline setup before changing code.
 
 ## Godot Launch Instructions
 

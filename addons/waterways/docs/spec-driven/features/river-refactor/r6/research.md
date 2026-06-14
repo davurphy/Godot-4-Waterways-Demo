@@ -10,11 +10,11 @@ Shared works-cited index: `addons/waterways/docs/research/river-research-citatio
 
 ## Current Research Outcome
 
-- Status: Local decomposition direction is accepted by `plan.md`; R6.3, R6.4, and R6.1B-H implementation-specific Godot API checks are recorded below.
-- Recommendation: Preserve current behavior by moving code behind explicit config/result/callback boundaries, not by changing algorithms or freezing state at bake start. For runtime ripple material ownership, keep RiverManager as a wrapper/material applier and move live owner/material state into a narrow helper. For editor validation, keep public RiverManager wrappers and move implementation behind a named read-only context plus cleanup callback. For the bake path, continue with R6.2 constants-table work after the validated R6.1H abort-matrix coverage.
-- Confidence: High for the local architecture, R6.3/R6.4 extractions, and R6.1B-H bake slices; medium for the remaining constants/final validation path until the narrow replacement context for collision/terrain helper reach-back is implemented.
+- Status: Local decomposition direction is accepted by `plan.md`; R6.3, R6.4, R6.1B-H, and R6.2 shadow-table implementation-specific Godot API checks are recorded below.
+- Recommendation: Preserve current behavior by moving code behind explicit config/result/callback boundaries, not by changing algorithms or freezing state at bake start. For runtime ripple material ownership, keep RiverManager as a wrapper/material applier and move live owner/material state into a narrow helper. For editor validation, keep public RiverManager wrappers and move implementation behind a named read-only context plus cleanup callback. For the bake path, R6.2 now uses the constants table for live metadata/signature/settings constant rows while leaving dynamic final reads explicit in RiverManager.
+- Confidence: High for the local architecture, R6.3/R6.4 extractions, R6.1B-H bake slices, and R6.2 shadow constants table; medium for the remaining live dictionary switch/final validation path until the narrow replacement context for collision/terrain helper reach-back is implemented.
 - Biggest unknown that remains: the exact narrow context needed to replace `WaterHelperMethods.generate_collisionmap()` and `generate_terrain_contact_feature_map()` RiverManager reach-back.
-- Decision or plan section this research unlocked: `spec.md` source timing contract, `validation.md` no-reach-back checklist, R6.3 `river_ripple_material_owner.gd` extraction, R6.1F warning/diagnostic callback routing, the R6.1G RiverManager-owned synchronous result application boundary, and the R6.1H cancellation/liveness strategy.
+- Decision or plan section this research unlocked: `spec.md` source timing contract, `validation.md` no-reach-back checklist, R6.3 `river_ripple_material_owner.gd` extraction, R6.1F warning/diagnostic callback routing, the R6.1G RiverManager-owned synchronous result application boundary, the R6.1H cancellation/liveness strategy, and the R6.2 static constants-table shadow helper.
 
 ## Questions
 
@@ -89,9 +89,16 @@ R6.1H abort-matrix findings checked against official Godot 4.6 documentation on 
 - GDScript `await` returns control to the caller and resumes when the signal/coroutine completes; R6.1H keeps result application and image postprocess synchronous/non-awaited and adds cancellation checks before and after awaited renderer-pass callables.
 - Sources checked: Godot 4.6 class reference pages for `Node` (`https://docs.godotengine.org/en/4.6/classes/class_node.html`), `Object` (`https://docs.godotengine.org/en/4.6/classes/class_object.html`), and GDScript `await` (`https://docs.godotengine.org/en/4.6/tutorials/scripting/gdscript/gdscript_basics.html#awaiting-signals-or-coroutines`).
 
+R6.2 constants-table shadow findings checked against official Godot latest documentation on 2026-06-14:
+
+- GDScript static functions have no access to instance member variables or `self`, which fits `river_bake_constants.gd` as a static helper with no live RiverManager dependency.
+- Dictionaries are passed by reference, and `Dictionary.duplicate(true)` deep-copies nested arrays and dictionaries; the shadow builder therefore duplicates dynamic input dictionaries before adding table-generated constants.
+- `RefCounted` remains suitable for helper scripts that do not need scene-tree lifetime ownership.
+- Sources checked: Godot latest GDScript static functions (`https://docs.godotengine.org/en/latest/tutorials/scripting/gdscript/gdscript_basics.html#static-functions`), `Dictionary.duplicate()` (`https://docs.godotengine.org/en/latest/classes/class_dictionary.html#class-dictionary-method-duplicate`), and `RefCounted` (`https://docs.godotengine.org/en/latest/classes/class_refcounted.html`).
+
 Implementation research still needed before future bake patching:
 
-- `RefCounted` lifetime and async method patterns for long-running bake coordinators.
+- `RefCounted` lifetime and async method patterns for long-running bake coordinators. Checked for R6.2 static helper suitability; recheck if a future helper stores async bake state or node references.
 - Node and scene-tree lifetime behavior around `tree_exiting`, freed nodes, and awaited coroutines. Checked for R6.1H cancellation/liveness; recheck if future source-helper context signatures change.
 - `SubViewport` update/readback behavior and cleanup expectations for temporary render nodes. Checked for the R6.1E pass-sequencing move; recheck if the renderer wait/readback timing changes.
 - `ImageTexture.create_from_image()` timing and resource ownership expectations. Checked for R6.1D/R6.1E source/seed handoffs and R6.1F/R6.1G final result handoffs; recheck if texture reuse/update behavior changes.
@@ -136,7 +143,7 @@ Record official documentation links here when those findings are checked.
 
 ## Recommendation
 
-Proceed with Option A as the default for the remaining bake pipeline. R6.3 and R6.4 used Option C and landed successfully after focused probe coverage; R6.1B-H are now validated bake slices. R6.2 constants-table work is the recommended next slice.
+Proceed with Option A as the default for the remaining bake pipeline. R6.3 and R6.4 used Option C and landed successfully after focused probe coverage; R6.1B-H are now validated bake slices. R6.2 constants-table shadow work and the narrow live dictionary-generation switch are validated with shadow/canonical comparison.
 
 ## Risks and Unknowns
 
@@ -175,3 +182,6 @@ Proceed with Option A as the default for the remaining bake pipeline. R6.3 and R
 - Godot stable `@GlobalScope` class reference: https://docs.godotengine.org/en/stable/classes/class_%40globalscope.html
 - Godot stable `ImageTexture` class reference: https://docs.godotengine.org/en/stable/classes/class_imagetexture.html
 - Godot 4.6 `ResourceSaver` class reference: https://docs.godotengine.org/en/4.6/classes/class_resourcesaver.html
+- Godot latest GDScript reference, static functions: https://docs.godotengine.org/en/latest/tutorials/scripting/gdscript/gdscript_basics.html#static-functions
+- Godot latest `Dictionary` class reference: https://docs.godotengine.org/en/latest/classes/class_dictionary.html
+- Godot latest `RefCounted` class reference: https://docs.godotengine.org/en/latest/classes/class_refcounted.html
