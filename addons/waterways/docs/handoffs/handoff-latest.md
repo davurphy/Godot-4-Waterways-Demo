@@ -2,28 +2,40 @@
 
 ## Message To Next Session
 
-Current branch: `river-obstacle-flow-constraints` (all work uncommitted in the working tree, including this session's). The branch contains three layers of work, in order: (1) the occupancy + pressure-projection flow bake, implemented and tuned — see `../spec-driven/features/river-obstacle-flow-constraints/implementation-plan.md` (§6 tuning, §7 signature history); (2) Roadmap Phase 1 foundations (custom AABB, tight-bend mesh robustness, smoothstep widths, data contract); (3) Roadmap Phase 2's per-point flow speed (`flow_speeds` array → post-projection bake scale pass). The river bake source signature is now **27**; both demo river bakes and the WaterSystem map are freshly regenerated at v27 with all projection penetration gates passing.
+Current branch: `r6` (2026-06-14). This is the *hardening and refactor* track derived from the 2026-06-12 full-addon code audit. The track's working folder is `../spec-driven/features/river-refactor/` - read in this order:
 
-The planning spine for current and future work lives in `../spec-driven/features/river-future/`:
+1. `session-handoff.md` (dashboard: current truth, next action)
+2. `roadmap.md` (**the canonical work plan** — phases R0–R8 with per-item line references, gates, sequencing, risk register; work its checklists in place)
+3. `validation.md` (what is currently proven; the validation matrix has one row per phase gate)
+4. `tasks.md`, `spec.md`, `plan.md`, `research.md` as needed
 
-- `Roadmap.md` — phased plan (Phase 0–5 + backlog), with completed items annotated with what/where/verification.
-- `Crest Spline System Comparison.md` — Crest 5 spline system vs Waterways, verified against pasted Crest source; the adopt/reject rationale behind Phases 1–2.
-- `Data Contract.md` — channel semantics/units/encodings for every baked texture + change rules. Keep it current when channels or signatures change.
-- `Crest Reuse and Portability Feasibility.md` — kernel catalogue for Phases 3–4.
+State: **Phases R0, RT, R1, R2, R3, R4, R5, R6, and R8 have implementation/automated validation complete.** Signature is v28, system maps are v1, shared shader includes are in place, R4 runtime/editor robustness is closed, R5 structural GDScript dedup is behavior-preserving, and R6 `river_manager.gd` decomposition plus R6.5 cleanup preserve generated output plus canonical dictionary/API/signal/property surfaces under automated validation.
 
-**Shared general-purpose probes live at `addons/waterways/probes/` — start there; its README documents args and markers for all of them.** The set: `rebake_probe.gd` (the standard regenerate-bakes tool after a signature bump: river bakes + WaterSystem map, explicit saves), `debug_view_capture_probe.gd` (screenshot any debug view(s) via curve fly-along or the scene's Phase0B review cameras; `-- views=list` prints the menu), `bake_inspect_probe.gd` (headless channel stats + PNG for any bake texture), plus shared copies of the seam regression gate and the two flow-arrow diagnostics. Feature-specific gates stay in feature folders (e.g. `river_obstacle_projection_rebake_probe.gd` for penetration gates).
+Next work, in order:
 
-Run pattern: Godot 4.6.3 console at `C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64_console.exe` with `--path <project root> --script res://... -- key=value` (bakes/screenshots need a window — NOT headless; pure resource reads can be headless). Roadmap validation probes under `river-future/probes/`: `custom_aabb_probe.gd` (headless OK) and `flow_speed_scale_probe.gd` (bakes; loads the saved neutral bake as baseline to stay under the 10-minute timeout — keep that pattern for future bake probes). Markers: `CUSTOM_AABB_PROBE_PASS`, `FLOW_SPEED_SCALE_PROBE_OK`, `RIVER_OBSTACLE_PROJECTION_PROBE_OK`, `REBAKE_PROBE_OK`, `DEBUG_VIEW_CAPTURE_OK`, `BAKE_INSPECT_OK`.
+1. **R7 implementation prep** - research current official Godot RenderingDevice docs, then fill the fixed baseline/fixture commands in `river-refactor/r7/validation.md` before any code changes.
+2. Keep using the feature handoff (`river-refactor/session-handoff.md`) as the dashboard; it has the latest validation details and scratch-artifact notes.
+
+Recent markers/evidence: `R6_R65_SURFACE_PROPERTY_DIFF_OK`, `R6_FINAL_GENERATED_TEXTURE_DIFF_OK`, `R6_FINAL_RT1_GENERATED_TEXTURE_DIFF_OK`, `R6_FINAL_CANONICAL_SURFACE_DIFF_OK`, `R6_R62_CONSTANTS_SHADOW_OK`, `R5_BEHAVIOR_PRESERVATION_PROBE_OK`, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, `FILTER_RENDERER_LOAD_OK shader_paths=19`, `SYSTEM_FLOW_PROJECTED_GATE_OK`, `R5_PROPERTY_LIST_MATCH=True`, RT.1 scratch rebake texture hashes identical for both generated demo river bakes, `R4_VISIBLE_AUTO_REVIEW_DONE`, `BAKE_HASH_PROBE_OK`/`BAKE_HASH_COMPARE_OK`, `FLOW_SOLVE_SEED_ASSERT_OK`, `DISTMAP_NEUTRAL_BINDING_OK`, `SYSTEM_FLOW_COMPARE_OK`, `ARROW_NEUTRAL_CELLS_PROBE_OK`, `ARROW_DIRECTION_OUTLIER_PROBE_OK`, `RIVER_FLOWMAP_SEAM_PROBE_OK`.
+
+Run pattern: Godot 4.6.3 console at `C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64_console.exe` with `--path <project root> --script res://... -- key=value`, APPDATA/LOCALAPPDATA redirected to `.codex-research\godot-user` (exact pattern in `river-refactor/validation.md`). Bakes/screenshots need a window — NOT headless; pure resource reads are headless-fine.
+
+Manual residual note: the user attempted the full `res://Demo.tscn` R6 editor undo-delete workflow on 2026-06-14, but the bake saturated CPU/GPU enough that the editor lag prevented deleting `WaterSystem/Water River`. Treat this as infeasible on the full scene, not as a product-behavior failure; use a lower-cost fixture or targeted editor harness if that editor-stack variant must close later.
 
 ## Blockers Needing The User
 
-1. **Phase 0 merge gate**: the user has not yet done the visual pass over the screenshot locations (implementation plan §4.4) — required before merging the branch to `main`.
-2. **Commit strategy**: everything is uncommitted; the user must decide whether roadmap Phases 1–2 ride along in the branch merge or get split out.
+None in landed code. R7's compute-vs-SubViewport decision is recorded as compute-first and R7 phase docs exist; implementation remains blocked on official RenderingDevice research and baseline/fixture setup.
 
-## Recommended Next Moves
+## Lessons From The Last Session (2026-06-13)
 
-- Phase 2 remainder: generalize `widths`/`flow_speeds` into a named per-point channel table with the override-vs-weight convention (Roadmap Phase 2 bullets 2–3); gizmo handles for `flow_speeds` are also deferred (inspector-only today).
-- Or start Phase 3a (minimal flow-advected height displacement) — its custom-AABB prerequisite is done. Follow the phased plan in `River Flow Map Displacement Research.md`.
+- Full filesystem scratch copies were needed for R5 RT.1 because `git worktree add` was blocked by `.git` write permissions and `git archive` lacked ignored import-cache/assets needed for windowed rebakes. Scratch copies remain under `.codex-research/r5-rt1-*` because sandbox policy blocked recursive cleanup.
+- RT.1's R5 gate is per-texture content identity, not raw `.res` file MD5. ResourceSaver produced different `.res` file hashes between baseline/current scratch copies, while all six generated `RiverBakeData` texture hashes matched exactly.
+- The R5 guard intentionally triggers the existing width "too few entries" sanitizer warning while proving padding behavior; the warning is expected for that probe.
+- Keep the older lessons alive: debug-view visual checks are masked whenever a change invalidates the flowmap; run real probes after shared-script edits; PowerShell 5.1 can mangle embedded quotes in commit messages.
+
+## Code Audit (2026-06-12)
+
+The audit at `../audit/waterways-code-audit-2026-06-12.md` remains the source for defect details. Of its 11 defects: 2, 3, 4, 5, 8, 9, 10, 11 are fixed in R0; Defect 1 is fixed in R2; Defects 6-7 are fixed in R4. The dominant systemic risk from hand-synchronized mirrors is addressed structurally by R3 shader includes, the R5 GDScript descriptor/helper tables, and R6.2's live constants table.
 
 ## Durable Cautions (kept from earlier sessions)
 
@@ -31,3 +43,4 @@ Run pattern: Godot 4.6.3 console at `C:\Users\pc\Desktop\Godot_v4.6.3-stable\God
 - Failed tooltip approach to avoid: do not retry the inspector-plugin fallback that wrapped default inspector editors for generated `mat_pillow_*` fields from `_parse_property()` to attach tooltips — it destabilized the editor. Research a documented Godot 4.6 approach first (scoped custom `EditorProperty` tested in isolation).
 - The hterrain packed-texture importers under `addons/zylann.hterrain/tools/packed_textures/` are Godot 4.6-compatible *unavailable stubs*, not working importers. If `.packed_tex` assets are ever needed, implement a proper Godot 4 importer as a separate task.
 - Pillow/eddy feature work has feature-local docs at `../spec-driven/features/river-pillows/` and `river-eddies/` — treat those as source of truth for that work; their probes have their own `PILLOW_*` markers.
+- The feature roadmap (`../spec-driven/features/river-future/Roadmap.md`) and Data Contract remain the planning spine for *feature* work; the refactor track interleaves with it per `river-refactor/roadmap.md`'s "Sequencing and Dependencies".

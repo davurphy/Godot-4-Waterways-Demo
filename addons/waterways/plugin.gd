@@ -362,10 +362,10 @@ func _river_progress_notified(progress : float, message : String) -> void:
 
 func _set_progress_source(river: RiverManager) -> void:
 	var callback := Callable(self, "_river_progress_notified")
-	if _progress_source != null and _progress_source.is_connected("progress_notified", callback):
+	if is_instance_valid(_progress_source) and _progress_source.is_connected("progress_notified", callback):
 		_progress_source.disconnect("progress_notified", callback)
 	_progress_source = river
-	if _progress_source != null and not _progress_source.is_connected("progress_notified", callback):
+	if is_instance_valid(_progress_source) and not _progress_source.is_connected("progress_notified", callback):
 		_progress_source.connect("progress_notified", callback)
 
 
@@ -454,7 +454,6 @@ func _clear_editing_state() -> void:
 	_edited_node = null
 	_set_progress_source(null)
 	river_gizmo.reset()
-	ripple_inspector.clear_transient_state()
 	_hide_river_control_panel()
 	_hide_water_system_control_panel()
 

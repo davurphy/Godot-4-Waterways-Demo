@@ -5,7 +5,9 @@
 #   & $godotConsole --headless --path $root --script res://addons/waterways/docs/spec-driven/features/river-obstacle-flow-constraints/probes/water_system_flow_inspect_probe.gd
 extends SceneTree
 
-const BAKE_PATH := "res://waterways_bakes/Demo/WaterSystem.water_system_bake.res"
+# The obstacle scene's own system bake (scenes stopped sharing one bake
+# resource 2026-06-12; Demo.tscn's lives in waterways_bakes/Demo_28018/).
+const BAKE_PATH := "res://waterways_bakes/Demo_obstacle_flow_test/WaterSystem.water_system_bake.res"
 const OUT_DIR := "res://addons/waterways/docs/spec-driven/features/river-obstacle-flow-constraints/probes/out"
 
 

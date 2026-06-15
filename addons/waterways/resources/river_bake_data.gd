@@ -53,7 +53,12 @@ const DEFAULT_IMPORT_PROFILE := {
 	"neutral_bend_bias": 0.5,
 	"neutral_obstacle_features": Color(0.0, 0.0, 0.0, 0.0),
 	"neutral_terrain_contact_features": Color(0.0, 0.0, 0.0, 0.0),
-	"neutral_bank_response_features": Color(0.0, 0.0, 0.0, 0.0)
+	"neutral_bank_response_features": Color(0.0, 0.0, 0.0, 0.0),
+	# Must match river_manager.gd RIVER_NEUTRAL_DISTMAP_COLOR (the code-side
+	# neutral texture bound to i_distmap when dist_pressure is null). Not 0.5
+	# across the board: R decodes as distance = (1 - R) * 2.
+	"neutral_dist_pressure": Color(0.75, 0.25, 0.0, 0.5),
+	"neutral_water_occupancy": Color(0.0, 0.0, 0.0, 1.0)
 }
 
 const TEXTURE_LAYOUT_PADDED_UV2_ATLAS := "padded_uv2_atlas_with_one_tile_margin"
@@ -122,9 +127,16 @@ func set_from_bake(
 	uv2_sides = new_uv2_sides
 	mesh_global_bounds = new_mesh_global_bounds
 	source_kind = new_source_kind
-	source_metadata = new_source_metadata.duplicate(true)
-	bake_settings = new_bake_settings.duplicate(true)
-	source_signature = new_source_signature.duplicate(true)
+	source_metadata = new_source_metadata
+	bake_settings = new_bake_settings
+	source_signature = new_source_signature
+	finalize()
+
+
+func finalize() -> void:
+	source_metadata = source_metadata.duplicate(true)
+	bake_settings = bake_settings.duplicate(true)
+	source_signature = source_signature.duplicate(true)
 	source_signature_version = int(source_signature.get("version", 0))
 	channel_metadata = DEFAULT_CHANNEL_METADATA.duplicate(true)
 	import_profile = DEFAULT_IMPORT_PROFILE.duplicate(true)

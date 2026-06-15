@@ -1,5 +1,29 @@
 # Waterways Changelog
 
+## Unreleased - 2026-06-15
+
+### River Refactor Hardening And Compute-Default Bake Pipeline
+
+Tracked in `docs/spec-driven/features/river-refactor/`.
+
+- Completed the R0-R8 river-refactor hardening track through the approved R7 compute-default scope. The active default solve path is now `canonical_compute_replacing`; explicit `legacy_canvas_item` remains available for rollback, comparison, and diagnostics. Legacy removal and backend selector collapse are intentionally not part of this change.
+- Split bake responsibilities so `RiverManager` keeps public authoring/API ownership, material binding, bake validity, resource writing, and final handoff, while `RiverFlowmapBaker` owns the filter pass sequence, temporary renderer/backend lifecycle, abort cleanup, backend selection/fallback, and bake postprocess/diagnostics.
+- Added `river_bake_constants.gd` as the reviewable source for bake metadata, source-signature, and bake-settings constants. The table records which rows feed source metadata, source signatures, and settings, making future signature decisions easier to audit.
+- Added `river_flowmap_compute_backend.gd` as the baker-owned RenderingDevice backend for the accepted compute path. The compute path uses canonical texel-space pressure feedback and replaces only `flow_foam_noise.r/g`; `flow_foam_noise.b/a`, `dist_pressure`, `obstacle_features`, `terrain_contact_features`, `bank_response_features`, and `water_occupancy` remain legacy-sourced.
+- Bumped the river bake source signature to version 29 for the canonical compute replacement boundary. Backend mode remains outside the source signature because it is an internal baker selection surface, not a RiverManager source setting.
+- Deliberately promoted saved river bake output only for:
+  - `waterways_bakes/Demo/Water_River.river_bake.res`
+  - `waterways_bakes/Demo/Water_River_obstacle_test.river_bake.res`
+  WaterSystem bake resources were not promoted by this scope.
+- Replaced the old obstacle-flow story with the current pressure-projection solve: water occupancy, divergence, 40 Jacobi pressure passes, gradient subtract, and two tangency passes. The legacy SDF steering filter and `RIVER_OBSTACLE_AVOIDANCE_*` constants were removed from active code.
+- Added and serialized `water_occupancy`, bound `i_water_occupancy`, and recorded `flow_projected` metadata so river, debug, and WaterSystem flow shaders can skip the runtime hard-boundary slide for projected bakes.
+- Added `SYSTEM_FLOW_MAP_VERSION = 1` to WaterSystem bake settings as the staleness signal for system-flow shader output changes. Version 1 marks the projected-flow fix; older system maps warn and should be regenerated.
+- Extracted shared shader includes: `flow_pack.gdshaderinc`, `river_flow_common.gdshaderinc`, and `river_surface_common.gdshaderinc`. River, debug, and system-flow shaders now share packed-flow and force/slide logic instead of hand-syncing copies.
+- Made `filter_renderer.gd` descriptor-driven across the current 19 pass shaders, including required/default texture policies and HDR flags for pressure-projection passes. Readback failures now carry specific `last_readback_error` details.
+- Hardened runtime/editor behavior: ripple impulses survive sampling and low-FPS hitches without step bursts; WaterSystem selection for buoyancy is coverage-aware; width generation uses the faster `Curve3D.get_closest_offset` path; editor validation and runtime ripple material ownership moved behind dedicated helper scripts.
+- Added broad validation infrastructure under `addons/waterways/probes/`: bake hashing/diffing, pixel capture/diffing, system-flow comparison, projected-flow gate checks, R6 API/property/constant guards, and R7 compute/timing/selection/cleanup checks. The accepted R7 validation keeps `R7_TOLERANCE_V1` unchanged and does not introduce `R7_TOLERANCE_V2`.
+- Refreshed `docs/architecture-and-features.md` to describe the current RiverManager/Baker/compute split, generated texture/channel scope, source signature v29 policy, WaterSystem staleness behavior, shared shader include structure, and explicit legacy fallback boundary.
+
 ## Unreleased - 2026-06-12
 
 ### Roadmap Phase 1 Foundations (Crest-informed)

@@ -75,7 +75,9 @@ func _physics_process(delta: float) -> void:
 		return
 	if not _has_valid_system_reference():
 		_refresh_system_reference()
-	if _system == null:
+	if _system == null or not _system.covers_world_position(global_transform.origin):
+		_refresh_system_reference()
+	if _system == null or not _system.covers_world_position(global_transform.origin):
 		_restore_default_damping()
 		return
 	var altitude = _system.get_water_altitude(global_transform.origin)
@@ -109,17 +111,19 @@ func _refresh_system_reference() -> void:
 	_system = null
 	if not is_inside_tree() or water_system_group_name.is_empty():
 		return
-	var closest_system: WaterSystem = null
-	var closest_distance := INF
+	var best_system: WaterSystem = null
+	var best_distance := INF
 	for node in get_tree().get_nodes_in_group(water_system_group_name):
 		if not (node is WaterSystem):
 			continue
 		var candidate := node as WaterSystem
+		if not candidate.covers_world_position(global_transform.origin):
+			continue
 		var distance := global_position.distance_squared_to(candidate.global_position)
-		if distance < closest_distance:
-			closest_distance = distance
-			closest_system = candidate
-	_system = closest_system
+		if distance < best_distance:
+			best_distance = distance
+			best_system = candidate
+	_system = best_system
 
 
 func _has_valid_system_reference() -> bool:
@@ -128,6 +132,7 @@ func _has_valid_system_reference() -> bool:
 		and is_instance_valid(_system)
 		and _system.is_inside_tree()
 		and _system.is_in_group(water_system_group_name)
+		and _system.covers_world_position(global_transform.origin)
 	)
 
 
@@ -190,9 +195,7 @@ func _apply_angular_water_damping() -> void:
 
 
 func _wake_body_for_water_force() -> bool:
-	var was_sleeping := _rb.sleeping
-	_rb.sleeping = false
-	return was_sleeping
+	return _rb.sleeping
 
 
 func _clear_damping_ownership() -> void:

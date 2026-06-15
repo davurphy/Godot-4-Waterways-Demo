@@ -1,6 +1,5 @@
 shader_type canvas_item;
 
-uniform float size = 512.0;
 uniform sampler2D input_texture : repeat_disable, filter_linear;
 uniform float offset = 0.1;
 uniform float cutoff = 0.9;

@@ -61,7 +61,7 @@ The ripple field is already Crest's dyn-waves sim in miniature; these are drop-i
 ## Phase 5 — Solver depth and performance
 
 - [ ] **Advection iterations in the bake solve** — extend the one-shot projection toward advect→project cycles for real asymmetric wakes and eddy recirculation; wake-mask damping currently covers the visual need, so this is quality headroom, not a gap. (Implementation plan §5.)
-- [ ] **RenderingDevice compute migration** — move the bake filter stack (and ripple sim) from canvas_item/Viewport ping-pong to compute. Paid for by performance, not portability: the per-vertex pillow mask stack in `river.gdshader` (~200+ `textureLod`/vertex) moves to a baked pass consuming the same kernels. (Feasibility §4.2, §5.2.)
+- [ ] **RenderingDevice compute migration** — move the bake filter stack (and ripple sim) from canvas_item/Viewport ping-pong to compute. Paid for by performance, not portability: the per-vertex pillow mask stack in `river.gdshader` (audited worst case ≈ 622 `textureLod`/vertex, defaults ≈ 94 — the older "~200+" figure was reach-only) moves to a baked pass consuming the same kernels. (Feasibility §4.2, §5.2.)
 - [ ] Revisit the `dist_pressure.g` force-boost default once wake damping + speed ramp have soaked. (Implementation plan §5.)
 
 ## Backlog (unscheduled, tracked)

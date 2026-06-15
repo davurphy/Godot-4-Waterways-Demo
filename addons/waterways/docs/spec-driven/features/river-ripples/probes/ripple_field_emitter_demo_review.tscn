@@ -25,7 +25,6 @@ enabled = false
 target_field_path = NodePath("..")
 radius = 1.65
 intensity = 1.0
-pulse_rate = 0.85
 priority = 10
 
 [node name="OneShotEmitter_MidBend" parent="WaterRippleField" unique_id=1919053861 instance=ExtResource("4")]
@@ -45,6 +44,5 @@ target_field_path = NodePath("..")
 radius = 1.35
 emitter_mode = 3
 intensity = 0.9
-pulse_rate = 12.0
 moving_emit_distance = 0.08
 priority = 6

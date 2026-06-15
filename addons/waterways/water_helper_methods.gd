@@ -366,13 +366,6 @@ static func _looks_like_hterrain(node: Node) -> bool:
 		and node.has_method("get_data")
 
 
-static func sum_array(array) -> float:
-	var sum = 0.0
-	for element in array:
-			sum += element
-	return sum
-
-
 static func calculate_side(steps : int) -> int:
 	var safe_steps := max(1, steps)
 	var side_float : float = sqrt(float(safe_steps))
@@ -381,6 +374,29 @@ static func calculate_side(steps : int) -> int:
 	return int(side_float)
 
 
+# R3.5 (2026-06-12): probes read OCCUPANCY_SPEED_RAMP_FULL from the shader
+# include that declares it instead of mirroring the value (it had drifted into
+# 7 hand-synced copies). Parses the single-line const declaration; returns
+# -1.0 (after push_error) when the include or declaration is missing so
+# callers fail loudly instead of comparing against a stale mirror.
+static func get_occupancy_speed_ramp_full() -> float:
+	const INCLUDE_PATH := "res://addons/waterways/shaders/river_surface_common.gdshaderinc"
+	var source := FileAccess.get_file_as_string(INCLUDE_PATH)
+	if source.is_empty():
+		push_error("Cannot read " + INCLUDE_PATH + " to resolve OCCUPANCY_SPEED_RAMP_FULL.")
+		return -1.0
+	var regex := RegEx.new()
+	regex.compile("const\\s+float\\s+OCCUPANCY_SPEED_RAMP_FULL\\s*=\\s*([0-9.]+)\\s*;")
+	var regex_match := regex.search(source)
+	if regex_match == null:
+		push_error("OCCUPANCY_SPEED_RAMP_FULL declaration not found in " + INCLUDE_PATH + ".")
+		return -1.0
+	return float(regex_match.get_string(1))
+
+
+# GDScript mirror of the canonical shader-side flow codec in
+# shaders/flow_pack.gdshaderinc (rg = v * 0.5 + 0.5, neutral 0.5) - GDScript
+# cannot consume a shader include, so keep the two in sync.
 static func decode_packed_flow_vector(color: Color) -> Vector2:
 	return Vector2((color.r - 0.5) * 2.0, (color.g - 0.5) * 2.0)
 
@@ -401,9 +417,7 @@ static func create_downstream_baseline_flow_image(resolution: int, uv2_sides: in
 	var source_rect := Rect2i(0, 0, safe_resolution, safe_resolution)
 	for step_index in safe_occupied_steps:
 		var tile_rect := get_uv2_atlas_tile_rect(step_index, safe_side, source_rect)
-		for y in tile_rect.size.y:
-			for x in tile_rect.size.x:
-				image.set_pixel(tile_rect.position.x + x, tile_rect.position.y + y, downstream_color)
+		image.fill_rect(tile_rect, downstream_color)
 	return image
 
 
@@ -753,7 +767,7 @@ static func _empty_flow_vector_stats(near_neutral_threshold: float, alpha_thresh
 	}
 
 
-static func generate_river_width_values(curve : Curve3D, steps : int, step_length_divs : int, step_width_divs : int, widths : Array) -> Array:
+static func generate_river_width_values(curve : Curve3D, steps : int, step_length_divs : int, _step_width_divs : int, widths : Array) -> Array:
 	var river_width_values := []
 	if curve.get_point_count() < 2 or widths.size() < 2:
 		river_width_values.append(1.0)
@@ -761,8 +775,9 @@ static func generate_river_width_values(curve : Curve3D, steps : int, step_lengt
 	var safe_steps := max(1, steps)
 	var safe_step_length_divs: int = clamp(step_length_divs, SHAPE_STEP_DIVS_MIN, SHAPE_STEP_DIVS_MAX)
 	var sample_count: int = safe_steps * safe_step_length_divs
-	var length = curve.get_baked_length()
+	var length := curve.get_baked_length()
 	var last_width_index: int = min(curve.get_point_count(), widths.size()) - 1
+	var offset_samples := _get_curve_width_offset_samples(curve, last_width_index)
 	for step in sample_count + 1:
 		if step == 0:
 			river_width_values.append(_safe_width_value(widths, 0))
@@ -770,25 +785,55 @@ static func generate_river_width_values(curve : Curve3D, steps : int, step_lengt
 		if step == sample_count:
 			river_width_values.append(_safe_width_value(widths, last_width_index))
 			continue
-		var target_pos = curve.sample_baked((float(step) / float(sample_count)) * length)
-		var closest_dist := 4096.0
-		var closest_interpolate := 0.0
-		var closest_point := 0
-		for c_point in last_width_index:
-			for i in 101:
-				var interpolate := float(i) / 100.0
-				var pos = curve.sample(c_point, interpolate)
-				var dist = pos.distance_to(target_pos)
-				if dist < closest_dist:
-					closest_dist = dist
-					closest_interpolate = interpolate
-					closest_point = c_point
-		# Smoothstep-eased interpolation keeps the width derivative continuous
-		# across curve points (no visible kinks in the bank lines).
-		var eased_interpolate := smoothstep(0.0, 1.0, closest_interpolate)
-		river_width_values.append(max(MIN_RIVER_WIDTH, lerp(_safe_width_value(widths, closest_point), _safe_width_value(widths, closest_point + 1), eased_interpolate)))
+		var target_offset := curve.get_closest_offset(curve.sample_baked((float(step) / float(sample_count)) * length))
+		river_width_values.append(_sample_width_at_offset(target_offset, offset_samples, widths))
 	
 	return river_width_values
+
+
+static func _get_curve_width_offset_samples(curve: Curve3D, last_width_index: int) -> Array:
+	var samples := []
+	for point_index in last_width_index:
+		for sub_index in 101:
+			var interpolate := float(sub_index) / 100.0
+			samples.append({
+				"offset": curve.get_closest_offset(curve.sample(point_index, interpolate)),
+				"point": point_index,
+				"interpolate": interpolate,
+			})
+	samples.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a.get("offset", 0.0)) < float(b.get("offset", 0.0))
+	)
+	return samples
+
+
+static func _sample_width_at_offset(distance: float, offset_samples: Array, widths: Array) -> float:
+	if offset_samples.is_empty():
+		return max(MIN_RIVER_WIDTH, _safe_width_value(widths, 0))
+	var sample_index := _find_nearest_width_offset_sample(distance, offset_samples)
+	var sample: Dictionary = offset_samples[sample_index]
+	var segment_index := int(sample.get("point", 0))
+	var interpolate := float(sample.get("interpolate", 0.0))
+	# Smoothstep-eased interpolation keeps the width derivative continuous
+	# across curve points (no visible kinks in the bank lines).
+	var eased_interpolate := smoothstep(0.0, 1.0, interpolate)
+	return max(MIN_RIVER_WIDTH, lerpf(_safe_width_value(widths, segment_index), _safe_width_value(widths, segment_index + 1), eased_interpolate))
+
+
+static func _find_nearest_width_offset_sample(distance: float, offset_samples: Array) -> int:
+	var low := 0
+	var high := offset_samples.size() - 1
+	while low < high:
+		var mid := int((low + high) / 2)
+		if float(offset_samples[mid].get("offset", 0.0)) < distance:
+			low = mid + 1
+		else:
+			high = mid
+	var right := low
+	var left := max(0, right - 1)
+	var left_delta := absf(float(offset_samples[left].get("offset", 0.0)) - distance)
+	var right_delta := absf(float(offset_samples[right].get("offset", 0.0)) - distance)
+	return left if left_delta <= right_delta else right
 
 
 static func generate_river_mesh(curve : Curve3D, steps : int, step_length_divs : int, step_width_divs : int, smoothness : float, river_width_values : Array, uv2_source_resolution : int = 0) -> Mesh:
@@ -1414,15 +1459,23 @@ static func generate_collisionmap(image : Image, mesh_instance : MeshInstance3D,
 	var image_height := image.get_height()
 	if image_width <= 0 or image_height <= 0 or steps <= 0 or sample_context.is_empty():
 		return image
+	if not _is_bake_context_alive(mesh_instance, river):
+		return image
 	var percentage = 0.0
 	river.emit_signal("progress_notified", percentage, "Calculating Collisions (" + str(image_width) + "x" + str(image_height) + ")")
 	await river.get_tree().process_frame
+	if not _is_bake_context_alive(mesh_instance, river):
+		return image
 	for x in image_width:
 		var cur_percentage = float(x) / float(image_width)
 		if cur_percentage > percentage + 0.1:
+			if not _is_bake_context_alive(mesh_instance, river):
+				return image
 			percentage += 0.1
 			river.emit_signal("progress_notified", percentage, "Calculating Collisions (" + str(image_width) + "x" + str(image_height) + ")")
 			await river.get_tree().process_frame
+			if not _is_bake_context_alive(mesh_instance, river):
+				return image
 		for y in image_height:
 			var sample := _get_uv2_world_sample(sample_context, image_width, image_height, x, y)
 			if bool(sample.get("outside_occupied_atlas", false)):
@@ -1494,15 +1547,23 @@ static func generate_terrain_contact_feature_map(image: Image, mesh_instance: Me
 	var physics_confidence := clampf(float(settings.get("physics_source_confidence", 0.5)), 0.0, 1.0)
 	var supersamples := clampi(int(settings.get("contact_supersamples", 1)), 1, 4)
 	var source_blend_band := maxf(0.0, float(settings.get("source_blend_band", 0.0)))
+	if not _is_bake_context_alive(mesh_instance, river):
+		return image
 	var percentage := 0.0
 	_emit_terrain_contact_progress(river, percentage, image_width, image_height)
 	await _await_bake_frame(mesh_instance, river)
+	if not _is_bake_context_alive(mesh_instance, river):
+		return image
 	for x in image_width:
 		var cur_percentage := float(x) / float(image_width)
 		if cur_percentage > percentage + 0.1:
+			if not _is_bake_context_alive(mesh_instance, river):
+				return image
 			percentage += 0.1
 			_emit_terrain_contact_progress(river, percentage, image_width, image_height)
 			await _await_bake_frame(mesh_instance, river)
+			if not _is_bake_context_alive(mesh_instance, river):
+				return image
 		for y in image_height:
 			var center_sample := _get_uv2_world_sample(sample_context, image_width, image_height, x, y)
 			if bool(center_sample.get("outside_occupied_atlas", false)):
@@ -1565,11 +1626,25 @@ static func _emit_terrain_contact_progress(river, percentage: float, image_width
 		river.emit_signal("progress_notified", percentage, "Calculating Terrain Contact (" + str(image_width) + "x" + str(image_height) + ")")
 
 
-static func _await_bake_frame(mesh_instance: MeshInstance3D, river) -> void:
-	if river != null and river is Node and (river as Node).is_inside_tree():
+static func _await_bake_frame(mesh_instance, river) -> void:
+	if river != null and is_instance_valid(river) and river is Node and not (river as Node).is_queued_for_deletion() and (river as Node).is_inside_tree():
 		await (river as Node).get_tree().process_frame
-	elif mesh_instance != null and mesh_instance.is_inside_tree():
+	elif mesh_instance != null and is_instance_valid(mesh_instance) and not mesh_instance.is_queued_for_deletion() and mesh_instance.is_inside_tree():
 		await mesh_instance.get_tree().process_frame
+
+
+static func _is_bake_context_alive(mesh_instance, river) -> bool:
+	if river != null:
+		if not is_instance_valid(river):
+			return false
+		if river is Node and (river as Node).is_queued_for_deletion():
+			return false
+	if mesh_instance != null:
+		if not is_instance_valid(mesh_instance):
+			return false
+		if mesh_instance.is_queued_for_deletion():
+			return false
+	return true
 
 
 static func _sample_hterrain_contact(hterrain_samplers: Array, water_position: Vector3, source_confidence: float) -> Dictionary:
@@ -1737,9 +1812,15 @@ static func _add_uv2_column_continuation_margins(padded: Image, source: Image, r
 		if row == 0:
 			var previous_step: int = max(0, step_index - 1)
 			var previous_tile := _uv2_tile_rect(previous_step, side, resolution)
+			# The first tile clamps to itself: copy its own *top* strip (mirror of
+			# the last-tile case below), not its bottom strip, so the upstream
+			# river end cannot bleed wrapped content into its top margin.
+			var previous_strip_y: int = previous_tile.position.y + max(0, previous_tile.size.y - margin)
+			if previous_step == step_index:
+				previous_strip_y = previous_tile.position.y
 			var previous_strip := Rect2i(
 				previous_tile.position.x,
-				previous_tile.position.y + max(0, previous_tile.size.y - margin),
+				previous_strip_y,
 				previous_tile.size.x,
 				min(margin, previous_tile.size.y)
 			)
@@ -1776,32 +1857,3 @@ static func _copy_scaled_region(destination: Image, destination_rect: Rect2i, so
 			var source_x := source_rect.position.x + int(floor((float(x) + 0.5) * float(source_rect.size.x) / float(destination_rect.size.x)))
 			source_x = clamp(source_x, source_rect.position.x, source_rect.position.x + source_rect.size.x - 1)
 			destination.set_pixel(destination_rect.position.x + x, destination_rect.position.y + y, source.get_pixel(source_x, source_y))
-
-
-static func reorder_params(unordered_params : Array) -> Array:
-	var ordered = []
-	
-	for param in unordered_params:
-		if param.hint_string != "Texture":
-			ordered.append(param)
-		else:
-			#find the last index in ordered with the same
-			var prefix = param.name.rsplit("_")[0]
-			var index = last_prefix_occurence(ordered, prefix)
-			if index != -1:
-				ordered.insert(index, param)
-			else:
-				ordered.append(param)
-	return ordered
-
-
-static func last_prefix_occurence(array : Array, search : String) -> int:
-	var inverted_array = array.duplicate(true)
-	inverted_array.invert()
-	
-	for i in array.size():
-		var prefix = inverted_array[i].name.rsplit("_")[0]
-		if prefix ==  search:
-			return array.size() - i
-	
-	return -1

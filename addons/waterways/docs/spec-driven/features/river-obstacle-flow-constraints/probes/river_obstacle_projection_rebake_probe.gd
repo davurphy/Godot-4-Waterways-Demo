@@ -40,7 +40,8 @@ const COLUMN_EDGE_GUARD_PIXELS := 3
 # OCCUPANCY_SPEED_RAMP_FULL, 1 - proximity)), so the rendered penetration is
 # the raw into-solid component scaled by that same factor. Raw stats are
 # printed for diagnostics; gates apply to the effective (rendered) values.
-const OCCUPANCY_SPEED_RAMP_FULL := 0.45
+# Read from river_surface_common.gdshaderinc - the declaring source (R3.5).
+var OCCUPANCY_SPEED_RAMP_FULL := WaterHelperMethods.get_occupancy_speed_ramp_full()
 # Stagnation approach flow decelerates roughly linearly with distance to the
 # wall, so the permitted raw into-solid speed is distance-scaled: near the
 # ring's outer edge approach at up to ~baseline speed is physical; at the

@@ -4,6 +4,11 @@
 **Date:** 2026-06-11 (plan), 2026-06-12 (tuning)
 **Related:** `River Flow Map Displacement Research.md` (same folder), `screenshots/` (problem evidence), `../river-future/Crest Reuse and Portability Feasibility.md`
 
+> **Historical annotation (2026-06-12, river-refactor R8).** This is the as-designed plan; it is preserved as a record, not current truth. Where it describes the prior `RIVER_OBSTACLE_AVOIDANCE_*` / SDF-steering mechanism (§1 symptom table, §2, §3.2–3.3) it is documenting the state being *replaced* — accurate as history. Specifics that drifted before/after landing, with current truth in `docs/architecture-and-features.md` and `../river-future/Data Contract.md`:
+> - Jacobi schedule landed as `RIVER_FLOW_PROJECTION_STRIDES = [32, 16, 8, 4, 2, 1, 1, 1]` × 5 = **40 passes** (this plan estimated `[48, 24, 12, 6, 3, 1, 1]` ≈ 35).
+> - `obstacle_avoidance_algorithm` landed as `"pressure_projection_free_slip_jacobi_with_normal_to_flow_blur_fallback"` (this plan wrote the un-suffixed form).
+> - The legacy SDF steering filter (`apply_obstacle_avoidance_flow`, `obstacle_avoidance_flow_filter.gdshader`, the ten `RIVER_OBSTACLE_AVOIDANCE_*` constants) did **not** remain in the codebase as §3.2 expected — it was deleted entirely in river-refactor R1.1. The fallback is now `normal_to_flow` + blur.
+
 ## 1. Problem statement (from screenshot review, 2026-06-11)
 
 Four confirmed failure modes, each traced to a structural cause:

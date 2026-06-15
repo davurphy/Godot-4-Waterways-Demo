@@ -15,11 +15,12 @@ uniform float inside_bend_start = 0.12;
 uniform float inside_bend_full = 0.70;
 
 #include "res://addons/waterways/shaders/filters/atlas_column_clamp.gdshaderinc"
+#include "res://addons/waterways/shaders/flow_pack.gdshaderinc"
 
 const float EPSILON = 0.0001;
 
 vec2 decode_flow(vec4 color) {
-	return color.rg * 2.0 - 1.0;
+	return flow_pack_decode(color.rg);
 }
 
 vec2 safe_direction(vec2 vector, vec2 fallback) {

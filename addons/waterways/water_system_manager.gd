@@ -37,6 +37,7 @@ var _system_img : Image
 var _first_enter_tree := true
 var _active_system_group_name := StringName()
 var _system_bake_in_progress := false
+var _outside_coverage_fallback_warned := false
 
 func _enter_tree() -> void:
 	if Engine.is_editor_hint() and _first_enter_tree:
@@ -47,6 +48,13 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	if bake_data != null:
 		_apply_bake_data()
+		# R2.4: editor sessions surface this via configuration warnings; at
+		# runtime nothing else would say the loaded map predates the current
+		# system_flow shader output.
+		if not Engine.is_editor_hint():
+			var flow_version_warning := _get_system_flow_version_warning()
+			if not flow_version_warning.is_empty():
+				push_warning(flow_version_warning)
 	elif system_map != null:
 		_refresh_system_image()
 	elif not Engine.is_editor_hint():
@@ -217,6 +225,8 @@ func generate_system_maps() -> void:
 		system_map_diagnostics
 	)
 	var storage_result := WaterHelperMethods.save_water_system_bake_data(self, bake_data)
+	if not Engine.is_editor_hint() and not bool(storage_result.get("saved", false)):
+		push_warning("Waterways: generate_system_maps() updated the in-memory WaterSystem map, but external .res storage is editor-only. Save explicitly from an editor validation script if this run must persist the bake.")
 	_apply_bake_data()
 	
 	_cleanup_bake_renderer(filter_renderer)
@@ -265,11 +275,11 @@ func _finish_system_bake_after_failure() -> void:
 # Returns the vetical distance to the water, positive values above water level,
 # negative numbers below the water
 func get_water_altitude(query_pos : Vector3) -> float:
-	var sample := _sample_system_map(query_pos)
-	if not sample.valid:
+	var col := _sample_system_map_color(query_pos)
+	if not _is_valid_system_sample_color(col):
+		_warn_outside_coverage_fallback_once()
 		return query_pos.y - minimum_water_level
 	
-	var col: Color = sample.color
 	var bounds := _get_system_bounds()
 	var height = col.b * bounds.size.y + bounds.position.y
 	return query_pos.y - height
@@ -277,13 +287,25 @@ func get_water_altitude(query_pos : Vector3) -> float:
 
 # Returns the flow vector from the system flowmap
 func get_water_flow(query_pos : Vector3) -> Vector3:
-	var sample := _sample_system_map(query_pos)
-	if not sample.valid:
+	var col := _sample_system_map_color(query_pos)
+	if not _is_valid_system_sample_color(col):
 		return Vector3.ZERO
 	
-	var col: Color = sample.color
 	var flow = Vector3(col.r, 0.5, col.g) * 2.0 - Vector3(1.0, 1.0, 1.0)
 	return flow
+
+
+func covers_world_position(query_pos: Vector3) -> bool:
+	if _system_img == null:
+		return false
+	var bounds := _get_system_bounds()
+	if not _has_valid_bounds(bounds):
+		return false
+	if query_pos.x < bounds.position.x or query_pos.x > bounds.end.x:
+		return false
+	if query_pos.z < bounds.position.z or query_pos.z > bounds.end.z:
+		return false
+	return _is_valid_system_sample_color(_sample_system_map_color(query_pos))
 
 
 func get_system_map() -> Texture2D:
@@ -673,6 +695,7 @@ func _texture_size_label(texture: Texture2D, fallback_size: Vector2i = Vector2i.
 
 
 func _refresh_system_image() -> void:
+	_outside_coverage_fallback_warned = false
 	if system_map == null:
 		_system_img = null
 		return
@@ -750,6 +773,9 @@ func _get_stale_source_warning() -> String:
 	var stored_version = bake_data.get("source_river_metadata_version")
 	if typeof(stored_version) != TYPE_INT or int(stored_version) != WaterSystemBakeDataResource.SOURCE_RIVER_METADATA_VERSION:
 		return "WaterSystem map is stale because child River source metadata is missing. Select WaterSystem -> Generate System Map to rebuild it."
+	var flow_version_warning := _get_system_flow_version_warning()
+	if not flow_version_warning.is_empty():
+		return flow_version_warning
 	var stored_metadata = bake_data.get("source_river_metadata")
 	if typeof(stored_metadata) != TYPE_ARRAY or stored_metadata.is_empty():
 		return "WaterSystem map is stale because child River source metadata is missing. Select WaterSystem -> Generate System Map to rebuild it."
@@ -758,6 +784,27 @@ func _get_stale_source_warning() -> String:
 	if mismatch.is_empty():
 		return ""
 	return "WaterSystem map is stale because " + mismatch + ". Select WaterSystem -> Generate System Map to rebuild it."
+
+
+# System maps have no bake-source signature; this version int (stored in
+# bake_settings by _get_bake_settings) is their staleness signal for
+# system_flow.gdshader output changes. R2.4 (2026-06-12). Missing key reads
+# as 0, so every pre-versioning map warns.
+func _get_system_flow_version_warning() -> String:
+	if bake_data == null or system_map == null:
+		return ""
+	var stored_settings = bake_data.get("bake_settings")
+	var stored_flow_version := 0
+	if typeof(stored_settings) == TYPE_DICTIONARY:
+		stored_flow_version = int((stored_settings as Dictionary).get("system_flow_map_version", 0))
+	if stored_flow_version == WaterSystemBakeDataResource.SYSTEM_FLOW_MAP_VERSION:
+		return ""
+	return (
+		"WaterSystem map was generated by an older system flow shader (map v"
+		+ str(stored_flow_version) + " < current v"
+		+ str(WaterSystemBakeDataResource.SYSTEM_FLOW_MAP_VERSION)
+		+ "); buoyancy reads outdated flow near obstacles. Select WaterSystem -> Generate System Map to rebuild it."
+	)
 
 
 func _get_source_river_metadata_mismatch(stored_metadata: Array, current_metadata: Array) -> String:
@@ -786,6 +833,14 @@ func _get_source_river_metadata_mismatch(stored_metadata: Array, current_metadat
 
 
 func _get_source_river_metadata_changed_key(stored_entry: Dictionary, current_entry: Dictionary) -> String:
+	# flow_foam_noise_path / dist_pressure_path are collected for diagnostics
+	# but deliberately NOT compared (2026-06-12): the textures' container
+	# flips between contexts - an editor session saves scene-embedded copies
+	# (res://<scene>::ImageTexture_x) while a fresh load binds the bake
+	# resource's subresources (res://<bake>.res::ImageTexture_x) - and every
+	# rebake regenerates subresource ids, so a raw path comparison reports
+	# stale either falsely (context flip) or redundantly (rebakes already
+	# change the compared signatures/sizes).
 	var keys := PackedStringArray([
 		"bake_resource_path",
 		"has_external_bake_path",
@@ -793,8 +848,6 @@ func _get_source_river_metadata_changed_key(stored_entry: Dictionary, current_en
 		"bake_data_source_signature",
 		"flow_foam_noise_size",
 		"dist_pressure_size",
-		"flow_foam_noise_path",
-		"dist_pressure_path",
 		"texture_size",
 		"source_texture_size",
 		"uv2_sides",
@@ -880,6 +933,7 @@ func _get_texture_resource_path(texture: Texture2D) -> String:
 
 func _get_bake_settings(system_map_diagnostics: Dictionary = {}) -> Dictionary:
 	var settings := {
+		"system_flow_map_version": WaterSystemBakeDataResource.SYSTEM_FLOW_MAP_VERSION,
 		"system_bake_resolution": system_bake_resolution,
 		"system_group_name": system_group_name,
 		"minimum_water_level": minimum_water_level,
@@ -944,15 +998,6 @@ func _warn_on_system_map_coverage(system_map_diagnostics: Dictionary) -> void:
 		push_warning("WaterSystem system map coverage channel is empty; check alpha render/combine output or river mesh visibility.")
 	elif coverage_min >= 1.0 - SYSTEM_COVERAGE_THRESHOLD:
 		push_warning("WaterSystem system map coverage channel is full; check whether the alpha render/combine pass is covering the whole map.")
-
-
-func _find_covered_sample_near_river(river) -> Dictionary:
-	var samples := _find_covered_samples_near_river(river, 1)
-	if not samples.is_empty():
-		return samples[0]
-	return {
-		valid = false
-	}
 
 
 func _find_covered_samples_near_river(river, target_count: int) -> Array:
@@ -1166,6 +1211,34 @@ func _sample_system_map(query_pos: Vector3) -> Dictionary:
 		uv = uv,
 		pixel = pixel
 	}
+
+
+func _sample_system_map_color(query_pos: Vector3) -> Color:
+	if _system_img == null:
+		return Color(0.0, 0.0, 0.0, 0.0)
+	var uv := _world_position_to_map_uv(query_pos)
+	if uv.x < 0.0 or uv.x > 1.0 or uv.y < 0.0 or uv.y > 1.0:
+		return Color(0.0, 0.0, 0.0, 0.0)
+	var width := _system_img.get_width()
+	var height := _system_img.get_height()
+	if width <= 0 or height <= 0:
+		return Color(0.0, 0.0, 0.0, 0.0)
+	var pixel := Vector2i(
+		clampi(int(floor(uv.x * float(width))), 0, width - 1),
+		clampi(int(floor(uv.y * float(height))), 0, height - 1)
+	)
+	return _system_img.get_pixelv(pixel)
+
+
+func _is_valid_system_sample_color(col: Color) -> bool:
+	return col.a > SYSTEM_COVERAGE_THRESHOLD
+
+
+func _warn_outside_coverage_fallback_once() -> void:
+	if Engine.is_editor_hint() or _outside_coverage_fallback_warned:
+		return
+	_outside_coverage_fallback_warned = true
+	push_warning("Waterways: get_water_altitude() sampled outside the generated WaterSystem coverage; using minimum_water_level fallback explicitly.")
 
 
 func _world_position_to_map_uv(query_pos: Vector3) -> Vector2:

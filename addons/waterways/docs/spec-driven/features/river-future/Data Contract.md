@@ -16,7 +16,7 @@
 
 | Ch | Meaning | Encoding / units | Producers | Consumers |
 |---|---|---|---|---|
-| R | Flow X, **local mesh-UV space** (+X across width) | Packed signed, neutral 0.5. Dimensionless UV-velocity; downstream baseline magnitude = `RIVER_DOWNSTREAM_BASELINE_STRENGTH` (0.25), then scaled by the authored per-point `flow_speeds` factor (0–`RIVER_FLOW_SPEED_FACTOR_MAX`=2, neutral 1.0) as a final post-projection pass — magnitude only, direction untouched, so the v·n=0 guarantee survives. `source_metadata.flow_speed_scaled` records whether the pass ran. **Not m/s.** Runtime magnitude = decoded value × `contextual_flow_force()` (flow_speed, drags, gates). | Downstream baseline → pressure projection (divergence/Jacobi/gradient-subtract/tangency) or legacy SDF steering → per-point speed scale (`flow_speed_scale_pass.gdshader`) | `river.gdshader` advection (`FlowUVW`), debug arrows, system-map combine |
+| R | Flow X, **local mesh-UV space** (+X across width) | Packed signed, neutral 0.5. Dimensionless UV-velocity; downstream baseline magnitude = `RIVER_DOWNSTREAM_BASELINE_STRENGTH` (0.25), then scaled by the authored per-point `flow_speeds` factor (0–`RIVER_FLOW_SPEED_FACTOR_MAX`=2, neutral 1.0) as a final post-projection pass — magnitude only, direction untouched, so the v·n=0 guarantee survives. `source_metadata.flow_speed_scaled` records whether the pass ran. **Not m/s.** Runtime magnitude = decoded value × `contextual_flow_force()` (flow_speed, drags, gates). | Downstream baseline → pressure projection (divergence/Jacobi/gradient-subtract/tangency), or normal-to-flow + blur when obstacle-avoidance generation is off → per-point speed scale (`flow_speed_scale_pass.gdshader`) | `river.gdshader` advection (`FlowUVW`), debug arrows, system-map combine |
 | G | Flow Y, local UV (+Y = downstream, toward +V) | as R | as R | as R |
 | B | Foam mask | 0–1, neutral 0 | foam pass + blur | fragment foam shading |
 | A | Phase noise | 0–1, spatial offset for advection cycle decorrelation | tiled noise texture | `FlowUVW` phase offset |
@@ -25,10 +25,12 @@
 
 | Ch | Meaning | Encoding / units |
 |---|---|---|
-| R | Bank distance / edge influence | 0–1; shader inverts for edge force. Tile-relative distance, not meters. |
-| G | Flow pressure / collision support | 0–1; collision proximity. **Caution:** `flow_pressure` uniform boosts force with this — counteracted near solids by occupancy stilling. |
+| R | Bank distance / edge influence | 0–1; shader inverts for edge force (`distance = (1 − R) × 2`). Tile-relative distance, not meters. **Neutral 0.75**, not 0.5. |
+| G | Flow pressure / collision support | 0–1; collision proximity. **Neutral 0.25.** **Caution:** `flow_pressure` uniform boosts force with this — counteracted near solids by occupancy stilling. |
 | B | Grade energy (curve-derived slope feature) | 0–1, neutral 0 |
 | A | Bend bias (curve-derived) | Packed signed, neutral 0.5, positive = outside of bend |
+
+Full neutral texel ≈ **(0.75, 0.25, 0.0, 0.5)** — `river_manager.gd` `RIVER_NEUTRAL_DISTMAP_COLOR`, the code-side texture bound to `i_distmap` when this map is null (no texture hint can express it), recorded in `DEFAULT_IMPORT_PROFILE` as `neutral_dist_pressure` and probe-asserted by `distmap_neutral_binding_probe.gd`.
 
 ### `obstacle_features` (masks 0–1, neutral 0)
 
@@ -52,7 +54,7 @@ R = bank friction/drag · G = outside-bend wet pressure / bank pillow candidate 
 
 ### Key metadata fields
 
-`source_signature` (version `RIVER_BAKE_SOURCE_SIGNATURE_VERSION`, currently 27) — staleness detection; bump the version whenever same-inputs bake output changes. Each point entry carries `width` and `flow_speed`. `source_metadata.obstacle_avoidance_algorithm` = `"pressure_projection_free_slip_jacobi"` + solve params; `flow_projected = true` disables the runtime contextual slide (re-bending a projected field would corrupt it).
+`source_signature` (version `RIVER_BAKE_SOURCE_SIGNATURE_VERSION`, currently 29) — staleness detection; bump the version whenever same-inputs bake output changes. Each point entry carries `width` and `flow_speed`. `source_metadata.obstacle_avoidance_algorithm` = `"pressure_projection_free_slip_jacobi_with_normal_to_flow_blur_fallback"` + solve params; `flow_projected = true` disables the runtime contextual slide (re-bending a projected field would corrupt it).
 
 ## System bake (`WaterSystemBakeData.system_map`)
 
@@ -64,6 +66,8 @@ R = bank friction/drag · G = outside-bend wet pressure / bank pillow candidate 
 | A | Coverage: 0 outside water, 1 valid | Gates sampling; `get_water_flow` returns zero outside |
 
 World↔map via `world_to_map` / `capture_rect`. CPU sampling uses the cached `_sampling_image` (decoded by `buoyant_manager.gd` ducks et al.).
+
+**Staleness:** the system map has no `source_signature` like river bakes. Its only staleness signal for shader-output changes is `bake_settings.system_flow_map_version` (int), against the current `WaterSystemBakeData.SYSTEM_FLOW_MAP_VERSION` (currently **1**). A WaterSystem that loads a map with an older version `push_warning`s and should be regenerated. v1 (2026-06-12, river-refactor R2) marks the projected-flow fix: `system_flow.gdshader` now skips the boundary slide for pressure-projected rivers and gained the stagnation fade, so pre-v1 maps carry re-bent flow. Bump this int whenever `system_flow.gdshader` output changes for identical inputs. Comparator rule: compare this stable int, never resource-path strings (paths flip container between editor-embedded scene saves and fresh-load bake binding).
 
 ## Runtime (non-baked) fields
 

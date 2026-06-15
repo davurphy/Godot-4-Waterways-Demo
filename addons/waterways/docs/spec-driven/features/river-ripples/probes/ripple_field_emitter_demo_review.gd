@@ -52,10 +52,12 @@ var _camera_yaw := 0.0
 var _camera_pitch := -0.45
 var _mouse_look_pressed := false
 var _status_label: Label
+var _hitch_review_button: Button
 var _last_status := "Loading field/emitter demo..."
 var _setup_complete := false
 var _debug_view := DEBUG_VIEW_NORMAL
 var _moving_emitters_enabled := true
+var _hitch_review_running := false
 var _moving_path_world := []
 var _moving_time := 0.0
 var _marker_root: Node3D
@@ -114,6 +116,12 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		elif key_event.keycode == KEY_7:
 			set_debug_view_mode(DEBUG_VIEW_RIPPLE_VISIBLE_INFLUENCE)
+			get_viewport().set_input_as_handled()
+		elif key_event.keycode == KEY_8:
+			_set_status("8 is disabled for this review. Use H or the Run soft hitch test button.")
+			get_viewport().set_input_as_handled()
+		elif key_event.keycode == KEY_H:
+			run_hitch_recovery_review()
 			get_viewport().set_input_as_handled()
 		elif key_event.keycode == KEY_C:
 			cycle_review_camera_mode()
@@ -308,6 +316,49 @@ func reset_review() -> void:
 		_field.call("reset_feedback")
 	_set_review_camera()
 	fire_emitters_once()
+
+
+func run_hitch_recovery_review() -> void:
+	if _hitch_review_running:
+		_set_status("Hitch review already running.")
+		return
+	if not _setup_complete:
+		_set_status("Wait for the review scene to finish loading before running the hitch review.")
+		return
+	_hitch_review_running = true
+	_run_hitch_recovery_review()
+
+
+func _run_hitch_recovery_review() -> void:
+	set_field_enabled(true)
+	await _run_hitch_review_view(DEBUG_VIEW_NORMAL, "normal river", true)
+	await _run_hitch_review_view(DEBUG_VIEW_RIPPLE_VISIBLE_INFLUENCE, "visible influence", true)
+	await _run_hitch_review_view(DEBUG_VIEW_RIPPLE_IMPULSE_CONTACT, "impulse/contact", true)
+	await _run_hitch_review_view(DEBUG_VIEW_RIPPLE_RAW_HEIGHT, "raw height", true)
+	await _run_hitch_review_view(DEBUG_VIEW_RIPPLE_BOUNDARY_MASK, "boundary mask", false)
+	set_debug_view_mode(DEBUG_VIEW_NORMAL)
+	_set_status("Hitch review complete. Pass if every view recovered without burst, flashing, corruption, or static impulse stamps.")
+	_hitch_review_running = false
+
+
+func _run_hitch_review_view(debug_view: int, view_label: String, fire_impulses: bool) -> void:
+	set_debug_view_mode(debug_view)
+	if fire_impulses:
+		fire_emitters_once()
+	_set_status("Hitch review: " + view_label + ". Soft-freezing ripple simulation in 4 seconds.")
+	await get_tree().create_timer(4.0).timeout
+
+	_set_status("Hitch review: " + view_label + " soft hitch active for 2 seconds. The editor/window should stay responsive.")
+	if _field != null and is_instance_valid(_field):
+		_field.set_process(false)
+	await get_tree().create_timer(2.0).timeout
+	if _field != null and is_instance_valid(_field):
+		_field.set("_step_accumulator", 2.0)
+		_field.set_process(true)
+	await get_tree().process_frame
+
+	_set_status("Hitch review: " + view_label + " released. Watch recovery before the next view.")
+	await get_tree().create_timer(6.0).timeout
 
 
 func is_baseline_material_restored() -> bool:
@@ -729,13 +780,18 @@ func _build_overlay() -> void:
 	_status_label.add_theme_constant_override("shadow_offset_x", 1)
 	_status_label.add_theme_constant_override("shadow_offset_y", 1)
 	canvas.add_child(_status_label)
+	_hitch_review_button = Button.new()
+	_hitch_review_button.text = "Run soft hitch test"
+	_hitch_review_button.position = Vector2(16.0, 76.0)
+	_hitch_review_button.pressed.connect(run_hitch_recovery_review)
+	canvas.add_child(_hitch_review_button)
 	_set_status(_last_status)
 
 
 func _set_status(status: String) -> void:
 	_last_status = status
 	if _status_label != null:
-		_status_label.text = status + "\nSelect WaterRippleField or its emitter children to inspect the authoring setup.\nSpace field on/off. F pulse. M moving emitter. 0 normal. 4 raw. 5 contact. 6 boundary. 7 influence. C camera. R reset. WASD/QE move. Right mouse look. Wheel zoom."
+		_status_label.text = status + "\nSelect WaterRippleField or its emitter children to inspect the authoring setup.\nSpace field on/off. F pulse. M moving emitter. 0 normal. 4 raw. 5 contact. 6 boundary. 7 influence. H soft hitch. C camera. R reset. WASD/QE move. Right mouse look. Wheel zoom."
 
 
 func _debug_view_label() -> String:
