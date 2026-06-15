@@ -3,7 +3,7 @@
 ## Current Truth
 
 - Date: 2026-06-15
-- Scope: official Godot documentation review plus installed Godot 4.6.3 API/runtime spot-check. The shipped R7 low-cost baseline fixture/probe slice, non-replacing production compute backend skeleton, first isolated non-replacing pressure-Jacobi solve/filter compute step, non-replacing production-shaped multi-pass pressure-Jacobi stack, expanded projection diagnostic, opt-in sampler diagnostics, pass-limited pressure prefix diagnostic, probe-only `FRAGCOORD` diagnostic, canonical acceptance, selection/abort, representative visuals, report-only generated-output replacement staging, source signature v29, gated replacement branch, and refreshed production replacement validation/runtime smoke are complete; default production promotion remains open.
+- Scope: official Godot documentation review plus installed Godot 4.6.3 API/runtime spot-check. The shipped R7 low-cost baseline fixture/probe slice, non-replacing production compute backend skeleton, first isolated non-replacing pressure-Jacobi solve/filter compute step, non-replacing production-shaped pressure-Jacobi stack, expanded projection diagnostic, opt-in sampler diagnostics, pass-limited pressure prefix diagnostic, probe-only `FRAGCOORD` diagnostic, canonical acceptance, selection/abort, representative visuals, report-only generated-output replacement staging, source signature v29, gated replacement branch, refreshed production replacement validation/runtime smoke, broader promotion fixture coverage, intentional saved-output promotion, accepted switched/default compute path, requested compute-default human-visible in-game review, explicit legacy-vs-compute backend performance comparison, and final pre-switch non-neutral/saved-load/system-map/selection-cleanup checks are complete; any legacy-path removal remains deferred until a separate explicit comparison/removal protocol is accepted.
 - Implementation target remains Godot 4.6.3 for this project, so the cited 4.6 documentation is the primary source. Latest official docs were spot-checked for the same topic area, but this plan should be validated against the installed 4.6.3 binary before code patches.
 
 ## Official Sources Read
@@ -55,7 +55,7 @@
 
 Official Godot 4.6 class references were checked again before adding the shipped baseline fixture/probe:
 
-- `OS.get_cmdline_user_args()` reads user arguments after `--`, so `r7_bake_baseline_probe.gd` uses `key=value` arguments after the script path for scene, river, output directory, warmup count, run count, and save mode.
+- `OS.get_cmdline_user_args()` reads user arguments after `--`, so `r7_legacy_canvas_item_bake_trace_probe.gd` uses `key=value` arguments after the script path for scene, river, output directory, warmup count, run count, and save mode.
 - `Time.get_ticks_usec()` is a monotonic microsecond clock, so the probe uses it for bake elapsed time, progress timestamps, pass-trace durations, and heartbeat frame gaps.
 - `SceneTree.process_frame` is available as a frame signal, so the probe waits across frames while `RiverManager.is_bake_in_progress()` is true and records responsiveness data without relying on headless timing.
 - `ResourceSaver.save()` is intentionally not part of the default baseline path. The probe rejects `save=true` for this slice and verifies `bake_data.resource_path == ""`, keeping generated RiverBakeData resources out of shipped paths while still proving RiverManager result handoff.
@@ -264,6 +264,26 @@ Recorded result: `.codex-research/r7-baselines/compute-production-replacement-va
 ## Source Signature And Replacement Branch Notes - 2026-06-15
 
 Official Godot constraints did not change for the source-signature/replacement-code slice. The implementation keeps the local RenderingDevice branch behind the baker, keeps the proven delayed single-submit/wait/sync/readback path, and does not introduce async readback. The source signature policy uses `RIVER_BAKE_SOURCE_SIGNATURE_VERSION=29` rather than backend-mode signature keying because `flowmap_backend_mode` remains an internal baker selection/gate input, not a RiverManager source-setting surface.
+
+## Broader Promotion Fixture Coverage Notes - 2026-06-15
+
+No new RenderingDevice or Godot API surface was introduced for broader coverage. The new probe reuses the production replacement validation path and only widens the fixture set: the low-cost fixture, `res://Demo.tscn`, and `res://Demo_obstacle_flow_test.tscn`. All runs keep the already-proven local RenderingDevice pattern: one compute submit, wait three frames, `sync()`, `texture_get_data()`, 44 dispatches, 43 compute barriers, and no async readback.
+
+Recorded result: `.codex-research/r7-baselines/compute-promotion-fixture-coverage/r7_compute_promotion_fixture_coverage.txt` contains `R7_COMPUTE_PROMOTION_FIXTURE_COVERAGE_OK`. The report confirms each fixture exercises the projected obstacle path at source signature version 29 and that explicit supplied-evidence `canonical_compute_replacing` reports runtime `output_texture_keys=["flow_foam_noise"]` only. The texture-scope proof remains unchanged from staging/production validation: canonical compute migrates only `flow_foam_noise.r/g`, while `flow_foam_noise.b/a` and all other generated textures/channels remain legacy-sourced.
+
+Policy consequence: broader coverage is accepted for the explicit gated branch. That report kept `legacy_canvas_item` as the code default at the time, but the later saved-output promotion and switched/default compute acceptance now make `canonical_compute_replacing` the non-explicit default solve path.
+
+## Saved-Output Promotion Notes - 2026-06-15
+
+No new RenderingDevice or Godot API surface was introduced for saved-output promotion. The probe reuses the accepted explicit gated replacement path, the established delayed single-submit/wait-3-frames/sync/`texture_get_data()` readback, and Godot `ResourceSaver.save()` with the existing external river bake resource path. It also adds a same-signature comparison step: each authored scene is first rebaked through legacy v29 without saving, then rebaked through explicit gated `canonical_compute_replacing` and saved only to the scoped river bake resource.
+
+Recorded result: `.codex-research/r7-baselines/compute-saved-output-promotion/r7_compute_saved_output_promotion.txt` contains `R7_COMPUTE_SAVED_OUTPUT_PROMOTION_OK`. The report records the deliberate pre-promotion-to-promoted texture hash changes for `res://waterways_bakes/Demo/Water_River.river_bake.res` and `res://waterways_bakes/Demo/Water_River_obstacle_test.river_bake.res`. Relative to the same-signature legacy v29 baseline, only `flow_foam_noise` changes; its `r/g` channels are compute-migrated and its `b/a` channels remain byte-identical. All other generated textures remain legacy-sourced and hash-identical to legacy v29, WaterSystem resources are unchanged, backend mode remains outside the source signature, and the current code default backend is the accepted `canonical_compute_replacing` solve path.
+
+## Backend Performance Comparison Notes - 2026-06-15
+
+No new RenderingDevice or Godot API surface was introduced for the backend performance comparison. The probe reuses the accepted explicit backend selection surface, the established delayed single-submit/wait-3-frames/sync/`texture_get_data()` readback for compute, and the existing `progress_notified`/process-frame heartbeat timing method from the R7 baseline work.
+
+Recorded result: `.codex-research/r7-baselines/compute-backend-performance-compare/r7_compute_backend_performance_compare.txt` contains `R7_COMPUTE_BACKEND_PERFORMANCE_COMPARE_OK`. The same harness requests `legacy_canvas_item` and `canonical_compute_replacing` on the low-cost fixture, `res://Demo_obstacle_flow_test.tscn`, and `res://Demo.tscn`. No fallback occurred. Compute was faster in all recorded cases: low-cost `1044.678 ms` versus legacy `2510.612 ms`, obstacle Demo `70597.861 ms` versus legacy `71726.023 ms`, and Demo `127139.944 ms` versus legacy `128334.516 ms`. Full authored scenes still exceeded 1000 ms frame gaps in both backends, which keeps full-scene responsiveness as a shared bake-workload concern rather than a compute-only API issue.
 
 ## Open Implementation Research
 

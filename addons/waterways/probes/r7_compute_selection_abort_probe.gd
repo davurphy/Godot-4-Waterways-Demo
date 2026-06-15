@@ -112,11 +112,15 @@ func _verify_backend_selection() -> Dictionary:
 	unsupported_config[RiverFlowmapBaker.FLOWMAP_BACKEND_CONFIG_KEY] = "unexpected_backend"
 	var unsupported := baker.select_flowmap_backend(unsupported_config)
 
-	_expect(String(default_selection.get("selected_mode", "")) == RiverFlowmapBaker.FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM, "Default backend selection should remain legacy CanvasItem.")
+	_expect(String(default_selection.get("selected_mode", "")) == RiverFlowmapBaker.FLOWMAP_BACKEND_CANONICAL_COMPUTE_REPLACING, "Default backend selection should use canonical compute for R7 in-game review.")
+	_expect(String(default_selection.get("default_mode", "")) == RiverFlowmapBaker.FLOWMAP_BACKEND_CANONICAL_COMPUTE_REPLACING, "Default backend mode should report canonical compute for R7 in-game review.")
 	_expect(not bool(default_selection.get("explicit_selection", true)), "Default backend selection should not be explicit.")
 	_expect(not bool(default_selection.get("fallback_applied", true)), "Default backend selection should not need fallback.")
+	_expect(bool(default_selection.get("canonical_compute_replacement_gate_ready", false)), "Default canonical compute review selection should supply accepted gate evidence.")
+	_expect(bool(default_selection.get("production_output_replaced_by_compute", false)), "Default canonical compute review selection should replace the scoped generated output.")
 	_expect(String(explicit_legacy.get("selected_mode", "")) == RiverFlowmapBaker.FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM, "Explicit legacy selection should choose legacy CanvasItem.")
 	_expect(bool(explicit_legacy.get("explicit_selection", false)), "Explicit legacy selection should be recorded.")
+	_expect(String(explicit_legacy.get("fallback_mode", "")) == RiverFlowmapBaker.FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM, "Legacy fallback mode should remain available.")
 	_expect(String(explicit_compute.get("requested_mode", "")) == RiverFlowmapBaker.FLOWMAP_BACKEND_CANONICAL_COMPUTE_NON_REPLACING, "Explicit compute selection should preserve requested mode.")
 	_expect(String(explicit_compute.get("selected_mode", "")) == RiverFlowmapBaker.FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM, "Non-replacing compute selection should fall back to legacy output.")
 	_expect(bool(explicit_compute.get("fallback_applied", false)), "Non-replacing compute selection should report fallback.")

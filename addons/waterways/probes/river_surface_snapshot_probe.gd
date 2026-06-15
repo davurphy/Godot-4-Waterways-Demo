@@ -1,20 +1,21 @@
-# River-refactor R6 baseline dump probe (headless OK).
+# RiverManager surface and saved-bake snapshot probe (headless OK).
 #
-# Captures the pre/post-R6 canonical dictionary dumps for RiverBakeData
-# source_metadata, source_signature, and bake_settings, plus the RiverManager
-# public script surface, signal surface, and full inspector property lists.
+# Captures canonical dictionary dumps for RiverBakeData source_metadata,
+# source_signature, and bake_settings, plus the RiverManager public script
+# surface, signal surface, and full inspector property lists. This is the
+# phase-neutral successor to r6_baseline_dump_probe.gd.
 #
 # Run:
-#   & $godotConsole --headless --path $root --script res://addons/waterways/probes/r6_baseline_dump_probe.gd
+#   & $godotConsole --headless --path $root --script res://addons/waterways/probes/river_surface_snapshot_probe.gd
 #
 # Optional args after `--`:
-#   out=res://.codex-research/r6-baselines/pre-r6
+#   out=res://addons/waterways/probes/out/river-surface-snapshot
 #
 # Success marker: R6_BASELINE_DUMP_OK
 extends SceneTree
 
 const RIVER_MANAGER_SCRIPT_PATH := "res://addons/waterways/river_manager.gd"
-const DEFAULT_OUT_DIR := "res://.codex-research/r6-baselines/pre-r6"
+const DEFAULT_OUT_DIR := "res://addons/waterways/probes/out/river-surface-snapshot"
 const DEFAULT_RIVER_PATH := "WaterSystem/Water River"
 const DYNAMIC_METADATA_ALLOW_LIST := {
 	"bake_revision": true,

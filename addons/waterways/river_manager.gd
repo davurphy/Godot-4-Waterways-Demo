@@ -2383,6 +2383,11 @@ func _write_bake_data(result: Dictionary) -> void:
 		"flat_foam_support_reduced": foam_support_reduced,
 		"flat_pressure_support_reduced": pressure_support_reduced,
 		"flow_vector_diagnostics": flow_vector_diagnostics.duplicate(true),
+		"flowmap_backend_mode": String(result.get("flowmap_backend_mode", RiverFlowmapBaker.FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM)),
+		"flowmap_backend_selection": (result.get("flowmap_backend_selection", {}) as Dictionary).duplicate(true),
+		"production_output_replaced": bool(result.get("production_output_replaced", false)),
+		"output_texture_keys": result.get("output_texture_keys", PackedStringArray()),
+		"canonical_compute_replacement_result": (result.get("canonical_compute_replacement_result", {}) as Dictionary).duplicate(true),
 	})
 	data.flow_foam_noise = result.get("flow_foam_noise_texture") as Texture2D
 	data.dist_pressure = result.get("dist_pressure_texture") as Texture2D

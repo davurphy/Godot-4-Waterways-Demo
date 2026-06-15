@@ -1,7 +1,7 @@
-# River-refactor R7 low-cost legacy bake baseline probe (window required).
+# River-refactor R7 explicit legacy_canvas_item bake trace probe (window required).
 #
 # Run without --headless:
-#   & $godotConsole --path $root --script res://addons/waterways/probes/r7_bake_baseline_probe.gd -- scene=res://addons/waterways/probes/r7_low_cost_bake_fixture.tscn river="Water River" out=res://.codex-research/r7-baselines/legacy warmup=1 runs=5 save=false
+#   & $godotConsole --path $root --script res://addons/waterways/probes/r7_legacy_canvas_item_bake_trace_probe.gd -- scene=res://addons/waterways/probes/r7_low_cost_bake_fixture.tscn river="Water River" out=res://.codex-research/r7-baselines/legacy warmup=1 runs=5 save=false
 #
 # Success marker: R7_LEGACY_BASELINE_OK
 extends SceneTree
@@ -65,6 +65,15 @@ class R7TraceBaker:
 	extends RiverFlowmapBaker
 
 	var trace_owner: Object = null
+	var forced_backend_mode := RiverFlowmapBaker.FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM
+	var last_filter_result := {}
+
+	func run_filter_pass_sequence(config: Dictionary, progress: Callable = Callable(), cancellation: Callable = Callable()) -> Dictionary:
+		var injected_config := config.duplicate(true)
+		injected_config[RiverFlowmapBaker.FLOWMAP_BACKEND_CONFIG_KEY] = forced_backend_mode
+		var result: Dictionary = await super.run_filter_pass_sequence(injected_config, progress, cancellation)
+		last_filter_result = result.duplicate(true)
+		return result
 
 	func _run_pass(label: String, pass_callable: Callable) -> Dictionary:
 		var start_usec := Time.get_ticks_usec()
@@ -180,6 +189,8 @@ func _run_single_bake(scene_path: String, river_path: String, label: String) -> 
 		river.progress_notified.disconnect(Callable(self, "_on_progress_notified"))
 
 	var bake_data := river.get("bake_data") as Resource
+	var filter_result := trace_baker.last_filter_result.duplicate(true)
+	var backend_selection := (filter_result.get("flowmap_backend_selection", {}) as Dictionary).duplicate(true)
 	var result := {
 		"ok": bake_data != null and not bool(river.call("is_bake_in_progress")),
 		"label": label,
@@ -196,6 +207,9 @@ func _run_single_bake(scene_path: String, river_path: String, label: String) -> 
 		"signature": _resource_dictionary(bake_data, "source_signature"),
 		"settings": _resource_dictionary(bake_data, "bake_settings"),
 		"source_signature_version": int(bake_data.get("source_signature_version")) if bake_data != null else -1,
+		"flowmap_backend_mode": String(filter_result.get("flowmap_backend_mode", "")),
+		"flowmap_backend_selection": backend_selection,
+		"production_output_replaced": bool(filter_result.get("production_output_replaced", false)),
 		"texture_hashes": _hash_bake_textures(bake_data),
 		"water_occupancy_stats": _water_occupancy_stats(bake_data),
 		"result_handoff": _result_handoff_state(river, bake_data),
@@ -259,8 +273,14 @@ func _verify_run(run: Dictionary, label: String) -> void:
 	var texture_hashes: Dictionary = run.get("texture_hashes", {})
 	var occupancy_stats: Dictionary = run.get("water_occupancy_stats", {})
 	var handoff: Dictionary = run.get("result_handoff", {})
+	var backend_selection: Dictionary = run.get("flowmap_backend_selection", {})
 
 	_expect(int(run.get("source_signature_version", -1)) == 29, label + ": source_signature_version should be 29.")
+	_expect(String(run.get("flowmap_backend_mode", "")) == RiverFlowmapBaker.FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM, label + ": flowmap backend should be explicit legacy_canvas_item.")
+	_expect(bool(backend_selection.get("explicit_selection", false)), label + ": legacy backend selection should be explicit.")
+	_expect(String(backend_selection.get("requested_mode", "")) == RiverFlowmapBaker.FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM, label + ": requested backend should be legacy_canvas_item.")
+	_expect(String(backend_selection.get("selected_mode", "")) == RiverFlowmapBaker.FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM, label + ": selected backend should be legacy_canvas_item.")
+	_expect(not bool(run.get("production_output_replaced", true)), label + ": legacy trace should not replace output with compute.")
 	_expect(String(metadata.get("generation_behavior", "")) == TARGET_GENERATION_BEHAVIOR, label + ": generation_behavior metadata did not match target.")
 	_expect(String(signature.get("bake_generation_behavior", "")) == TARGET_GENERATION_BEHAVIOR, label + ": source signature generation behavior did not match target.")
 	_expect(String(settings.get("bake_generation_behavior", "")) == TARGET_GENERATION_BEHAVIOR, label + ": bake settings generation behavior did not match target.")
@@ -511,6 +531,10 @@ func _append_run_lines(lines: PackedStringArray, run: Dictionary, run_index: int
 	lines.append(prefix + "p95_frame_gap_ms=" + str(float(run.get("p95_frame_gap_ms", 0.0))))
 	lines.append(prefix + "resource_path=" + String(run.get("resource_path", "")))
 	lines.append(prefix + "source_signature_version=" + str(int(run.get("source_signature_version", -1))))
+	lines.append(prefix + "flowmap_backend_mode=" + String(run.get("flowmap_backend_mode", "")))
+	var backend_selection: Dictionary = run.get("flowmap_backend_selection", {})
+	lines.append(prefix + "flowmap_backend_requested_mode=" + String(backend_selection.get("requested_mode", "")))
+	lines.append(prefix + "flowmap_backend_selected_mode=" + String(backend_selection.get("selected_mode", "")))
 	var metadata: Dictionary = run.get("metadata", {})
 	for key in [
 		"generation_behavior",

@@ -1,15 +1,15 @@
-# River-refactor R6.1D source-image hash probe (headless OK).
+# River source-image hash inventory probe (headless OK).
 #
 # Captures the full raw-plus-margin intermediate source-image list. The probe
 # mirrors the source-generation portion of RiverManager._generate_flowmap(),
 # exercises the baker-owned source helpers, and stops before filter renderer
-# creation.
+# creation. This is the phase-neutral successor to r6_source_image_hash_probe.gd.
 #
 # Run:
-#   & $godotConsole --headless --path $root --script res://addons/waterways/probes/r6_source_image_hash_probe.gd
+#   & $godotConsole --headless --path $root --script res://addons/waterways/probes/river_source_image_hash_probe.gd
 #
 # Optional args after `--`:
-#   out=res://.codex-research/r6-baselines/pre-r6
+#   out=res://addons/waterways/probes/out/river-source-images
 #
 # Success marker: R6_SOURCE_IMAGE_HASH_OK
 extends SceneTree
@@ -17,7 +17,7 @@ extends SceneTree
 const WaterHelperMethods = preload("res://addons/waterways/water_helper_methods.gd")
 const RiverFlowmapBaker = preload("res://addons/waterways/river_flowmap_baker.gd")
 
-const DEFAULT_OUT_DIR := "res://.codex-research/r6-baselines/pre-r6"
+const DEFAULT_OUT_DIR := "res://addons/waterways/probes/out/river-source-images"
 const DEFAULT_RIVER_PATH := "WaterSystem/Water River"
 
 const SCENE_TARGETS := [

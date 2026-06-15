@@ -7,13 +7,13 @@ The canonical per-item checklists live in `roadmap.md` (phases R0, RT, R1–R8) 
 
 ## Current Truth
 
-- Latest update, 2026-06-14: R6 `river_manager.gd` decomposition and R6.5 cleanup/interface tightening have validation on branch `r6`. Generated-output, canonical dictionary/API/signal/property, R5/R4/filter-renderer/system-flow, parser/check-only, whitespace, and R6.5 surface/property gates passed.
+- Latest update, 2026-06-15: R6 `river_manager.gd` decomposition and R6.5 cleanup/interface tightening have validation on branch `r6`. Generated-output, canonical dictionary/API/signal/property, R5/R4/filter-renderer/system-flow, parser/check-only, whitespace, and R6.5 surface/property gates passed. R7 is closed for the approved compute-default scope: `canonical_compute_replacing` is the accepted switched/default solve path, and explicit `legacy_canvas_item` remains available for rollback, comparison, and diagnostics.
 - Current status: In progress
-- Current implementation slice: Phases R0, RT, R1, R2, R3, R4, R5, R6, and R8 have implementation/automated validation complete. R6 keeps bake signature version 28 and preserves RiverManager public/surface behavior while moving bake, constants, runtime ripple ownership, and editor validation internals behind helper scripts.
-- Remaining open task count: optional lower-cost editor/visible R6 checks, R7 implementation research/baseline setup, and R7 implementation remain open.
-- Last passing validation: 2026-06-14 R6.5 focused validation (`R6_R61F_PARSER_OK`, `R6_R62_CONSTANTS_SHADOW_OK comparisons=8 rows=109 signature_version=28`, `R6_BASELINE_DUMP_OK out=res://.codex-research/r6-baselines/post-r6-r65 files=10`, `R6_R65_SURFACE_PROPERTY_DIFF_OK files=4 baseline=post-r6-final current=post-r6-r65 surface_line_numbers=normalized`, `R5_BEHAVIOR_PRESERVATION_PROBE_OK`, `R4_RUNTIME_ROBUSTNESS_PROBE_OK`, `git diff --check`)
-- Next recommended action: before any R7 code, research current official Godot RenderingDevice docs and fill the R7 baseline/fixture commands in `r7/validation.md`
-- Known deferred work: R9 (vertex pillow stack) stays on the feature roadmap; R7 implementation is blocked on official RenderingDevice research and baseline setup; optional user decision logged in validation.md — whether system_flow should also apply occupancy stilling/wake damping to match duck-read magnitudes to the river surface
+- Current implementation slice: Phases R0, RT, R1, R2, R3, R4, R5, R6, R7 compute-default scope, and R8 have implementation/automated validation complete or accepted. R6 keeps bake signature version 28 and preserves RiverManager public/surface behavior while moving bake, constants, runtime ripple ownership, and editor validation internals behind helper scripts. R7 uses source signature v29 for the accepted compute-default boundary.
+- Remaining open task count: optional lower-cost editor/visible R6 checks, deferred R7 CPU-diagnostic/performance follow-up, and any future legacy-removal protocol remain open. R7 compute-default acceptance itself is closed.
+- Last passing validation: 2026-06-15 R7 switched/default acceptance rerun (`R7_COMPUTE_SELECTION_ABORT_OK`, `R7_COMPUTE_NON_NEUTRAL_FLOW_SPEED_OK`, `R7_COMPUTE_SAVED_RESOURCE_LOAD_SMOKE_OK`, `SYSTEM_FLOW_COMPARE_OK`, and `SYSTEM_FLOW_PROJECTED_GATE_OK`) under `.codex-research/r7-baselines/compute-switched-default-acceptance/`. R6.5 focused validation remains the latest broad pre-R7 track validation.
+- Next recommended action: no parent-track action is required for R7 compute-default acceptance. If legacy removal is proposed later, first define and run a separate explicit side-by-side comparison/removal protocol.
+- Known deferred work: R9 (vertex pillow stack) stays on the feature roadmap; R7 CPU pixel diagnostic migration/performance follow-up is deferred; legacy-path removal, backend selector collapse, broader saved-output promotion, tolerance changes, and source signature policy changes are not approved.
 
 ## Open Work
 
@@ -32,7 +32,8 @@ Use this section as the canonical checklist for unfinished *process* work. When 
 - [x] R6.5 cleanup/interface tightening — dead private helpers removed, boundary comments tightened, focused validation passed 2026-06-14.
 - [x] Record the R7-vs-feature-Phase-5 compute decision in this folder — compute-first path chosen 2026-06-14; fold R7 into feature Phase 5 RenderingDevice compute migration and skip SubViewport interim.
 - [x] Write R7's own `spec.md`/`plan.md`/`validation.md` — docs gate created 2026-06-14 with compute-first decision.
-- [ ] Phase R7 — GPU-resident solve (after R6).
+- [x] Phase R7 — GPU-resident solve, approved compute-default scope. Accepted 2026-06-15: `canonical_compute_replacing` is the switched/default solve path; explicit `legacy_canvas_item` remains available.
+- [ ] R7 future protocol — define and run a separate side-by-side legacy comparison/removal protocol before any legacy-path removal or backend selector collapse.
 - [x] Phase R8 — Documentation coherence (R8.1–R8.5 + stale-constant cleanup, 2026-06-12). architecture-and-features rewrite, Data Contract neutrals + system_flow_map_version, obstacle-constraints spec/validation/review backfill, probe consolidation + RT index, vertex-cost figure; code grep gates clean.
 - [ ] Complete the Adversarial Plan Review section of `plan.md` with the user before implementation starts.
 

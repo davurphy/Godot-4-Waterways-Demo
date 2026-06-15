@@ -1,7 +1,7 @@
-# River-refactor R7 validation-only tolerance and texture-format proof.
+# River-refactor R7 texture-format and explicit-legacy tolerance proof.
 #
 # Run without --headless:
-#   & $godotConsole --path $root --script res://addons/waterways/probes/r7_texture_format_roundtrip_probe.gd -- out=res://.codex-research/r7-baselines/format
+#   & $godotConsole --path $root --script res://addons/waterways/probes/r7_texture_format_and_tolerance_probe.gd -- out=res://.codex-research/r7-baselines/format
 #
 # Success markers:
 #   R7_TOLERANCE_SELF_COMPARE_OK
@@ -9,12 +9,14 @@
 extends SceneTree
 
 const WaterHelperMethods = preload("res://addons/waterways/water_helper_methods.gd")
+const RiverFlowmapBaker = preload("res://addons/waterways/river_flowmap_baker.gd")
+const RiverManager = preload("res://addons/waterways/river_manager.gd")
 
 const DEFAULT_SCENE_PATH := "res://addons/waterways/probes/r7_low_cost_bake_fixture.tscn"
 const DEFAULT_RIVER_PATH := "Water River"
 const DEFAULT_OUT_DIR := "res://.codex-research/r7-baselines/format"
 const DEFAULT_BASELINE_PATH := "res://.codex-research/r7-baselines/legacy/r7_legacy_baseline.txt"
-const REPORT_FILE_NAME := "r7_texture_format_roundtrip.txt"
+const REPORT_FILE_NAME := "r7_texture_format_and_tolerance.txt"
 const TARGET_GENERATION_BEHAVIOR := "downstream_baseline_collision_support"
 const MAX_BAKE_FRAMES := 3000
 const FORMAT_TEXTURE_SIZE := Vector2i(16, 16)
@@ -117,6 +119,19 @@ var _progress_finished_usec := 0
 var _written_report := ""
 
 
+class R7ExplicitLegacyBaker:
+	extends RiverFlowmapBaker
+
+	var last_filter_result := {}
+
+	func run_filter_pass_sequence(config: Dictionary, progress: Callable = Callable(), cancellation: Callable = Callable()) -> Dictionary:
+		var injected_config := config.duplicate(true)
+		injected_config[RiverFlowmapBaker.FLOWMAP_BACKEND_CONFIG_KEY] = RiverFlowmapBaker.FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM
+		var result: Dictionary = await super.run_filter_pass_sequence(injected_config, progress, cancellation)
+		last_filter_result = result.duplicate(true)
+		return result
+
+
 func _initialize() -> void:
 	call_deferred("_run")
 
@@ -185,6 +200,8 @@ func _run_legacy_fixture_bake(scene_path: String, river_path: String, label: Str
 		return {}
 	_configure_fixture_river(river)
 
+	var legacy_baker := R7ExplicitLegacyBaker.new()
+	RiverManager._flowmap_bakers[river.get_instance_id()] = legacy_baker
 	_progress_finished_usec = 0
 	var started_usec := Time.get_ticks_usec()
 	river.progress_notified.connect(Callable(self, "_on_progress_notified"))
@@ -201,6 +218,8 @@ func _run_legacy_fixture_bake(scene_path: String, river_path: String, label: Str
 		_progress_finished_usec = Time.get_ticks_usec()
 
 	var bake_data := river.get("bake_data") as Resource
+	var filter_result := legacy_baker.last_filter_result.duplicate(true)
+	var backend_selection := (filter_result.get("flowmap_backend_selection", {}) as Dictionary).duplicate(true)
 	var result := {
 		"ok": bake_data != null and not bool(river.call("is_bake_in_progress")),
 		"label": label,
@@ -211,13 +230,20 @@ func _run_legacy_fixture_bake(scene_path: String, river_path: String, label: Str
 		"signature": _resource_dictionary(bake_data, "source_signature"),
 		"settings": _resource_dictionary(bake_data, "bake_settings"),
 		"source_signature_version": int(bake_data.get("source_signature_version")) if bake_data != null else -1,
+		"flowmap_backend_mode": String(filter_result.get("flowmap_backend_mode", "")),
+		"flowmap_backend_selection": backend_selection,
+		"production_output_replaced": bool(filter_result.get("production_output_replaced", false)),
 		"resource_path": bake_data.resource_path if bake_data != null else "",
 		"content_rect": bake_data.get("content_rect") if bake_data != null else Rect2i(),
 		"uv2_sides": int(bake_data.get("uv2_sides")) if bake_data != null else 1,
 	}
 	_report_lines.append(label + ".elapsed_ms=" + str(float(result.elapsed_ms)))
 	_report_lines.append(label + ".source_signature_version=" + str(int(result.source_signature_version)))
+	_report_lines.append(label + ".flowmap_backend_mode=" + String(result.flowmap_backend_mode))
+	_report_lines.append(label + ".flowmap_backend_requested_mode=" + String(backend_selection.get("requested_mode", "")))
+	_report_lines.append(label + ".flowmap_backend_selected_mode=" + String(backend_selection.get("selected_mode", "")))
 	_report_lines.append(label + ".resource_path=" + String(result.resource_path))
+	RiverManager._flowmap_bakers.erase(river.get_instance_id())
 	scene.queue_free()
 	current_scene = null
 	await process_frame
@@ -265,10 +291,21 @@ func _run_tolerance_evidence(run_a: Dictionary, run_b: Dictionary) -> void:
 	_report_lines.append("tolerance_gate=R7_TOLERANCE_V1")
 	_expect(int(run_a.get("source_signature_version", -1)) == 29, "legacy_a source signature version drifted from 29.")
 	_expect(int(run_b.get("source_signature_version", -1)) == 29, "legacy_b source signature version drifted from 29.")
+	_verify_explicit_legacy_backend(run_a, "legacy_a")
+	_verify_explicit_legacy_backend(run_b, "legacy_b")
 	_expect(String(run_a.get("resource_path", "")) == "", "legacy_a saved a bake resource unexpectedly.")
 	_expect(String(run_b.get("resource_path", "")) == "", "legacy_b saved a bake resource unexpectedly.")
 	_compare_texture_sets(run_a, run_a, "legacy_self")
 	_compare_texture_sets(run_a, run_b, "legacy_rerun")
+
+
+func _verify_explicit_legacy_backend(run: Dictionary, label: String) -> void:
+	var backend_selection: Dictionary = run.get("flowmap_backend_selection", {})
+	_expect(String(run.get("flowmap_backend_mode", "")) == RiverFlowmapBaker.FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM, label + ": flowmap backend should be explicit legacy_canvas_item.")
+	_expect(bool(backend_selection.get("explicit_selection", false)), label + ": legacy backend selection should be explicit.")
+	_expect(String(backend_selection.get("requested_mode", "")) == RiverFlowmapBaker.FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM, label + ": requested backend should be legacy_canvas_item.")
+	_expect(String(backend_selection.get("selected_mode", "")) == RiverFlowmapBaker.FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM, label + ": selected backend should be legacy_canvas_item.")
+	_expect(not bool(run.get("production_output_replaced", true)), label + ": tolerance bake should not replace output with compute.")
 
 
 func _compare_texture_sets(run_a: Dictionary, run_b: Dictionary, label: String) -> void:

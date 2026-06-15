@@ -58,7 +58,7 @@ Complete tasks in order unless `plan.md` is revised. Each task should be indepen
   - `source_metadata`
   - `source_signature`
   - `bake_settings`
-  - Validate: `r6_baseline_dump_probe.gd` wrote canonical dumps to `.codex-research/r6-baselines/pre-r6/`; `source_metadata.bake_revision` is the only filtered key.
+  - Validate: `river_surface_snapshot_probe.gd` wrote canonical dumps to `.codex-research/r6-baselines/pre-r6/`; `source_metadata.bake_revision` is the only filtered key.
 
 - [x] Capture the full pre-R6 inspector property list.
   - Validate: full Demo and obstacle Demo RiverManager property-list dumps exist under `.codex-research/r6-baselines/pre-r6/`.
@@ -67,13 +67,13 @@ Complete tasks in order unless `plan.md` is revised. Each task should be indepen
   - Validate: saved-resource RT.1 hash logs exist for both demo river bakes under `.codex-research/r6-baselines/pre-r6/`; fresh scratch rebakes were not run in this baseline pass.
 
 - [x] Record the full current `river_manager.gd` public method surface.
-  - Validate: `r6_baseline_dump_probe.gd` wrote `river_manager_public_methods.txt` and asserted the R6-sensitive methods listed in `plan.md`.
+  - Validate: `river_surface_snapshot_probe.gd` wrote `river_manager_public_methods.txt` and asserted the R6-sensitive methods listed in `plan.md`.
 
 - [x] Record the public signal surface and progress semantics.
-  - Validate: signal surface baseline exists and asserts `river_changed` plus `progress_notified`; `r6_mid_bake_timing_probe.gd` recorded the Demo bake progress order through completion.
+  - Validate: signal surface baseline exists and asserts `river_changed` plus `progress_notified`; archived mid-bake timing evidence recorded the Demo bake progress order through completion.
 
 - [x] Add or extend a mid-bake edit probe, or record a named human-assisted case.
-  - Validate: `r6_mid_bake_timing_probe.gd` covers `flow_speeds`, mutates at `Projecting flow 0/40 (stride 32)`, and records trap-vs-control texture hashes plus final metadata/signature reads.
+  - Validate: archived mid-bake timing evidence covers `flow_speeds`, mutates at `Projecting flow 0/40 (stride 32)`, and records trap-vs-control texture hashes plus final metadata/signature reads.
 
 ## R6.1 Bake Pipeline Extraction
 
