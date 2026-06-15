@@ -156,11 +156,10 @@ const DEFAULT_PARAMETERS = {
 const BAKE_CHANNEL_FLAT_EPSILON := 0.002
 const BAKE_CHANNEL_LOW_CONTRAST_EPSILON := 0.03
 const BAKE_CHANNEL_SATURATION_EPSILON := 0.02
-# v28 (2026-06-12, refactor track R1): R1.1 SDF-steering metadata removal,
-# R1.2 signature-gap keys, R1.3 occupancy serialization; retroactively covers
-# the R0.5 first-tile UV2 margin fix, which changed multi-tile bake content
-# without a bump. All pre-v28 bakes are stale and need a rebake.
-const RIVER_BAKE_SOURCE_SIGNATURE_VERSION := 28
+# v29 (2026-06-15, refactor track R7): canonical compute replacement can
+# intentionally change generated flow_foam_noise.rg, so pre-R7 replacement
+# bakes are stale and need a rebake.
+const RIVER_BAKE_SOURCE_SIGNATURE_VERSION := 29
 # Shader parameters that displace VERTEX.y upward; their sum is the headroom
 # added to the mesh's custom AABB.
 const DISPLACEMENT_AABB_SHADER_PARAMETERS: Array[String] = ["pillow_terrain_height", "pillow_obstruction_height"]
@@ -2021,6 +2020,11 @@ func _generate_flowmap(flowmap_resolution : float) -> void:
 			"collision_support_filters_ran": run_collision_support_filters,
 			"obstacle_avoidance_applied": obstacle_avoidance_applied,
 			"flow_projected": flow_projected_applied,
+			"flowmap_backend_mode": String(filter_pass_result.get("flowmap_backend_mode", "")),
+			"flowmap_backend_selection": (filter_pass_result.get("flowmap_backend_selection", {}) as Dictionary).duplicate(true),
+			"production_output_replaced": bool(filter_pass_result.get("production_output_replaced", false)),
+			"output_texture_keys": filter_pass_result.get("output_texture_keys", PackedStringArray()),
+			"canonical_compute_replacement_result": (filter_pass_result.get("canonical_compute_replacement_result", {}) as Dictionary).duplicate(true),
 			"collision_stats": collision_stats,
 			"flat_foam_support_value": RIVER_FLAT_FOAM_SUPPORT_VALUE,
 			"flat_pressure_support_value": RIVER_FLAT_PRESSURE_SUPPORT_VALUE,

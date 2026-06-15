@@ -4,6 +4,54 @@
 extends RefCounted
 
 const WaterHelperMethods = preload("res://addons/waterways/water_helper_methods.gd")
+const RiverFlowmapComputeBackend = preload("res://addons/waterways/river_flowmap_compute_backend.gd")
+
+const FLOWMAP_BACKEND_CONFIG_KEY := "flowmap_backend_mode"
+const FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM := "legacy_canvas_item"
+const FLOWMAP_BACKEND_CANONICAL_COMPUTE_NON_REPLACING := "canonical_compute_non_replacing"
+const FLOWMAP_BACKEND_CANONICAL_COMPUTE_REPLACING := "canonical_compute_replacing"
+const FLOWMAP_BACKEND_ACTIVE_SOURCE_SIGNATURE_VERSION := 29
+const FLOWMAP_BACKEND_REPLACEMENT_GATE_ID := "R7_CANONICAL_COMPUTE_REPLACEMENT_GATE_V1"
+const FLOWMAP_BACKEND_REPLACEMENT_STAGE := "report_only_non_replacing"
+const FLOWMAP_BACKEND_MIN_REPLACING_SIGNATURE_VERSION := 29
+const FLOWMAP_BACKEND_SOURCE_SIGNATURE_INCLUDES_BACKEND_MODE := false
+const FLOWMAP_BACKEND_CANONICAL_COMPUTE_REPLACEMENT_IMPLEMENTED := true
+const FLOWMAP_BACKEND_GENERATED_OUTPUT_REPLACEMENT_STAGING_MARKER := "R7_COMPUTE_GENERATED_OUTPUT_REPLACEMENT_STAGING_OK"
+const FLOWMAP_BACKEND_GENERATED_OUTPUT_REPLACEMENT_STAGING_STAGE := "generated_output_replacement_staging_report_only"
+const FLOWMAP_BACKEND_PRODUCTION_REPLACEMENT_VALIDATION_MARKER := "R7_COMPUTE_PRODUCTION_REPLACEMENT_VALIDATION_OK"
+const FLOWMAP_BACKEND_PRODUCTION_REPLACEMENT_VALIDATION_STAGE := "production_replacement_validation_report_only"
+const FLOWMAP_GENERATED_OUTPUT_TEXTURE_KEYS := [
+	"flow_foam_noise",
+	"dist_pressure",
+	"obstacle_features",
+	"terrain_contact_features",
+	"bank_response_features",
+	"water_occupancy",
+]
+const FLOWMAP_CANONICAL_COMPUTE_STAGED_OUTPUT_TEXTURE_KEYS := [
+	"flow_foam_noise",
+]
+const FLOWMAP_CANONICAL_COMPUTE_MIGRATED_CHANNELS := [
+	"flow_foam_noise.r",
+	"flow_foam_noise.g",
+]
+const FLOWMAP_CANONICAL_COMPUTE_LEGACY_SOURCED_CHANNELS := [
+	"flow_foam_noise.b",
+	"flow_foam_noise.a",
+	"dist_pressure.rgba",
+	"obstacle_features.rgba",
+	"terrain_contact_features.rgba",
+	"bank_response_features.rgba",
+	"water_occupancy.rgba",
+]
+const FLOWMAP_RIVER_MANAGER_HANDOFF_TEXTURE_FIELDS := [
+	"flow_foam_noise_texture",
+	"dist_pressure_texture",
+	"obstacle_features_texture",
+	"terrain_contact_features_texture",
+	"bank_response_features_texture",
+	"water_occupancy_texture",
+]
 
 var _running := false
 var _aborted := false
@@ -12,6 +60,8 @@ var _renderer_instance: Node = null
 var _last_abort_reason := ""
 var _warning_callback := Callable()
 var _cancellation_callback := Callable()
+var _compute_backend: RefCounted = null
+var _compute_backend_in_flight := false
 
 
 func bake(config: Dictionary, progress: Callable, cancellation: Callable = Callable()) -> Dictionary:
@@ -54,6 +104,11 @@ func abort() -> void:
 	_aborted = true
 	if _last_abort_reason.is_empty():
 		_last_abort_reason = "aborted"
+	if _compute_backend != null:
+		if _compute_backend.has_method("abort"):
+			_compute_backend.call("abort")
+		_running = false
+		return
 	cleanup()
 
 
@@ -61,7 +116,435 @@ func is_running() -> bool:
 	return _running
 
 
+static func get_default_flowmap_backend_mode() -> String:
+	return FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM
+
+
+static func get_supported_flowmap_backend_modes() -> PackedStringArray:
+	return PackedStringArray([
+		FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM,
+		FLOWMAP_BACKEND_CANONICAL_COMPUTE_NON_REPLACING,
+		FLOWMAP_BACKEND_CANONICAL_COMPUTE_REPLACING
+	])
+
+
+static func is_flowmap_backend_mode_supported(mode: String) -> bool:
+	return mode in get_supported_flowmap_backend_modes()
+
+
+static func get_canonical_compute_replacement_gate_requirements() -> PackedStringArray:
+	return PackedStringArray([
+		"R7_COMPUTE_CANONICAL_ACCEPTANCE_V1_AUTOMATED_OK",
+		"R7_COMPUTE_REPRESENTATIVE_VISUALS_OK",
+		"R7_COMPUTE_SELECTION_ABORT_OK",
+		"R7_COMPUTE_CLEANUP_RESPONSIVENESS_OK",
+		"R7_R6_SURFACE_PROPERTY_DIFF_OK",
+		"generated_output_replacement_staging_ok",
+		"production_replacement_validation_ok",
+		"source_signature_version_29_or_backend_mode_keyed",
+		"canonical_compute_replacement_code_path_enabled"
+	])
+
+
+static func get_generated_output_texture_keys() -> PackedStringArray:
+	return PackedStringArray(FLOWMAP_GENERATED_OUTPUT_TEXTURE_KEYS)
+
+
+static func get_canonical_compute_staged_output_texture_keys() -> PackedStringArray:
+	return PackedStringArray(FLOWMAP_CANONICAL_COMPUTE_STAGED_OUTPUT_TEXTURE_KEYS)
+
+
+static func get_river_manager_handoff_texture_fields() -> PackedStringArray:
+	return PackedStringArray(FLOWMAP_RIVER_MANAGER_HANDOFF_TEXTURE_FIELDS)
+
+
+static func evaluate_canonical_compute_replacement_gate(config: Dictionary = {}) -> Dictionary:
+	var source_signature_version := int(config.get("source_signature_version", FLOWMAP_BACKEND_ACTIVE_SOURCE_SIGNATURE_VERSION))
+	var source_signature_includes_backend := bool(config.get("source_signature_includes_backend_mode", FLOWMAP_BACKEND_SOURCE_SIGNATURE_INCLUDES_BACKEND_MODE))
+	var source_signature_ready := source_signature_version >= FLOWMAP_BACKEND_MIN_REPLACING_SIGNATURE_VERSION or source_signature_includes_backend
+	var evidence := {
+		"automated_canonical_acceptance_ok": bool(config.get("automated_canonical_acceptance_ok", false)),
+		"representative_visuals_ok": bool(config.get("representative_visuals_ok", false)),
+		"selection_abort_ok": bool(config.get("selection_abort_ok", false)),
+		"cleanup_responsiveness_ok": bool(config.get("cleanup_responsiveness_ok", false)),
+		"river_manager_surface_ok": bool(config.get("river_manager_surface_ok", false)),
+		"generated_output_replacement_staging_ok": bool(config.get("generated_output_replacement_staging_ok", false)),
+		"production_replacement_validation_ok": bool(config.get("production_replacement_validation_ok", false)),
+		"source_signature_version": source_signature_version,
+		"source_signature_includes_backend_mode": source_signature_includes_backend,
+		"source_signature_ready": source_signature_ready,
+		"replacement_code_path_implemented": FLOWMAP_BACKEND_CANONICAL_COMPUTE_REPLACEMENT_IMPLEMENTED
+	}
+	var blockers := PackedStringArray()
+	if not bool(evidence.get("automated_canonical_acceptance_ok", false)):
+		blockers.append("R7_COMPUTE_CANONICAL_ACCEPTANCE_V1_AUTOMATED_OK_not_provided")
+	if not bool(evidence.get("representative_visuals_ok", false)):
+		blockers.append("R7_COMPUTE_REPRESENTATIVE_VISUALS_OK_not_provided")
+	if not bool(evidence.get("selection_abort_ok", false)):
+		blockers.append("R7_COMPUTE_SELECTION_ABORT_OK_not_provided")
+	if not bool(evidence.get("cleanup_responsiveness_ok", false)):
+		blockers.append("R7_COMPUTE_CLEANUP_RESPONSIVENESS_OK_not_provided")
+	if not bool(evidence.get("river_manager_surface_ok", false)):
+		blockers.append("R7_R6_SURFACE_PROPERTY_DIFF_OK_not_provided")
+	if not bool(evidence.get("generated_output_replacement_staging_ok", false)):
+		blockers.append("generated_output_replacement_staging_not_accepted")
+	if not bool(evidence.get("production_replacement_validation_ok", false)):
+		blockers.append("production_replacement_validation_not_accepted")
+	if not source_signature_ready:
+		blockers.append("source_signature_version_29_or_backend_mode_signature_key_required")
+	if not bool(evidence.get("replacement_code_path_implemented", false)):
+		blockers.append("canonical_compute_replacement_code_path_disabled")
+	var ready := blockers.is_empty()
+	return {
+		"gate_id": FLOWMAP_BACKEND_REPLACEMENT_GATE_ID,
+		"stage": "ready_for_replacement" if ready else FLOWMAP_BACKEND_REPLACEMENT_STAGE,
+		"ready": ready,
+		"replacement_ready": ready,
+		"requirements": get_canonical_compute_replacement_gate_requirements(),
+		"evidence": evidence,
+		"blockers": blockers,
+		"source_signature_policy": "version_29_or_backend_mode_signature_key",
+		"source_signature_policy_ready": source_signature_ready,
+		"min_replacing_signature_version": FLOWMAP_BACKEND_MIN_REPLACING_SIGNATURE_VERSION,
+		"production_output_replaced_by_compute": false
+	}
+
+
+static func build_canonical_compute_generated_output_replacement_staging_report(config: Dictionary = {}) -> Dictionary:
+	var legacy_before_hashes := _config_dictionary(config, "legacy_before_hashes")
+	var legacy_after_hashes := _config_dictionary(config, "legacy_after_hashes")
+	var candidate_hashes := _config_dictionary(config, "candidate_hashes")
+	var legacy_before_state := _config_dictionary(config, "legacy_before_state")
+	var legacy_after_state := _config_dictionary(config, "legacy_after_state")
+	var staged_keys := get_canonical_compute_staged_output_texture_keys()
+	var generated_keys := get_generated_output_texture_keys()
+	var staged_before_after_hashes := {}
+	var legacy_sourced_texture_keys := PackedStringArray()
+	var changed_texture_keys := PackedStringArray()
+	var missing_candidate_keys := PackedStringArray()
+	var missing_legacy_keys := PackedStringArray()
+	for key_variant in generated_keys:
+		var key := String(key_variant)
+		var before_hash := _dictionary_value_as_dictionary(legacy_before_hashes, key)
+		var candidate_hash := _dictionary_value_as_dictionary(candidate_hashes, key)
+		var staged_after_hash := before_hash.duplicate(true)
+		var source := "legacy_canvas_item_existing_output"
+		var migrated_channels := PackedStringArray()
+		var legacy_channels := PackedStringArray([key + ".rgba"])
+		if _packed_string_array_has(staged_keys, key):
+			source = "canonical_compute_candidate"
+			migrated_channels = PackedStringArray(["r", "g"])
+			legacy_channels = PackedStringArray(["b", "a"])
+			staged_after_hash = candidate_hash.duplicate(true)
+			if _hash_entry_missing(candidate_hash):
+				missing_candidate_keys.append(key)
+		else:
+			legacy_sourced_texture_keys.append(key)
+		if _hash_entry_missing(before_hash):
+			missing_legacy_keys.append(key)
+		var would_change := _hash_entry_md5(before_hash) != _hash_entry_md5(staged_after_hash)
+		if would_change:
+			changed_texture_keys.append(key)
+		staged_before_after_hashes[key] = {
+			"before": before_hash,
+			"staged_after": staged_after_hash,
+			"source": source,
+			"migrated_channels": migrated_channels,
+			"legacy_sourced_channels": legacy_channels,
+			"would_change": would_change
+		}
+	var actual_state_unchanged := legacy_before_state == legacy_after_state
+	var actual_hashes_unchanged := legacy_before_hashes == legacy_after_hashes
+	var river_manager_ownership_preserved := bool(config.get("river_manager_ownership_preserved", actual_state_unchanged and actual_hashes_unchanged))
+	var river_manager_public_surface_preserved := bool(config.get("river_manager_public_surface_preserved", false))
+	var staged_flow_would_change := _packed_string_array_has(changed_texture_keys, "flow_foam_noise")
+	var ok := (
+		missing_candidate_keys.is_empty()
+		and missing_legacy_keys.is_empty()
+		and actual_state_unchanged
+		and actual_hashes_unchanged
+		and river_manager_ownership_preserved
+		and river_manager_public_surface_preserved
+		and staged_flow_would_change
+	)
+	return {
+		"ok": ok,
+		"reason": "ok" if ok else "staging_report_failed_invariants",
+		"marker": FLOWMAP_BACKEND_GENERATED_OUTPUT_REPLACEMENT_STAGING_MARKER,
+		"gate_id": FLOWMAP_BACKEND_REPLACEMENT_GATE_ID,
+		"stage": FLOWMAP_BACKEND_GENERATED_OUTPUT_REPLACEMENT_STAGING_STAGE,
+		"replacement_gate_stage": FLOWMAP_BACKEND_REPLACEMENT_STAGE,
+		"generated_output_replacement_staging_ok": ok,
+		"replacement_ready": false,
+		"replacement_promoted": false,
+		"production_output_replaced": false,
+		"output_texture_keys": [],
+		"actual_output_texture_keys": [],
+		"staged_output_texture_keys": staged_keys,
+		"all_generated_output_texture_keys": generated_keys,
+		"changed_texture_keys": changed_texture_keys,
+		"legacy_sourced_texture_keys": legacy_sourced_texture_keys,
+		"mixed_sourced_texture_keys": staged_keys,
+		"migrated_channels": PackedStringArray(FLOWMAP_CANONICAL_COMPUTE_MIGRATED_CHANNELS),
+		"legacy_sourced_channels": PackedStringArray(FLOWMAP_CANONICAL_COMPUTE_LEGACY_SOURCED_CHANNELS),
+		"staged_before_after_hashes": staged_before_after_hashes,
+		"canonical_candidate_source": String(config.get("canonical_candidate_source", "canonical_compute_final_flow_plus_legacy_foam_noise_postprocess")),
+		"actual_river_state_unchanged": actual_state_unchanged,
+		"actual_river_texture_hashes_unchanged": actual_hashes_unchanged,
+		"river_manager_ownership_preserved": river_manager_ownership_preserved,
+		"river_manager_public_surface_preserved": river_manager_public_surface_preserved,
+		"river_manager_writes_generated_resources": true,
+		"compute_backend_writes_generated_resources": false,
+		"source_signature_version": FLOWMAP_BACKEND_ACTIVE_SOURCE_SIGNATURE_VERSION,
+		"signature_version_while_compute_non_replacing": FLOWMAP_BACKEND_ACTIVE_SOURCE_SIGNATURE_VERSION,
+		"source_signature_policy": "version_29_or_backend_mode_signature_key",
+		"source_signature_policy_ready": FLOWMAP_BACKEND_ACTIVE_SOURCE_SIGNATURE_VERSION >= FLOWMAP_BACKEND_MIN_REPLACING_SIGNATURE_VERSION or FLOWMAP_BACKEND_SOURCE_SIGNATURE_INCLUDES_BACKEND_MODE,
+		"min_replacing_signature_version": FLOWMAP_BACKEND_MIN_REPLACING_SIGNATURE_VERSION,
+		"missing_candidate_keys": missing_candidate_keys,
+		"missing_legacy_keys": missing_legacy_keys
+	}
+
+
+static func build_canonical_compute_production_replacement_validation_report(config: Dictionary = {}) -> Dictionary:
+	var staging_report := build_canonical_compute_generated_output_replacement_staging_report(config)
+	var legacy_before_hashes := _config_dictionary(config, "legacy_before_hashes")
+	var legacy_after_hashes := _config_dictionary(config, "legacy_after_hashes")
+	var candidate_hashes := _config_dictionary(config, "candidate_hashes")
+	var legacy_before_state := _config_dictionary(config, "legacy_before_state")
+	var legacy_after_state := _config_dictionary(config, "legacy_after_state")
+	var timing := _config_dictionary(config, "timing")
+	var fallback_selection := _config_dictionary(config, "fallback_selection")
+	var generated_keys := get_generated_output_texture_keys()
+	var staged_keys := get_canonical_compute_staged_output_texture_keys()
+	var handoff_fields := get_river_manager_handoff_texture_fields()
+	var would_handoff_textures := {}
+	var would_handoff_sources := {}
+	var missing_handoff_keys := PackedStringArray()
+	var missing_legacy_keys := PackedStringArray()
+	for key_variant in generated_keys:
+		var key := String(key_variant)
+		var handoff_field := _texture_key_to_handoff_field(key)
+		var before_hash := _dictionary_value_as_dictionary(legacy_before_hashes, key)
+		var handoff_hash := before_hash.duplicate(true)
+		var source := "legacy_canvas_item_existing_output"
+		var migrated_channels := PackedStringArray()
+		var legacy_channels := PackedStringArray([key + ".rgba"])
+		if _packed_string_array_has(staged_keys, key):
+			var candidate_hash := _dictionary_value_as_dictionary(candidate_hashes, key)
+			handoff_hash = candidate_hash.duplicate(true)
+			source = "canonical_compute_candidate"
+			migrated_channels = PackedStringArray(["r", "g"])
+			legacy_channels = PackedStringArray(["b", "a"])
+			if _hash_entry_missing(candidate_hash):
+				missing_handoff_keys.append(key)
+		elif _hash_entry_missing(before_hash):
+			missing_legacy_keys.append(key)
+		would_handoff_textures[key] = {
+			"handoff_field": handoff_field,
+			"source": source,
+			"hash": handoff_hash,
+			"migrated_channels": migrated_channels,
+			"legacy_sourced_channels": legacy_channels,
+			"would_change_from_live_legacy": _hash_entry_md5(before_hash) != _hash_entry_md5(handoff_hash)
+		}
+		would_handoff_sources[key] = source
+	var actual_state_unchanged := legacy_before_state == legacy_after_state
+	var actual_hashes_unchanged := legacy_before_hashes == legacy_after_hashes
+	var max_allowed_frame_gap_ms := float(config.get("max_allowed_frame_gap_ms", 1000.0))
+	var timing_completed := bool(timing.get("completed", false))
+	var timing_responsiveness_ok := timing_completed and float(timing.get("max_frame_gap_ms", max_allowed_frame_gap_ms + 1.0)) <= max_allowed_frame_gap_ms
+	var legacy_fallback_behavior_ok := (
+		String(fallback_selection.get("selected_mode", "")) == FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM
+		and bool(fallback_selection.get("fallback_applied", false))
+		and String(fallback_selection.get("fallback_reason", "")) == "canonical_compute_replacing_not_promoted"
+		and not bool(fallback_selection.get("production_output_replaced_by_compute", true))
+	)
+	var gated_replacement_selection_ok := (
+		String(fallback_selection.get("selected_mode", "")) == FLOWMAP_BACKEND_CANONICAL_COMPUTE_REPLACING
+		and not bool(fallback_selection.get("fallback_applied", true))
+		and bool(fallback_selection.get("canonical_compute_replacement_gate_ready", false))
+		and bool(fallback_selection.get("production_output_replaced_by_compute", false))
+	)
+	var fallback_behavior_ok := legacy_fallback_behavior_ok or gated_replacement_selection_ok
+	var river_manager_ownership_preserved := bool(config.get("river_manager_ownership_preserved", actual_state_unchanged and actual_hashes_unchanged))
+	var river_manager_public_surface_preserved := bool(config.get("river_manager_public_surface_preserved", false))
+	var flow_handoff := _dictionary_value_as_dictionary(would_handoff_textures, "flow_foam_noise")
+	var flow_handoff_hash := _dictionary_value_as_dictionary(flow_handoff, "hash")
+	var flow_handoff_present := not _hash_entry_missing(flow_handoff_hash)
+	var ok := (
+		bool(staging_report.get("ok", false))
+		and flow_handoff_present
+		and missing_handoff_keys.is_empty()
+		and missing_legacy_keys.is_empty()
+		and actual_state_unchanged
+		and actual_hashes_unchanged
+		and river_manager_ownership_preserved
+		and river_manager_public_surface_preserved
+		and timing_responsiveness_ok
+		and fallback_behavior_ok
+	)
+	return {
+		"ok": ok,
+		"reason": "ok" if ok else "production_replacement_validation_failed_invariants",
+		"marker": FLOWMAP_BACKEND_PRODUCTION_REPLACEMENT_VALIDATION_MARKER,
+		"gate_id": FLOWMAP_BACKEND_REPLACEMENT_GATE_ID,
+		"stage": FLOWMAP_BACKEND_PRODUCTION_REPLACEMENT_VALIDATION_STAGE,
+		"replacement_gate_stage": FLOWMAP_BACKEND_REPLACEMENT_STAGE,
+		"production_replacement_validation_ok": ok,
+		"generated_output_replacement_staging_ok": bool(staging_report.get("ok", false)),
+		"replacement_ready": false,
+		"replacement_promoted": false,
+		"production_output_replaced": false,
+		"output_texture_keys": [],
+		"actual_output_texture_keys": [],
+		"would_replace_texture_keys": staged_keys,
+		"would_handoff_texture_keys": generated_keys,
+		"river_manager_handoff_texture_fields": handoff_fields,
+		"river_manager_handoff_apply_method": "_apply_flowmap_bake_result",
+		"would_handoff_textures": would_handoff_textures,
+		"would_handoff_sources": would_handoff_sources,
+		"changed_texture_keys": staging_report.get("changed_texture_keys", PackedStringArray()),
+		"staged_output_texture_keys": staged_keys,
+		"legacy_sourced_texture_keys": staging_report.get("legacy_sourced_texture_keys", PackedStringArray()),
+		"mixed_sourced_texture_keys": staged_keys,
+		"migrated_channels": PackedStringArray(FLOWMAP_CANONICAL_COMPUTE_MIGRATED_CHANNELS),
+		"legacy_sourced_channels": PackedStringArray(FLOWMAP_CANONICAL_COMPUTE_LEGACY_SOURCED_CHANNELS),
+		"canonical_candidate_source": String(config.get("canonical_candidate_source", "canonical_compute_final_flow_plus_legacy_foam_noise_postprocess")),
+		"actual_river_state_unchanged": actual_state_unchanged,
+		"actual_river_texture_hashes_unchanged": actual_hashes_unchanged,
+		"river_manager_ownership_preserved": river_manager_ownership_preserved,
+		"river_manager_public_surface_preserved": river_manager_public_surface_preserved,
+		"river_manager_writes_generated_resources": true,
+		"compute_backend_writes_generated_resources": false,
+		"fallback_behavior_ok": fallback_behavior_ok,
+		"legacy_fallback_behavior_ok": legacy_fallback_behavior_ok,
+		"gated_replacement_selection_ok": gated_replacement_selection_ok,
+		"fallback_selection": fallback_selection,
+		"timing": timing,
+		"timing_completed": timing_completed,
+		"timing_responsiveness_ok": timing_responsiveness_ok,
+		"max_allowed_frame_gap_ms": max_allowed_frame_gap_ms,
+		"source_signature_version": FLOWMAP_BACKEND_ACTIVE_SOURCE_SIGNATURE_VERSION,
+		"signature_version_while_compute_non_replacing": FLOWMAP_BACKEND_ACTIVE_SOURCE_SIGNATURE_VERSION,
+		"source_signature_policy": "version_29_or_backend_mode_signature_key",
+		"source_signature_policy_ready": FLOWMAP_BACKEND_ACTIVE_SOURCE_SIGNATURE_VERSION >= FLOWMAP_BACKEND_MIN_REPLACING_SIGNATURE_VERSION or FLOWMAP_BACKEND_SOURCE_SIGNATURE_INCLUDES_BACKEND_MODE,
+		"min_replacing_signature_version": FLOWMAP_BACKEND_MIN_REPLACING_SIGNATURE_VERSION,
+		"missing_handoff_keys": missing_handoff_keys,
+		"missing_legacy_keys": missing_legacy_keys
+	}
+
+
+func select_flowmap_backend(config: Dictionary = {}) -> Dictionary:
+	var explicit_selection := config.has(FLOWMAP_BACKEND_CONFIG_KEY)
+	var raw_requested_mode := String(config.get(FLOWMAP_BACKEND_CONFIG_KEY, FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM))
+	var requested_mode := raw_requested_mode
+	var requested_mode_supported := is_flowmap_backend_mode_supported(requested_mode)
+	var replacement_gate := evaluate_canonical_compute_replacement_gate(config)
+	var selected_mode := requested_mode
+	var fallback_applied := false
+	var fallback_reason := ""
+	if not requested_mode_supported:
+		requested_mode = FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM
+		selected_mode = FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM
+		fallback_applied = true
+		fallback_reason = "unsupported_backend_mode"
+	elif requested_mode == FLOWMAP_BACKEND_CANONICAL_COMPUTE_NON_REPLACING:
+		selected_mode = FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM
+		fallback_applied = true
+		fallback_reason = "canonical_compute_non_replacing_is_report_only"
+	elif requested_mode == FLOWMAP_BACKEND_CANONICAL_COMPUTE_REPLACING:
+		if bool(replacement_gate.get("ready", false)):
+			selected_mode = FLOWMAP_BACKEND_CANONICAL_COMPUTE_REPLACING
+		else:
+			selected_mode = FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM
+			fallback_applied = true
+			fallback_reason = "canonical_compute_replacing_not_promoted"
+	var production_output_replaced_by_compute := requested_mode == FLOWMAP_BACKEND_CANONICAL_COMPUTE_REPLACING and selected_mode == FLOWMAP_BACKEND_CANONICAL_COMPUTE_REPLACING
+	var replacement_gate_evidence := _dictionary_value_as_dictionary(replacement_gate, "evidence")
+	return {
+		"config_key": FLOWMAP_BACKEND_CONFIG_KEY,
+		"explicit_selection": explicit_selection,
+		"raw_requested_mode": raw_requested_mode,
+		"requested_mode": requested_mode,
+		"requested_mode_supported": requested_mode_supported,
+		"selected_mode": selected_mode,
+		"default_mode": FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM,
+		"fallback_mode": FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM,
+		"fallback_applied": fallback_applied,
+		"fallback_reason": fallback_reason,
+		"legacy_canvas_item_available": true,
+		"canonical_compute_available_non_replacing": true,
+		"canonical_compute_replacement_ready": bool(replacement_gate.get("replacement_ready", false)),
+		"canonical_compute_replacement_gate_id": String(replacement_gate.get("gate_id", "")),
+		"canonical_compute_replacement_gate_stage": String(replacement_gate.get("stage", "")),
+		"canonical_compute_replacement_gate_ready": bool(replacement_gate.get("ready", false)),
+		"canonical_compute_replacement_gate_blockers": replacement_gate.get("blockers", PackedStringArray()),
+		"canonical_compute_replacement_gate_requirements": replacement_gate.get("requirements", PackedStringArray()),
+		"canonical_compute_replacement_gate": replacement_gate.duplicate(true),
+		"canonical_compute_min_replacing_signature_version": FLOWMAP_BACKEND_MIN_REPLACING_SIGNATURE_VERSION,
+		"production_output_replaced_by_compute": production_output_replaced_by_compute,
+		"source_signature_version": int(replacement_gate_evidence.get("source_signature_version", FLOWMAP_BACKEND_ACTIVE_SOURCE_SIGNATURE_VERSION)),
+		"signature_version_while_compute_non_replacing": FLOWMAP_BACKEND_ACTIVE_SOURCE_SIGNATURE_VERSION,
+		"source_signature_requires_backend_or_version_bump_before_compute_replacement": not bool(replacement_gate.get("source_signature_policy_ready", false))
+	}
+
+
+static func _config_dictionary(config: Dictionary, key: String) -> Dictionary:
+	var value = config.get(key, {})
+	if typeof(value) != TYPE_DICTIONARY:
+		return {}
+	return (value as Dictionary).duplicate(true)
+
+
+static func _dictionary_value_as_dictionary(source: Dictionary, key: String) -> Dictionary:
+	var value = source.get(key, {})
+	if typeof(value) != TYPE_DICTIONARY:
+		return {}
+	return (value as Dictionary).duplicate(true)
+
+
+static func _hash_entry_md5(entry: Dictionary) -> String:
+	return String(entry.get("md5", ""))
+
+
+static func _hash_entry_missing(entry: Dictionary) -> bool:
+	if entry.is_empty():
+		return true
+	var md5 := _hash_entry_md5(entry)
+	return md5.is_empty() or md5 == "absent" or md5 == "unreadable"
+
+
+static func _packed_string_array_has(values: PackedStringArray, target: String) -> bool:
+	for value_variant in values:
+		if String(value_variant) == target:
+			return true
+	return false
+
+
+static func _texture_key_to_handoff_field(texture_key: String) -> String:
+	match texture_key:
+		"flow_foam_noise":
+			return "flow_foam_noise_texture"
+		"dist_pressure":
+			return "dist_pressure_texture"
+		"obstacle_features":
+			return "obstacle_features_texture"
+		"terrain_contact_features":
+			return "terrain_contact_features_texture"
+		"bank_response_features":
+			return "bank_response_features_texture"
+		"water_occupancy":
+			return "water_occupancy_texture"
+	return texture_key + "_texture"
+
+
 func cleanup() -> void:
+	if _compute_backend != null and _compute_backend_in_flight:
+		if _compute_backend.has_method("abort"):
+			_compute_backend.call("abort")
+		_running = false
+		return
+	_cleanup_compute_backend()
 	var renderer := _renderer_instance
 	_renderer_instance = null
 	_renderer_parent = null
@@ -73,6 +556,124 @@ func cleanup() -> void:
 	if renderer.get_parent() != null:
 		renderer.get_parent().remove_child(renderer)
 	renderer.queue_free()
+
+
+func run_non_replacing_compute_backend_probe(config: Dictionary = {}, progress: Callable = Callable(), cancellation: Callable = Callable()) -> Dictionary:
+	if _running:
+		return _make_abort_result("already_running")
+	_running = true
+	_aborted = false
+	_last_abort_reason = ""
+	_warning_callback = config.get("warning_callback", Callable())
+	_cancellation_callback = cancellation
+	_emit_progress(progress, 0.0, "Preparing compute backend")
+	if _is_cancellation_requested(cancellation):
+		return _abort_with_cleanup("cancelled")
+	_compute_backend = RiverFlowmapComputeBackend.new()
+	var compute_config := config.duplicate()
+	if not compute_config.has("warning_callback"):
+		compute_config["warning_callback"] = _warning_callback
+	_compute_backend_in_flight = true
+	var result: Dictionary = await _compute_backend.run_non_replacing_smoke(compute_config, cancellation)
+	_compute_backend_in_flight = false
+	_compute_backend = null
+	_running = false
+	_warning_callback = Callable()
+	_cancellation_callback = Callable()
+	_emit_progress(progress, 1.0, "Compute backend proof finished")
+	return result
+
+
+func run_non_replacing_compute_solve_filter_step_probe(config: Dictionary = {}, progress: Callable = Callable(), cancellation: Callable = Callable()) -> Dictionary:
+	if _running:
+		return _make_abort_result("already_running")
+	_running = true
+	_aborted = false
+	_last_abort_reason = ""
+	_warning_callback = config.get("warning_callback", Callable())
+	_cancellation_callback = cancellation
+	_emit_progress(progress, 0.0, "Preparing compute solve/filter step")
+	if _is_cancellation_requested(cancellation):
+		return _abort_with_cleanup("cancelled")
+	_compute_backend = RiverFlowmapComputeBackend.new()
+	var compute_config := config.duplicate()
+	if not compute_config.has("warning_callback"):
+		compute_config["warning_callback"] = _warning_callback
+	_compute_backend_in_flight = true
+	var result: Dictionary = await _compute_backend.run_non_replacing_solve_filter_step(compute_config, cancellation)
+	_compute_backend_in_flight = false
+	_compute_backend = null
+	_running = false
+	_warning_callback = Callable()
+	_cancellation_callback = Callable()
+	_emit_progress(progress, 1.0, "Compute solve/filter step proof finished")
+	return result
+
+
+func run_non_replacing_compute_solve_filter_stack_probe(config: Dictionary = {}, progress: Callable = Callable(), cancellation: Callable = Callable()) -> Dictionary:
+	if _running:
+		return _make_abort_result("already_running")
+	_running = true
+	_aborted = false
+	_last_abort_reason = ""
+	_warning_callback = config.get("warning_callback", Callable())
+	_cancellation_callback = cancellation
+	_emit_progress(progress, 0.0, "Preparing compute solve/filter stack")
+	if _is_cancellation_requested(cancellation):
+		return _abort_with_cleanup("cancelled")
+	_compute_backend = RiverFlowmapComputeBackend.new()
+	var compute_config := config.duplicate()
+	if not compute_config.has("warning_callback"):
+		compute_config["warning_callback"] = _warning_callback
+	_compute_backend_in_flight = true
+	var result: Dictionary = await _compute_backend.run_non_replacing_solve_filter_stack(compute_config, cancellation)
+	_compute_backend_in_flight = false
+	_compute_backend = null
+	_running = false
+	_warning_callback = Callable()
+	_cancellation_callback = Callable()
+	_emit_progress(progress, 1.0, "Compute solve/filter stack proof finished")
+	return result
+
+
+func run_non_replacing_compute_solve_filter_projection_probe(config: Dictionary = {}, progress: Callable = Callable(), cancellation: Callable = Callable()) -> Dictionary:
+	if _running:
+		return _make_abort_result("already_running")
+	_running = true
+	_aborted = false
+	_last_abort_reason = ""
+	_warning_callback = config.get("warning_callback", Callable())
+	_cancellation_callback = cancellation
+	_emit_progress(progress, 0.0, "Preparing compute solve/filter projection")
+	if _is_cancellation_requested(cancellation):
+		return _abort_with_cleanup("cancelled")
+	_compute_backend = RiverFlowmapComputeBackend.new()
+	var compute_config := config.duplicate()
+	if not compute_config.has("warning_callback"):
+		compute_config["warning_callback"] = _warning_callback
+	_compute_backend_in_flight = true
+	var result: Dictionary = await _compute_backend.run_non_replacing_solve_filter_projection(compute_config, cancellation)
+	_compute_backend_in_flight = false
+	_compute_backend = null
+	_running = false
+	_warning_callback = Callable()
+	_cancellation_callback = Callable()
+	_emit_progress(progress, 1.0, "Compute solve/filter projection proof finished")
+	return result
+
+
+func _abort_compute_backend() -> void:
+	if _compute_backend != null and _compute_backend.has_method("abort"):
+		_compute_backend.call("abort")
+	_compute_backend = null
+	_compute_backend_in_flight = false
+
+
+func _cleanup_compute_backend() -> void:
+	if _compute_backend != null and _compute_backend.has_method("cleanup"):
+		_compute_backend.call("cleanup")
+	_compute_backend = null
+	_compute_backend_in_flight = false
 
 
 func validate_pass_result(label: String, texture: Texture2D) -> Dictionary:
@@ -360,6 +961,11 @@ func process_filter_pass_images(config: Dictionary) -> Dictionary:
 		"padded_texture_size": padded_texture_size,
 		"content_rect": crop_rect,
 		"generation_behavior": String(config.get("generation_behavior", "")),
+		"flowmap_backend_mode": String(config.get("flowmap_backend_mode", FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM)),
+		"flowmap_backend_selection": _config_dictionary(config, "flowmap_backend_selection"),
+		"production_output_replaced": bool(config.get("production_output_replaced", false)),
+		"output_texture_keys": config.get("output_texture_keys", PackedStringArray()),
+		"canonical_compute_replacement_result": _config_dictionary(config, "canonical_compute_replacement_result"),
 		"flow_vector_diagnostics": flow_vector_diagnostics,
 		"foam_support_reduced": foam_support_reduced,
 		"pressure_support_reduced": pressure_support_reduced,
@@ -368,6 +974,12 @@ func process_filter_pass_images(config: Dictionary) -> Dictionary:
 
 
 func run_filter_pass_sequence(config: Dictionary, progress: Callable = Callable(), cancellation: Callable = Callable()) -> Dictionary:
+	var backend_selection := select_flowmap_backend(config)
+	if bool(backend_selection.get("fallback_applied", false)) and bool(backend_selection.get("explicit_selection", false)):
+		_emit_warning(
+			"Waterways: River Flow & Foam canonical compute backend is not production-promoted in R7; using the legacy CanvasItem backend for generated output.",
+			config.get("warning_callback", Callable())
+		)
 	var renderer_setup: Dictionary = await bake(config, progress, cancellation)
 	if not bool(renderer_setup.get("ok", false)):
 		return renderer_setup
@@ -407,6 +1019,8 @@ func run_filter_pass_sequence(config: Dictionary, progress: Callable = Callable(
 
 	var obstacle_avoidance_applied := false
 	var flow_projected_applied := false
+	var production_output_replaced_by_compute := false
+	var canonical_compute_replacement_result := {}
 	var primary_flow_map: Texture2D = null
 	var blurred_foam_map: Texture2D = blank_support_with_margins_texture
 	var blurred_flow_pressure_map: Texture2D = blank_support_with_margins_texture
@@ -511,38 +1125,42 @@ func run_filter_pass_sequence(config: Dictionary, progress: Callable = Callable(
 			if not bool(obstacle_feature_result.get("ok", false)):
 				return obstacle_feature_result
 			obstacle_feature_mask = obstacle_feature_result.get("texture") as Texture2D
-			renderer_instance.set_hdr_2d(true)
-			var divergence_result: Dictionary = await _run_renderer_pass("flow divergence map", renderer_instance, "apply_flow_divergence", [downstream_baseline_with_margins_texture, water_occupancy_mask, flowmap_resolution, bake_atlas_columns])
-			if not bool(divergence_result.get("ok", false)):
-				return divergence_result
-			var divergence_map: Texture2D = divergence_result.get("texture") as Texture2D
-			var pressure_size := Vector2i(downstream_baseline_with_margins_texture.get_size())
-			var neutral_pressure_image := Image.create(pressure_size.x, pressure_size.y, false, Image.FORMAT_RGBAF)
-			neutral_pressure_image.fill(config.get("flow_pressure_seed_color", Color(0.5, 0.0, 0.0, 1.0)) as Color)
-			var pressure_map: Texture2D = ImageTexture.create_from_image(neutral_pressure_image)
-			var flow_projection_strides := _config_array(config, "flow_projection_strides")
-			var flow_projection_iterations_per_stride := int(config.get("flow_projection_iterations_per_stride", 5))
-			var total_jacobi_passes := flow_projection_strides.size() * flow_projection_iterations_per_stride
-			var jacobi_pass_index := 0
-			for stride in flow_projection_strides:
-				_emit_progress(progress, 0.95, "Projecting flow %d/%d (stride %d)" % [jacobi_pass_index, total_jacobi_passes, int(stride)])
-				for iteration in flow_projection_iterations_per_stride:
-					var jacobi_result: Dictionary = await _run_renderer_pass("flow pressure jacobi pass", renderer_instance, "apply_flow_pressure_jacobi", [pressure_map, divergence_map, water_occupancy_mask, float(stride), flowmap_resolution, bake_atlas_columns])
-					if not bool(jacobi_result.get("ok", false)):
-						return jacobi_result
-					pressure_map = jacobi_result.get("texture") as Texture2D
-					jacobi_pass_index += 1
-			var projected_flow_result: Dictionary = await _run_renderer_pass("projected flow map", renderer_instance, "apply_flow_gradient_subtract", [downstream_baseline_with_margins_texture, pressure_map, water_occupancy_mask, flowmap_resolution, bake_atlas_columns])
-			if not bool(projected_flow_result.get("ok", false)):
-				return projected_flow_result
-			var tangent_flow_map: Texture2D = projected_flow_result.get("texture") as Texture2D
-			for tangency_pass in int(config.get("flow_tangency_passes", 2)):
-				var tangent_result: Dictionary = await _run_renderer_pass("boundary tangency flow map", renderer_instance, "apply_flow_boundary_tangency", [tangent_flow_map, water_occupancy_mask, flowmap_resolution, bake_atlas_columns])
-				if not bool(tangent_result.get("ok", false)):
-					return tangent_result
-				tangent_flow_map = tangent_result.get("texture") as Texture2D
-			renderer_instance.set_hdr_2d(false)
-			primary_flow_map = tangent_flow_map
+			if String(backend_selection.get("selected_mode", FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM)) == FLOWMAP_BACKEND_CANONICAL_COMPUTE_REPLACING:
+				canonical_compute_replacement_result = await _run_canonical_compute_replacement_projection_flow(
+					downstream_baseline_with_margins_texture,
+					water_occupancy_mask,
+					flowmap_resolution,
+					bake_atlas_columns,
+					config,
+					cancellation
+				)
+				if _is_cancellation_requested(cancellation):
+					return _abort_with_cleanup("cancelled")
+				if bool(canonical_compute_replacement_result.get("ok", false)):
+					primary_flow_map = canonical_compute_replacement_result.get("texture") as Texture2D
+					production_output_replaced_by_compute = primary_flow_map != null
+				else:
+					backend_selection = _make_runtime_backend_fallback_selection(
+						backend_selection,
+						String(canonical_compute_replacement_result.get("reason", "canonical_compute_replacement_failed"))
+					)
+					_emit_warning(
+						"Waterways: River Flow & Foam canonical compute replacement was unavailable during this bake; using the legacy CanvasItem projection.",
+						config.get("warning_callback", Callable())
+					)
+			if primary_flow_map == null:
+				var legacy_projection_result: Dictionary = await _run_legacy_canvas_projection_flow(
+					renderer_instance,
+					downstream_baseline_with_margins_texture,
+					water_occupancy_mask,
+					flowmap_resolution,
+					bake_atlas_columns,
+					config,
+					progress
+				)
+				if not bool(legacy_projection_result.get("ok", false)):
+					return legacy_projection_result
+				primary_flow_map = legacy_projection_result.get("texture") as Texture2D
 			obstacle_avoidance_applied = true
 			flow_projected_applied = true
 		else:
@@ -604,6 +1222,8 @@ func run_filter_pass_sequence(config: Dictionary, progress: Callable = Callable(
 	cleanup()
 	return {
 		"ok": true,
+		"flowmap_backend_mode": String(backend_selection.get("selected_mode", FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM)),
+		"flowmap_backend_selection": backend_selection.duplicate(true),
 		"flow_foam_noise_texture": flow_foam_noise_result.get("texture") as Texture2D,
 		"dist_pressure_texture": dist_pressure_result.get("texture") as Texture2D,
 		"obstacle_feature_mask": obstacle_feature_mask,
@@ -612,7 +1232,10 @@ func run_filter_pass_sequence(config: Dictionary, progress: Callable = Callable(
 		"support_fallback_applied": support_fallback_applied,
 		"collision_support_filters_ran": run_collision_support_filters,
 		"obstacle_avoidance_applied": obstacle_avoidance_applied,
-		"flow_projected": flow_projected_applied
+		"flow_projected": flow_projected_applied,
+		"production_output_replaced": production_output_replaced_by_compute,
+		"output_texture_keys": PackedStringArray(FLOWMAP_CANONICAL_COMPUTE_STAGED_OUTPUT_TEXTURE_KEYS) if production_output_replaced_by_compute else PackedStringArray(),
+		"canonical_compute_replacement_result": canonical_compute_replacement_result.duplicate(true)
 	}
 
 
@@ -682,6 +1305,152 @@ func _run_bank_response_feature_mask(renderer_instance: Node, source_flow: Textu
 			atlas_columns
 		]
 	)
+
+
+func _run_legacy_canvas_projection_flow(renderer_instance: Object, baseline_flow_texture: Texture2D, occupancy_texture: Texture2D, flowmap_resolution: float, bake_atlas_columns: float, config: Dictionary, progress: Callable) -> Dictionary:
+	if renderer_instance == null or not is_instance_valid(renderer_instance):
+		return {
+			"ok": false,
+			"reason": "renderer_instance_missing",
+			"mode": FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM
+		}
+	if renderer_instance.has_method("set_hdr_2d"):
+		renderer_instance.set_hdr_2d(true)
+	var divergence_result: Dictionary = await _run_renderer_pass("flow divergence map", renderer_instance, "apply_flow_divergence", [baseline_flow_texture, occupancy_texture, flowmap_resolution, bake_atlas_columns])
+	if not bool(divergence_result.get("ok", false)):
+		_set_renderer_hdr_2d(renderer_instance, false)
+		return divergence_result
+	var divergence_map: Texture2D = divergence_result.get("texture") as Texture2D
+	var pressure_size := Vector2i(baseline_flow_texture.get_size())
+	var neutral_pressure_image := Image.create(pressure_size.x, pressure_size.y, false, Image.FORMAT_RGBAF)
+	neutral_pressure_image.fill(config.get("flow_pressure_seed_color", Color(0.5, 0.0, 0.0, 1.0)) as Color)
+	var pressure_map: Texture2D = ImageTexture.create_from_image(neutral_pressure_image)
+	var flow_projection_strides := _config_array(config, "flow_projection_strides")
+	var flow_projection_iterations_per_stride := int(config.get("flow_projection_iterations_per_stride", 5))
+	var total_jacobi_passes := flow_projection_strides.size() * flow_projection_iterations_per_stride
+	var jacobi_pass_index := 0
+	for stride in flow_projection_strides:
+		_emit_progress(progress, 0.95, "Projecting flow %d/%d (stride %d)" % [jacobi_pass_index, total_jacobi_passes, int(stride)])
+		for iteration in flow_projection_iterations_per_stride:
+			var jacobi_result: Dictionary = await _run_renderer_pass("flow pressure jacobi pass", renderer_instance, "apply_flow_pressure_jacobi", [pressure_map, divergence_map, occupancy_texture, float(stride), flowmap_resolution, bake_atlas_columns])
+			if not bool(jacobi_result.get("ok", false)):
+				_set_renderer_hdr_2d(renderer_instance, false)
+				return jacobi_result
+			pressure_map = jacobi_result.get("texture") as Texture2D
+			jacobi_pass_index += 1
+	var projected_flow_result: Dictionary = await _run_renderer_pass("projected flow map", renderer_instance, "apply_flow_gradient_subtract", [baseline_flow_texture, pressure_map, occupancy_texture, flowmap_resolution, bake_atlas_columns])
+	if not bool(projected_flow_result.get("ok", false)):
+		_set_renderer_hdr_2d(renderer_instance, false)
+		return projected_flow_result
+	var tangent_flow_map: Texture2D = projected_flow_result.get("texture") as Texture2D
+	for tangency_pass in int(config.get("flow_tangency_passes", 2)):
+		var tangent_result: Dictionary = await _run_renderer_pass("boundary tangency flow map", renderer_instance, "apply_flow_boundary_tangency", [tangent_flow_map, occupancy_texture, flowmap_resolution, bake_atlas_columns])
+		if not bool(tangent_result.get("ok", false)):
+			_set_renderer_hdr_2d(renderer_instance, false)
+			return tangent_result
+		tangent_flow_map = tangent_result.get("texture") as Texture2D
+	_set_renderer_hdr_2d(renderer_instance, false)
+	return {
+		"ok": true,
+		"reason": "ok",
+		"mode": FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM,
+		"texture": tangent_flow_map,
+		"production_output_replaced": false,
+		"output_texture_keys": PackedStringArray()
+	}
+
+
+func _run_canonical_compute_replacement_projection_flow(baseline_flow_texture: Texture2D, occupancy_texture: Texture2D, flowmap_resolution: float, bake_atlas_columns: float, config: Dictionary, cancellation: Callable) -> Dictionary:
+	var result := {
+		"ok": false,
+		"reason": "not_run",
+		"mode": FLOWMAP_BACKEND_CANONICAL_COMPUTE_REPLACING,
+		"production_output_replaced": false,
+		"output_texture_keys": PackedStringArray(),
+		"migrated_channels": PackedStringArray(FLOWMAP_CANONICAL_COMPUTE_MIGRATED_CHANNELS),
+		"legacy_sourced_channels": PackedStringArray(FLOWMAP_CANONICAL_COMPUTE_LEGACY_SOURCED_CHANNELS)
+	}
+	var flow_image := _texture_to_image(baseline_flow_texture)
+	var occupancy_image := _texture_to_image(occupancy_texture)
+	if flow_image == null or occupancy_image == null:
+		result["reason"] = "input_images_missing_or_empty"
+		return result
+	if flow_image.get_size() != occupancy_image.get_size():
+		result["reason"] = "input_image_size_mismatch"
+		result["flow_size"] = flow_image.get_size()
+		result["occupancy_size"] = occupancy_image.get_size()
+		return result
+	var compute_config := config.duplicate(true)
+	compute_config["flow_image"] = flow_image
+	compute_config["occupancy_image"] = occupancy_image
+	compute_config["texture_width"] = flow_image.get_width()
+	compute_config["texture_height"] = flow_image.get_height()
+	compute_config["source_size"] = flowmap_resolution
+	compute_config["atlas_columns"] = maxi(1, int(round(bake_atlas_columns)))
+	compute_config["sync_wait_frames"] = maxi(0, int(config.get("sync_wait_frames", 3)))
+	if not compute_config.has("frame_wait_source") and _renderer_parent != null and is_instance_valid(_renderer_parent):
+		compute_config["frame_wait_source"] = _renderer_parent
+	if not compute_config.has("warning_callback"):
+		compute_config["warning_callback"] = config.get("warning_callback", _warning_callback)
+	_compute_backend = RiverFlowmapComputeBackend.new()
+	_compute_backend_in_flight = true
+	var compute_result: Dictionary = await _compute_backend.run_non_replacing_solve_filter_projection(compute_config, cancellation)
+	_compute_backend_in_flight = false
+	_cleanup_compute_backend()
+	if not bool(compute_result.get("ok", false)):
+		compute_result["mode"] = FLOWMAP_BACKEND_CANONICAL_COMPUTE_REPLACING
+		compute_result["production_output_replaced"] = false
+		compute_result["output_texture_keys"] = PackedStringArray()
+		return compute_result
+	var final_flow_image := compute_result.get("_debug_final_flow_image", null) as Image
+	if final_flow_image == null or final_flow_image.is_empty():
+		compute_result["ok"] = false
+		compute_result["reason"] = "final_flow_image_missing"
+		compute_result["mode"] = FLOWMAP_BACKEND_CANONICAL_COMPUTE_REPLACING
+		compute_result["production_output_replaced"] = false
+		compute_result["output_texture_keys"] = PackedStringArray()
+		return compute_result
+	var final_flow_texture := ImageTexture.create_from_image(final_flow_image)
+	if final_flow_texture == null:
+		compute_result["ok"] = false
+		compute_result["reason"] = "final_flow_texture_create_failed"
+		compute_result["mode"] = FLOWMAP_BACKEND_CANONICAL_COMPUTE_REPLACING
+		compute_result["production_output_replaced"] = false
+		compute_result["output_texture_keys"] = PackedStringArray()
+		return compute_result
+	compute_result["mode"] = FLOWMAP_BACKEND_CANONICAL_COMPUTE_REPLACING
+	compute_result["texture"] = final_flow_texture
+	compute_result["production_output_replaced"] = true
+	compute_result["output_texture_keys"] = PackedStringArray(FLOWMAP_CANONICAL_COMPUTE_STAGED_OUTPUT_TEXTURE_KEYS)
+	compute_result["migrated_channels"] = PackedStringArray(FLOWMAP_CANONICAL_COMPUTE_MIGRATED_CHANNELS)
+	compute_result["legacy_sourced_channels"] = PackedStringArray(FLOWMAP_CANONICAL_COMPUTE_LEGACY_SOURCED_CHANNELS)
+	compute_result["candidate_source"] = "canonical_compute_final_flow_plus_legacy_foam_noise_postprocess"
+	return compute_result
+
+
+func _make_runtime_backend_fallback_selection(selection: Dictionary, reason: String) -> Dictionary:
+	var updated := selection.duplicate(true)
+	updated["selected_mode"] = FLOWMAP_BACKEND_LEGACY_CANVAS_ITEM
+	updated["fallback_applied"] = true
+	updated["fallback_reason"] = "canonical_compute_replacement_runtime_fallback:" + reason
+	updated["production_output_replaced_by_compute"] = false
+	return updated
+
+
+func _set_renderer_hdr_2d(renderer_instance: Object, enabled: bool) -> void:
+	if renderer_instance == null or not is_instance_valid(renderer_instance):
+		return
+	if renderer_instance.has_method("set_hdr_2d"):
+		renderer_instance.set_hdr_2d(enabled)
+
+
+func _texture_to_image(texture: Texture2D) -> Image:
+	if texture == null:
+		return null
+	var image := texture.get_image()
+	if image == null or image.is_empty():
+		return null
+	return image
 
 
 func _emit_progress(progress: Callable, percentage: float, label: String) -> void:

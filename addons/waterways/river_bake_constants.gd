@@ -18,8 +18,10 @@ const ROW_TYPE_WATER_HELPER := "water_helper"
 
 const SOURCE_SIGNATURE_FLOAT_STEP := 0.0001
 
-# v28 is intentionally preserved for R6.2 shadow extraction.
-const RIVER_BAKE_SOURCE_SIGNATURE_VERSION := 28
+# v29 (2026-06-15, refactor track R7): canonical compute replacement can
+# intentionally change generated flow_foam_noise.rg, so pre-R7 replacement
+# bakes are stale and need a rebake.
+const RIVER_BAKE_SOURCE_SIGNATURE_VERSION := 29
 const FLOW_OFFSET_NOISE_TEXTURE_PATH := "res://addons/waterways/textures/flow_offset_noise.png"
 
 const RIVER_FILTERED_FEATURE_EDGE_SYNC_DEPTH_PIXELS := 1
@@ -177,7 +179,7 @@ static func get_constant_rows() -> Array:
 			"type": ROW_TYPE_RAW,
 			"signature_key": "version",
 			"reason": "Bumps when bake compatibility changes.",
-			"review_decision": "Signature row; R6.2 preserves version 28.",
+			"review_decision": "Signature row; R7 bumps to version 29 before any canonical compute replacement can change generated output.",
 		},
 		{
 			"name": "water_helper_storage_version",

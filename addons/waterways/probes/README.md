@@ -157,6 +157,119 @@ synchronous postprocess/result-application strategy checks. Marker:
 `R6_R61H_ABORT_MATRIX_OK`. Expected warnings include duplicate request, missing
 renderer scene, forced invalid output, and the known Demo invalid UID warning.
 
+### `r7_bake_baseline_probe.gd` - R7 low-cost legacy baseline (window required)
+
+River-refactor R7. Bakes `r7_low_cost_bake_fixture.tscn` without saving
+generated resources and records the legacy pass trace, timing, heartbeat,
+metadata, texture hashes, and RiverManager result handoff under
+`.codex-research/r7-baselines/legacy/`. Marker: `R7_LEGACY_BASELINE_OK`.
+
+### `r7_texture_format_roundtrip_probe.gd` - R7 tolerance and format proof (window required)
+
+River-refactor R7. Confirms the recorded legacy baseline file exists, rebakes
+the low-cost fixture twice for self/rerun tolerance metrics, then creates real
+RGBA16F/RGBA32F RenderingDevice storage textures with storage/sampling/copy
+usage. The probe dispatches representative writes, reads the storage image in a
+second dispatch, converts readback bytes to `Image`/`ImageTexture`, and records
+decoded flow, pressure, and class-mask metrics. Markers:
+`R7_TOLERANCE_SELF_COMPARE_OK` and `R7_TEXTURE_FORMAT_ROUNDTRIP_OK`.
+
+### `r7_rendering_device_sync_probe.gd` - R7 RD sync/readback stress (window required)
+
+River-refactor R7. Stresses deterministic storage-buffer ping-pong dispatches,
+stale binding/resource reuse, intra-list dependent dispatches with and without
+`compute_list_add_barrier()`, delayed single-submit/wait/sync readback, attempted
+async readback, and idempotent standalone RID cleanup. Marker:
+`R7_RENDERING_DEVICE_SYNC_OK`. The recorded R7 run selects delayed sync/readback;
+async readback is not selected because its callback did not arrive.
+
+### `r7_compute_backend_skeleton_probe.gd` - R7 non-replacing compute backend skeleton (window required)
+
+River-refactor R7. Exercises the production compute backend skeleton owned by
+`RiverFlowmapBaker` without replacing generated bake output. The probe records
+local RenderingDevice setup, format/limit preflight, single-submit/wait/sync
+storage-buffer readback, idempotent cleanup/abort calls, and a RiverManager
+texture-state guard on the low-cost fixture. Marker:
+`R7_COMPUTE_BACKEND_SKELETON_OK`.
+
+### `r7_compute_solve_filter_step_probe.gd` - R7 isolated compute solve/filter step (window required)
+
+River-refactor R7. Runs the low-cost legacy fixture bake in memory, hashes the
+RiverManager-owned generated textures, then exercises a non-replacing
+`RiverFlowmapBaker` compute entry point for one production-shaped pressure
+Jacobi solve step. The compute output is compared against a deterministic CPU
+reference and discarded; the probe verifies the legacy RiverManager texture
+state and hashes remain unchanged. Marker:
+`R7_COMPUTE_SOLVE_FILTER_STEP_OK`.
+
+### `r7_compute_solve_filter_stack_probe.gd` - R7 compute pressure-Jacobi stack (window required)
+
+River-refactor R7. Runs the low-cost legacy fixture bake in memory, hashes the
+RiverManager-owned generated textures, then exercises a non-replacing
+`RiverFlowmapBaker` compute entry point for the production-shaped pressure
+Jacobi stack and non-replacing projection diagnostics. The proof uses
+canonical ping-pong RGBA32F pressure storage textures, the real
+stride/iteration schedule, intra-list compute barriers, delayed sync/readback,
+legacy parity diagnostics, and an automated canonical-compute acceptance gate.
+The probe verifies the legacy RiverManager texture state and hashes remain
+unchanged, writes canonical review PNGs, and keeps default generated bake
+replacement disabled. Markers: `R7_COMPUTE_SOLVE_FILTER_STACK_OK` and
+`R7_COMPUTE_CANONICAL_ACCEPTANCE_V1_AUTOMATED_OK`.
+
+### `r7_compute_cleanup_responsiveness_probe.gd` - R7 cleanup, heartbeat, and flow-speed coverage (window required)
+
+River-refactor R7. Exercises a non-replacing canonical compute projection with
+process-frame heartbeat timing, cancels a second projection after compute
+resources are created to prove cleanup reports zero owned RIDs and a released
+local RenderingDevice, and runs neutral plus non-neutral low-cost legacy bakes
+to prove `flow speed scale map` executes only for non-neutral `flow_speeds`.
+The probe keeps production output replacement disabled. Marker:
+`R7_COMPUTE_CLEANUP_RESPONSIVENESS_OK`.
+
+### `r7_compute_selection_abort_probe.gd` - R7 backend selection and active abort cleanup (window required)
+
+River-refactor R7. Verifies the explicit `flowmap_backend_mode` selection
+contract: legacy CanvasItem remains the generated-output default/fallback,
+canonical compute is available only as a non-replacing report path, replacing
+compute falls back until the required replacement evidence is supplied, and
+source signature version is 29 for the replacement boundary. It also verifies
+`R7_CANONICAL_COMPUTE_REPLACEMENT_GATE_V1` stays in
+`report_only_non_replacing` with `ready=false`, minimum replacing signature
+version 29, and missing-evidence blockers when staging/production evidence is
+not supplied. The probe also runs canonical compute to completion, then
+interrupts in-flight projection after submit through baker abort plus immediate
+cleanup, owner free, and scene close. Each interrupted path must return
+cancelled with zero owned RIDs, a released local RenderingDevice, no unsynced
+submit state, no output texture keys, and `production_output_replaced=false`.
+Markers:
+`R7_COMPUTE_SELECTION_ABORT_OK` and the separate surface comparison
+`R7_R6_SURFACE_PROPERTY_DIFF_OK`.
+
+### `r7_compute_generated_output_replacement_staging_probe.gd` - R7 generated-output replacement staging (window required)
+
+River-refactor R7. Runs the low-cost legacy fixture bake, assembles the
+canonical compute candidate for `flow_foam_noise`, and asks
+`RiverFlowmapBaker` for the report-only replacement staging map. The report
+names `flow_foam_noise` as the staged replacement key, records before/after
+hashes, keeps foam/noise channels plus the other generated textures
+legacy-sourced, verifies RiverManager state and texture hashes remain
+unchanged, and proves `canonical_compute_replacing` still falls back to legacy
+until production replacement validation evidence is accepted. Marker:
+`R7_COMPUTE_GENERATED_OUTPUT_REPLACEMENT_STAGING_OK`.
+
+### `r7_compute_production_replacement_validation_probe.gd` - R7 production replacement validation (window required)
+
+River-refactor R7. Reuses the generated-output staging capture path, then
+builds the report-only production replacement handoff map that RiverManager
+would receive if canonical compute replacement were later promoted. The report
+keeps actual RiverManager state and generated texture hashes unchanged, records
+timing/responsiveness for the non-replacing pipeline, preserves the delayed
+single-submit/wait/sync/readback path, proves `canonical_compute_replacing`
+selects compute when all replacement gate evidence is supplied, and includes a
+direct baker runtime smoke that reports only `flow_foam_noise` while leaving
+RiverManager state and hashes unchanged. Marker:
+`R7_COMPUTE_PRODUCTION_REPLACEMENT_VALIDATION_OK`.
+
 ### `distmap_neutral_binding_probe.gd` — null-distmap neutral binding (headless OK)
 
 River-refactor R0.7. A fresh RiverManager binds the neutral `dist_pressure`
@@ -228,3 +341,15 @@ copies metadata/settings/signatures while restoring default channel/import
 metadata. Marker: `R5_BEHAVIOR_PRESERVATION_PROBE_OK`. Expected warning: the
 width-padding assertion intentionally triggers the existing "too few entries"
 sanitizer warning.
+
+### `r7_compute_representative_visual_probe.gd` - R7 canonical material/debug visual evidence (window required)
+
+River-refactor R7. Runs the canonical non-replacing projection, assembles the
+review candidate `flow_foam_noise` texture from canonical RG plus legacy
+foam/noise channels, temporarily binds it to the live river material, captures
+material and top-down debug screenshots, writes texture-space crops around the
+known `(82, 47)`, `(61, 67)`, and tile-5 `(42, 63)` neighborhoods, then
+restores the legacy material binding. The probe asserts RiverManager generated
+texture state and hashes stay unchanged, source signature version is 29,
+output texture keys stay empty, and `production_output_replaced=false`. Marker:
+`R7_COMPUTE_REPRESENTATIVE_VISUALS_OK`.
