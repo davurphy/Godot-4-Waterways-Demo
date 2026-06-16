@@ -20,6 +20,7 @@ const SHAPE_SMOOTHNESS_MAX := 5.0
 const FLOW_VECTOR_NEAR_NEUTRAL_THRESHOLD := 0.02
 const POLYGON_SHAPE_AABB_EPSILON := 0.0001
 const POLYGON_HULL_PLANE_EPSILON := 0.0001
+const WATERLINE_COLLISION_CONTACT_HALF_BAND := 0.08
 
 static var _polygon_shape_local_aabb_cache: Dictionary = {}
 static var _convex_shape_planes_cache: Dictionary = {}
@@ -1083,6 +1084,25 @@ static func _intersects_collision_shapes_segment(collision_shapes: Array, from: 
 	return false
 
 
+static func _has_collision_waterline_contact(space_state: PhysicsDirectSpaceState3D, collision_shapes: Array, water_position: Vector3, raycast_layers: int, half_band: float = WATERLINE_COLLISION_CONTACT_HALF_BAND) -> bool:
+	var safe_half_band := maxf(0.0, half_band)
+	var from := water_position + Vector3.UP * safe_half_band
+	var to := water_position - Vector3.UP * safe_half_band
+	if _intersects_collision_shapes_segment(collision_shapes, from, to):
+		return true
+	if space_state == null or raycast_layers == 0:
+		return false
+	var query_down := PhysicsRayQueryParameters3D.create(from, to)
+	query_down.collision_mask = raycast_layers
+	query_down.hit_from_inside = true
+	if space_state.intersect_ray(query_down):
+		return true
+	var query_up := PhysicsRayQueryParameters3D.create(to, from)
+	query_up.collision_mask = raycast_layers
+	query_up.hit_from_inside = true
+	return not space_state.intersect_ray(query_up).is_empty()
+
+
 static func intersect_collision_shape_segment(collision_shape: CollisionShape3D, from: Vector3, to: Vector3) -> Variant:
 	return _intersect_collision_shape_segment(collision_shape, from, to)
 
@@ -1511,13 +1531,14 @@ static func generate_collisionmap(image : Image, mesh_instance : MeshInstance3D,
 			elif result_up or result_down:
 				# Physics rays carry facing info: an up-ray whose first hit is an
 				# underside means the geometry hangs above the water here, so it
-				# must not bake as a flow obstacle.
-				if not up_hit_frontface and result_down:
+				# must not bake as a flow obstacle. A down-ray hit also needs
+				# waterline contact; otherwise wide tops/overhangs remove open water.
+				if not up_hit_frontface and result_down and _has_collision_waterline_contact(space_state, direct_collision_shapes, real_pos, raycast_layers):
 					image.set_pixel(x, y, Color(1.0, 1.0, 1.0))
-			elif _intersects_collision_shapes_segment(direct_collision_shapes, real_pos_up, real_pos):
-				# Direct shape-segment fallback for contexts where the physics
-				# space reports nothing; it has no facing info, so it cannot
-				# exempt overhangs.
+			elif _has_collision_waterline_contact(space_state, direct_collision_shapes, real_pos, raycast_layers):
+				# Direct/short physics fallback for contexts where the full-height
+				# physics rays report nothing. It is deliberately limited to the
+				# waterline so upper-only geometry cannot claim the water column.
 				image.set_pixel(x, y, Color(1.0, 1.0, 1.0))
 	return image
 

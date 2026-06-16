@@ -159,7 +159,9 @@ const BAKE_CHANNEL_SATURATION_EPSILON := 0.02
 # v29 (2026-06-15, refactor track R7): canonical compute replacement can
 # intentionally change generated flow_foam_noise.rg, so pre-R7 replacement
 # bakes are stale and need a rebake.
-const RIVER_BAKE_SOURCE_SIGNATURE_VERSION := 29
+# v30 (2026-06-15): collision occupancy now requires waterline contact for
+# top-down hits, so old overhang/wide-top bakes are stale.
+const RIVER_BAKE_SOURCE_SIGNATURE_VERSION := 30
 # Shader parameters that displace VERTEX.y upward; their sum is the headroom
 # added to the mesh's custom AABB.
 const DISPLACEMENT_AABB_SHADER_PARAMETERS: Array[String] = ["pillow_terrain_height", "pillow_obstruction_height"]
