@@ -5,12 +5,12 @@ Each task should be independently reviewable.
 
 ## Current Truth
 
-- Current status: Waterline overhang gap classified, patched, rebaked by the user, and visually resolved at the reported locations.
-- Current implementation slice: waterline-contact gating for collision occupancy; bank-flow issue remains classification-only.
-- Remaining open task count: 3.
-- Last passing validation: 2026-06-16 user rebaked the affected river after the code fix and reported that the red-circled missing-water regions are resolved; 2026-06-15 `waterline_occupancy_probe.gd` after patch reported `current_upper_open=0` at `Cliffs/cliff2`.
-- Next recommended action: classify the reported bank-inward-flow issue with focused magnitude/location evidence.
-- Known deferred work: focused bank-inward-flow classification and any generated-resource hygiene the user wants after their rebake.
+- Current status: Large waterline overhang gaps were classified, patched, rebaked by the user, and improved; smaller residual holes remain around objects and river banks and are noticeably view-angle dependent.
+- Current implementation slice: waterline-contact gating for collision occupancy is complete; residual angle-dependent holes and bank-flow issue remain classification-only.
+- Remaining open task count: 4.
+- Last passing validation: 2026-06-15 `waterline_occupancy_probe.gd` after patch reported `current_upper_open=0` at `Cliffs/cliff2`; 2026-06-16 user rebake resolved the large red-circled missing-water regions but exposed smaller angle-dependent gaps.
+- Next recommended action: collect multi-angle screenshots/debug views for the residual small holes, then classify them as shader/depth/clip artifact, remaining occupancy false positive, legitimate collider/bank footprint, mesh/normal issue, stale generated data, or another edge case.
+- Known deferred work: residual angle-dependent hole classification, focused bank-inward-flow classification, and any generated-resource hygiene the user wants after their rebake.
 
 ## Open Work
 
@@ -43,6 +43,9 @@ Use this section as the canonical checklist for unfinished work. When items clos
 - [x] Classify each reported obstacle gap.
   - Validate: label as occupancy false positive, legitimate collider footprint, stale bake, shader clip, debug artifact, or unknown.
 
+- [ ] Classify residual angle-dependent water holes near objects and river banks.
+  - Validate: capture the same small gaps from at least two camera directions plus relevant debug/occupancy views, then label the owning layer.
+
 - [ ] Classify each reported bank inward patch.
   - Validate: label as baked-flow defect, runtime shader defect, debug-view artifact, legitimate local behavior, stale bake, seam/tile issue, or unknown.
 
@@ -54,7 +57,7 @@ Use this section as the canonical checklist for unfinished work. When items clos
 
 - [ ] Perform final human-assisted visual validation.
   - Validate: before/after screenshots at the same locations show the expected correction and no new obvious regression.
-  - Status: waterline overhang gap passed after user rebake on 2026-06-16; bank-flow issue still needs its own final validation if fixed.
+  - Status: large waterline overhang gap passed after user rebake on 2026-06-16; smaller angle-dependent holes and bank-flow issue still need their own final validation if fixed.
 
 ## Setup
 

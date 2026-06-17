@@ -10,10 +10,10 @@
 
 ## Current Validation Snapshot
 
-- Overall status: Waterline overhang gap classified, patched, rebaked by the user, and visually resolved; bank-inward-flow issue remains unclassified.
+- Overall status: Large waterline overhang gaps were classified, patched, rebaked by the user, and improved/resolved at the original locations; smaller residual holes remain around objects and river banks and are view-angle dependent.
 - Last automated pass: 2026-06-15 focused `waterline_occupancy_probe.gd` pass plus safe existing probe pass.
-- Last human-assisted pass: 2026-06-16 user rebaked the affected river after the patch and reported the red-circled missing-water regions are resolved.
-- Highest-risk unproven behavior: whether the separate bank-inward-flow report is real baked flow, runtime/debug display, stale data, or expected local behavior.
+- Last human-assisted pass: 2026-06-16 user rebaked the affected river after the patch, reported the large red-circled missing-water regions resolved, then reported smaller remaining holes that become noticeable only from certain camera/viewing angles.
+- Highest-risk unproven behavior: whether the residual small holes are shader/depth/clip artifacts, remaining occupancy false positives, legitimate collider/bank footprints, mesh/normal issues, stale generated data, or another view-dependent rendering edge case.
 - Known unreliable local check or environment caveat: headless checks cannot prove visible river rendering, shader visuals, viewport debug views, or user screenshot equivalence. `river_source_image_hash_probe.gd` timed out after 120s on 2026-06-15 and needs follow-up before relying on it.
 
 ## Validation Matrix
@@ -25,16 +25,18 @@
 | Screenshot evidence mapped | Evidence inventory from user screenshots | Human-assisted | Each screenshot has scene, view mode, symptom, bake freshness, and location | Pass for waterline issue: three red-circled normal-view screenshots showed missing water under overhangs in Demo near `Cliffs/cliff2`; user later rebaked and confirmed resolution | 2026-06-16 | User/Agent |
 | Obstacle gap classified | Existing diagnostics or `waterline_occupancy_probe.gd` | Console/windowed as needed | Gap labeled by owning layer | Classified: collision occupancy false positive from top-down/down-ray hits over open waterline | 2026-06-15 | Agent |
 | False-positive occupancy does not include open waterline | `waterline_occupancy_probe.gd` | Console/windowed as needed | Suspect solid texels reported with provenance and local images | Pass: probe after patch showed `current_upper_open 259 -> 0`; user rebake then resolved visible water gaps | 2026-06-16 | Agent/User |
+| Residual angle-dependent water holes classified | Multi-angle screenshots plus occupancy/debug comparisons | Human-assisted + probes | Same spot either remains solid in bake data or varies only by view/shader/depth behavior | New report: smaller holes remain around objects and banks, visible only from some directions; not yet classified | 2026-06-16 | User/Agent |
 | True solids remain clipped | Existing obstacle projection/occupancy checks | Windowed if rebaking/readback | No water inside true solids; prior pass markers still valid | Unrun | 2026-06-15 | Agent/User |
 | Bank inward flow classified | `bank_inward_flow_probe.gd` or equivalent | Console/windowed as needed | Isolated inward vectors listed with magnitude and location | Partial generic probe only: arrow outlier probes show low-speed display outliers on Demo bakes, but reported bank locations are unknown | 2026-06-15 | Agent |
 | Debug-view artifact ruled in/out | Compare saved flow data to `river_debug.gdshader` output | Human visible plus probe | Low-magnitude or solid-center display issues identified | Unrun | 2026-06-15 | Agent/User |
-| Final visual result | Same camera screenshots before/after | Human-assisted Godot editor/runtime | Gaps/patches corrected or documented as expected behavior | Pass for missing-water issue after user rebake; bank-flow final visual not applicable until classified/fixed | 2026-06-16 | User |
+| Final visual result | Same camera screenshots before/after | Human-assisted Godot editor/runtime | Gaps/patches corrected or documented as expected behavior | Partial: large red-circled overhang gaps improved/resolved after rebake, but smaller angle-dependent holes remain | 2026-06-16 | User |
 | Regression coverage | Relevant existing obstacle/seam/system-flow probes | Console/windowed as needed | Existing pass markers remain passing | Pass on safe probes: occupancy inspect, arrow outlier, seam, and system-flow compare with `allow_stale=1`; saved resources are stale after signature v30 | 2026-06-15 | Agent |
 
 ## Premise and Interpretation Checks
 
 - Expected behavior that could look like a bug:
   - Water is removed inside an actual collision footprint even if the visible mesh looks narrower at the waterline.
+  - A tiny exposed bank/object edge may appear or disappear as the camera angle changes because of shader depth fade, alpha/depth ordering, surface normals, or terrain/mesh intersection.
   - A debug arrow points inward where flow magnitude is nearly zero, making direction visually overconfident.
   - Bank-adjacent flow turns inward because the local spline/bank geometry genuinely bends that way.
 - Scene geometry, stale resources, generated data, or editor/runtime state to rule out:
@@ -52,7 +54,7 @@
 - What the agent should say to the user if that evidence appears:
   - State that the screenshot is real, but the root cause is scene/collider data, stale bake, or visualization rather than the suspected algorithm; show the smallest supporting evidence.
 - Quick falsifying check before patching:
-  - Fresh rebake plus occupancy/FLOW_ARROWS/normal-view captures at one representative obstacle gap and one representative bank spot.
+  - Fresh rebake plus occupancy/FLOW_ARROWS/normal-view captures at one representative residual small hole from multiple viewing angles and one representative bank spot.
 
 ## Automated Checks
 
@@ -106,7 +108,7 @@ Use this by default for visible Godot editor checks, viewport interaction, scene
 When requesting this validation, the agent must put the exact request in the chat message so the user does not have to open this file to discover what to run.
 
 - Request to user:
-  - Please post each screenshot with the scene name, normal/debug view mode, whether the river was freshly rebaked, and whether the screenshot is before or after any local changes.
+  - Please post each screenshot with the scene name, normal/debug view mode, whether the river was freshly rebaked, whether the screenshot is before or after any local changes, and whether the same spot changes when viewed from another angle.
 - Exact scene, command, or workflow to run:
   - Open the reported scene, select the river, capture normal view and relevant debug views at the same camera location: occupancy/solid mask if available, FLOW_ARROWS or effective flow direction, flow strength, terrain contact/protrusion, and bank response.
 - Plugin state required:
@@ -114,7 +116,7 @@ When requesting this validation, the agent must put the exact request in the cha
 - Console output or errors to relay back:
   - Any bake warnings, stale-resource warnings, parser errors, or shader errors.
 - Screenshot or visible behavior to relay back:
-  - Whether water is missing in normal view, whether occupancy marks the same region solid, and whether flow arrows are high magnitude or near-neutral.
+  - Whether water is missing in normal view, whether the same spot appears filled from another viewing angle, whether occupancy marks the same region solid, and whether flow arrows are high magnitude or near-neutral.
 - Godot version and renderer to relay back:
   - Godot version, renderer, and whether Forward+, Mobile, or Compatibility was used.
 - Expected result:
@@ -141,12 +143,24 @@ Recorded result:
 - Date: 2026-06-16
 - Ran by: User
 - Godot version/renderer/device: not recorded.
+- Scene and river: Demo river after the user rebake.
+- Bake freshness: freshly rebaked after the waterline-contact collision occupancy patch.
+- View mode: normal editor/runtime viewing from different camera angles.
+- Output or parser errors: none reported.
+- Visible result: large red-circled overhang gaps were resolved/improved, but smaller holes remain around objects and river banks. The smaller gaps are view-angle dependent: from some angles the water appears present or the gap is much less noticeable, while from other angles the holes become visible.
+- Pass/partial/fail: Partial. The original large waterline occupancy defect is improved, but residual angle-dependent small gaps are a new open classification target.
+
+Recorded result:
+
+- Date: 2026-06-16
+- Ran by: User
+- Godot version/renderer/device: not recorded.
 - Scene and river: Demo river at the red-circled overhang/wide-top obstacle locations near `Cliffs/cliff2`.
 - Bake freshness: user rebaked the river after the waterline-contact collision occupancy patch.
 - View mode: normal editor view screenshots/visual review.
 - Output or parser errors: none reported.
-- Visible result: reported missing-water regions under overhangs are resolved after rebake.
-- Pass/partial/fail: Pass for the missing-water/waterline-overhang issue. Does not cover the separate bank-inward-flow issue.
+- Visible result: reported large missing-water regions under overhangs are resolved after rebake.
+- Pass/partial/fail: Pass for the original large missing-water/waterline-overhang issue. Superseded in scope by the later 2026-06-16 residual angle-dependent small-hole report.
 
 Recorded result:
 

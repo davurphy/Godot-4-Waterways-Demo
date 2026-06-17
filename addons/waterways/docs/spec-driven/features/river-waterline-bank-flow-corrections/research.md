@@ -10,16 +10,17 @@ For Godot-specific implementation work, search current official Godot documentat
 
 ## Current Research Outcome
 
-- Status: Partial; old obstacle-flow baseline comparison and safe Demo bake probes completed.
-- Recommendation: keep using `../river-obstacle-flow-constraints/` as the primary regression baseline, then use screenshot/probe correlation to identify whether the reported locations diverge from the otherwise-present baseline behavior.
-- Confidence: medium-high that the broad old mechanism is present; low on the reported spots until screenshots are mapped.
-- Biggest unknown that remains: whether the specific defects are in saved bake data, shader/debug interpretation, generated-resource staleness, scene/collider setup, or a new edge case at the screenshot locations.
+- Status: Partial; old obstacle-flow baseline comparison, safe Demo bake probes, focused waterline probe, and first waterline code fix completed.
+- Recommendation: keep using `../river-obstacle-flow-constraints/` as the primary regression baseline, but treat the newly reported residual small holes as a separate view-dependent classification problem.
+- Confidence: high that the original large overhang gap had a collision-occupancy root cause; medium that the residual small holes may involve shader/depth/mesh intersection because they vary by viewing angle.
+- Biggest unknown that remains: whether the residual small holes are in saved bake data, shader/depth/alpha clipping, mesh/terrain/object intersection, generated-resource staleness, scene/collider setup, or a new edge case at the screenshot locations.
 - Decision or plan section this research unlocked: `plan.md` diagnosis-first architecture and validation strategy.
 
 ## Questions
 
 - What are we trying to learn?
   - Whether obstacle gaps come from a top-down/upper-geometry footprint instead of actual waterline contact.
+  - Whether residual small gaps that appear only from certain viewing angles are true bake holes or view-dependent render/intersection artifacts.
   - Whether bank inward spots are real high-magnitude flow defects or misleading visualization of low-magnitude residual flow.
 - What assumptions need verification?
   - A fresh rebake on current code still shows the issue.
@@ -28,6 +29,7 @@ For Godot-specific implementation work, search current official Godot documentat
 - What user or agent premise might be wrong, incomplete, or based on missing scene/data context?
   - A visible rock mesh can differ from its collision shape.
   - A solid-center debug cell can cover mostly open water visually.
+  - A residual gap that appears or disappears with camera angle may be shader/depth/alpha/normal/intersection behavior rather than a baked occupancy hole.
   - An arrow can point a meaningful-looking direction even when the encoded flow magnitude is near zero.
 - What Godot 4.6+ constraints could change the design?
   - Physics query behavior, raycast `hit_from_inside`, mesh/intersection shape behavior, viewport readback reliability, and shader texture sampling rules.
@@ -44,6 +46,7 @@ Useful local pattern from the current project:
 
 - The older obstacle-flow documents describe a previously working solution for pressure-projected obstacle flow, occupancy clipping, overhang/wide-top tuning, and debug-arrow interpretation. Treat that as the first source of truth for expected behavior.
 - A binary or near-binary solid/occupancy field can be correct for true solids but too blunt for upper-only geometry near the waterline.
+- View-dependent holes are a different diagnostic shape than purely baked occupancy holes, which should generally be visible from every angle in the same world location. Compare normal rendering against occupancy/solid/debug views before patching bake logic again.
 - Debug views that sample one texel per visible cell can overstate a solid rim or low-magnitude residual.
 - Pressure-projected fields are meant to prevent obstacle penetration, but post-projection shader slides or debug fallback sampling can make the field appear different than the saved data.
 

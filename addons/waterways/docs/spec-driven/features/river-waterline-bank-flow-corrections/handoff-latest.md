@@ -15,11 +15,11 @@ Diagnose and fix two reported river issues: missing water near protruding/wide-t
 
 ## Current Truth
 
-- Overall status: Waterline overhang gap is classified, patched in code, rebaked by the user, and visually resolved at the reported red-circled locations.
-- Highest-priority open task: classify the separate bank-inward-flow issue with focused magnitude/location evidence.
-- Last passing validation: 2026-06-16 user rebaked the affected river after the patch and reported the missing-water regions are resolved; 2026-06-15 `waterline_occupancy_probe.gd` after patch reported `current_upper_open=0` for `Cliffs/cliff2`.
-- Known failing or unproven check: bank-inward-flow screenshot/location is not yet classified.
-- Next recommended action: build or run a focused bank-flow diagnostic only after the specific reported bank location is known.
+- Overall status: The large waterline overhang gap is classified, patched in code, rebaked by the user, and improved/resolved at the reported red-circled locations; smaller residual holes remain around objects and river banks and are view-angle dependent.
+- Highest-priority open task: classify the residual angle-dependent small holes with multi-angle screenshots and debug/occupancy comparisons, then classify the separate bank-inward-flow issue.
+- Last passing validation: 2026-06-15 `waterline_occupancy_probe.gd` after patch reported `current_upper_open=0` for `Cliffs/cliff2`; 2026-06-16 user rebake resolved the large red-circled gaps but smaller view-dependent holes remain.
+- Known failing or unproven check: residual small holes are not yet classified; bank-inward-flow screenshot/location is not yet classified.
+- Next recommended action: capture the same residual small hole from at least two viewing angles plus relevant debug/occupancy views to determine whether the owning layer is shader/depth/clip, remaining occupancy, collider/bank footprint, mesh/normal, stale data, or another edge case.
 - Packaging/artifact hygiene status: production code and probe/docs changed; user rebaked the affected river resource after the patch; probe PNG output is ignored.
 - Historical detail starts at: none yet.
 
@@ -48,9 +48,9 @@ Then do this:
 
 1. Check branch/worktree state first. There was already an unrelated modified generated bake: `waterways_bakes/Demo/Water_River.river_bake.res`. Do not overwrite, revert, or casually rebake it.
 2. Build a prior-fix comparison checklist. Current code must be checked for `water_occupancy`, `flow_projected`, `RIVER_OCCUPANCY_PROTRUSION_CONFIDENCE_MIN`, runtime slide gating when projected, and FLOW_ARROWS low-speed/sub-cell fallback behavior. Status 2026-06-15: these mechanisms are present in current code and the safe Demo bake probes pass; this still does not classify screenshot-specific locations.
-3. User supplied three red-circled screenshots of missing water under overhangs near `Cliffs/cliff2` in normal view, then rebaked after the patch and confirmed the missing water is resolved.
+3. User supplied three red-circled screenshots of missing water under overhangs near `Cliffs/cliff2` in normal view, then rebaked after the patch and confirmed those large gaps were resolved/improved.
 4. Run read-only/safe probes before anything that saves bakes.
-5. The waterline gap is classified, code-patched, rebaked, and visually confirmed fixed; do not reopen it unless a new screenshot shows a fresh failure.
+5. The large waterline gap is classified, code-patched, rebaked, and visually improved; residual small angle-dependent holes are a separate open classification target.
 
 Suggested probe order:
 
@@ -91,7 +91,8 @@ Probe compatibility result from 2026-06-15:
 
 Expected classification outcomes:
 
-- Missing-water gap: classified as a collision-occupancy false positive from top-down/down-ray hits over open waterline; fixed and visually resolved after user rebake.
+- Original large missing-water gap: classified as a collision-occupancy false positive from top-down/down-ray hits over open waterline; fixed and visually resolved/improved after user rebake.
+- Residual small water holes: newly reported after rebake around objects and river banks; they are view-angle dependent and not yet classified.
 - Inward bank flow: classify as baked-flow defect, runtime shader defect, debug-arrow artifact, low-magnitude residual, stale system/river map, seam/tile issue, or deliberate local geometry behavior.
 
 ## Start Here Next Session
@@ -112,7 +113,7 @@ Read these first:
 Then do this next:
 
 - Compare current code, material bindings, metadata, and generated bakes to `addons\waterways\docs\spec-driven\features\river-obstacle-flow-constraints\implementation-plan.md`, `spec.md`, and `validation.md`.
-- Treat the missing-water screenshots as resolved after the user rebake recorded in `validation.md`.
+- Treat the original large missing-water screenshots as resolved/improved after the user rebake recorded in `validation.md`, but keep the residual angle-dependent small-hole report open.
 - For any remaining bank-flow screenshot, capture: scene, view mode, river/bake resource if known, whether bakes were fresh, symptom type, and suspected location.
 - For Godot-specific implementation work, search current official Godot documentation and API references online before patching. Prefer official docs first, and record any source that affects implementation in `research.md` or `addons\waterways\docs\research\river-research-citations.md`.
 - If this requires human-assisted Godot validation, include the exact scene path, plugin state, steps, expected visible result, and Output/console text to relay. The next agent should paste those steps into its user-facing message instead of telling the user to read `validation.md`.
@@ -149,14 +150,14 @@ Older change history can live here once the current summary is enough for the ne
 | --- | --- | --- |
 | Create a new feature folder named `river-waterline-bank-flow-corrections`. | The issues overlap previous work but need fresh screenshot/probe evidence. | Classify screenshots before implementation. |
 | Treat `river-obstacle-flow-constraints` as primary baseline. | User clarified the old fixes worked for a while and may have been lost. | Audit current project against the old docs before new design. |
-| Patch waterline collision occupancy. | Focused probe showed current collision logic marked 259 open-waterline texels as solid via top-down/down-ray hits near `Cliffs/cliff2`. | Completed; user rebake visually resolved the missing water. |
+| Patch waterline collision occupancy. | Focused probe showed current collision logic marked 259 open-waterline texels as solid via top-down/down-ray hits near `Cliffs/cliff2`. | Completed for the original large gap; user rebake improved/resolved that case, but smaller angle-dependent holes remain open. |
 | Bump bake signature to 30. | Collision occupancy semantics changed, so old saved bakes must not be treated as current. | River rebake completed by user for the reported gap; WaterSystem maps may still need separate refresh if runtime/system flow is validated. |
 
 ## Current State
 
 Implementation status:
 
-- Waterline overhang code patch implemented and visually validated after user rebake; bank-flow implementation not started.
+- Waterline overhang code patch implemented and visually validated for the original large gap after user rebake; residual angle-dependent hole classification and bank-flow implementation not started.
 
 Spec/plan status:
 
@@ -172,13 +173,13 @@ Validation status:
 - Automated:
   - Probe compatibility partial pass and safe baseline probe pass on 2026-06-15. See `validation.md`.
 - Human-assisted:
-  - User rebaked after the patch and confirmed the red-circled missing-water areas are resolved.
+  - User rebaked after the patch and confirmed the red-circled missing-water areas are resolved/improved, then reported smaller view-angle-dependent holes around objects and banks.
 - Shader:
   - None.
 - Editor:
   - None.
 - Visual:
-  - Missing-water issue passed after user rebake; bank-flow visual evidence still needed if pursued.
+  - Original large missing-water issue passed after user rebake; smaller angle-dependent holes and bank-flow visual evidence still need classification.
 - Runtime:
   - None.
 - Performance:
@@ -211,7 +212,7 @@ Validation status:
 
 ## Known Risks and Open Issues
 
-- Missing-water screenshots showed saved-bake/current-code collision false positives under overhangs; current code is patched and the user rebake resolved the visible symptom.
+- Missing-water screenshots showed saved-bake/current-code collision false positives under overhangs; current code is patched and the user rebake resolved/improved the large visible symptom. Residual small holes remain and are view-angle dependent.
 - Saved WaterSystem maps are stale relative to the current river bakes/signatures, as reported by `system_flow_compare_probe.gd`.
 - Visible mesh and collision footprint may differ at the waterline.
 - Existing debug views can misrepresent low-magnitude vectors or solid-center sampled cells.
@@ -228,6 +229,7 @@ Relevant audit sections:
 
 ## Blockers
 
+- Residual angle-dependent small holes still need screenshot/location/debug-view classification before implementation.
 - Bank-inward-flow issue still needs screenshot/location classification before implementation.
 - No branch-safety decision has been recorded for additional generated-resource changes.
 - Local headless Godot probes have run; user provided after-rebake visible validation for the missing-water issue.

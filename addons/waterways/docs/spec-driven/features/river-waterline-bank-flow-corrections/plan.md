@@ -13,21 +13,22 @@ Use a diagnosis-first plan with four tracks:
 3. Probe correlation: compare visible symptoms against saved bake data, occupancy, waterline contact, bank masks, rendered/debug flow, and the older documented acceptance checks.
 4. Minimal correction: restore lost documented behavior where possible, then rebake and validate against prior obstacle-flow and seam safeguards.
 
-This is deliberately conservative. The older obstacle-flow feature is now the expected-behavior baseline because the user reports it worked for a while. The missing-water symptom was confirmed as a remaining waterline-contact edge case in collision occupancy; the bank-flow symptom still needs the same diagnosis discipline.
+This is deliberately conservative. The older obstacle-flow feature is now the expected-behavior baseline because the user reports it worked for a while. The original large missing-water symptom was confirmed as a remaining waterline-contact edge case in collision occupancy; smaller residual holes now remain and appear view-angle dependent, so they need a separate layer classification rather than assuming the same root cause. The bank-flow symptom still needs the same diagnosis discipline.
 
 ## Current Truth
 
-- Implementation status: waterline-contact collision occupancy fix implemented and visually validated after user rebake; bank-flow issue remains diagnosis-only.
-- Open architectural decisions: which layer owns the bank-flow symptom; whether existing probes are enough once that location is known or a dedicated bank-flow script is needed.
-- Last validation that proves the plan still works: 2026-06-16 user rebake after the waterline patch resolved the red-circled missing-water regions; 2026-06-15 safe probes and focused waterline probe passed.
-- Next planned implementation slice: classify the reported bank-flow symptom at its exact location before any bank-flow code changes.
+- Implementation status: waterline-contact collision occupancy fix implemented and visually validated for the original large gap after user rebake; residual angle-dependent holes and bank-flow issue remain diagnosis-only.
+- Open architectural decisions: which layer owns the residual view-dependent holes and the bank-flow symptom; whether existing probes are enough once those locations are known or dedicated scripts are needed.
+- Last validation that proves the plan still works: 2026-06-16 user rebake after the waterline patch resolved/improved the red-circled missing-water regions, then user reported smaller holes that vary by camera angle; 2026-06-15 safe probes and focused waterline probe passed.
+- Next planned implementation slice: classify a representative residual small hole across multiple viewing angles before any further water-gap code changes, then classify the reported bank-flow symptom at its exact location before any bank-flow code changes.
 - Branch safety before additional implementation: Not checked. Before code or generated-resource changes for bank flow, ask the user to create/switch to a dedicated branch or have Codex create one.
 - Sections below that are historical or superseded: none yet.
 
 ## Premise Check
 
 - Evidence supporting the premise:
-  - The water-gap description matched a known class of overhang/wide-top occupancy mistakes and was confirmed by the focused waterline probe.
+  - The original large water-gap description matched a known class of overhang/wide-top occupancy mistakes and was confirmed by the focused waterline probe.
+  - The residual small holes are angle-dependent, which suggests shader/depth/alpha/normal/mesh-intersection behavior is plausible in addition to remaining occupancy or collider footprint issues.
   - The bank-flow description matches possible local vector-field or debug-arrow defects.
   - Prior folders document related risks, so this is not a random visual complaint.
   - User clarified the prior obstacle-flow fixes worked for a while, which made regression or lost generated-data behavior a leading hypothesis.
@@ -39,7 +40,8 @@ This is deliberately conservative. The older obstacle-flow feature is now the ex
   - If a future screenshot location is inside the actual collision footprint at water level, the correct fix may be collider/bake-participation setup rather than river code.
   - If a bank arrow is low magnitude, the correct fix may be debug visualization, not flow data.
 - Smallest check that can falsify the premise:
-  - Fresh rebake plus occupancy/flow debug capture at one reported bank inward patch; missing-water gap already passed after user rebake.
+  - Multi-angle normal-view plus occupancy/solid/debug captures at one residual small hole; the original large missing-water gap already passed after user rebake.
+  - Fresh rebake plus occupancy/flow debug capture at one reported bank inward patch.
 
 ## Layers
 
@@ -76,19 +78,19 @@ Legacy reference layer:
 
 ## Data Model
 
-Bank-flow diagnosis should inspect, not change, these data products:
+Residual-hole and bank-flow diagnosis should inspect, not change, these data products:
 
 - `water_occupancy`: solid mask and proximity ramp.
 - Collision map / terrain-contact / protrusion sources: why a texel became solid or bank-affecting.
 - Flow map: encoded direction and magnitude before runtime shader adjustments.
 - System flow map: runtime/buoyancy-facing flow if the issue affects ducks or runtime sampling.
-- Debug view output: whether a display path misrepresents low-magnitude or solid-center samples.
+- Debug view output: whether a display path misrepresents low-magnitude, solid-center samples, or a view-angle-dependent shader/depth artifact.
 
 Initial regression comparison should inspect these documented prior behaviors:
 
 - `water_occupancy` presence, channel use, and material binding. Status 2026-06-15: present in current code and saved Demo bakes.
 - `flow_projected` metadata and runtime gate that skips contextual slide for projected fields. Status 2026-06-15: present in river, debug, and system-flow paths; saved Demo bakes report `flow_projected=true`.
-- Overhang/protrusion confidence handling that prevents upper-only geometry from becoming solid. Status 2026-06-15: protrusion confidence gating was present, but collision occupancy still needed a waterline-contact gate for top-down/down-ray hits. Status 2026-06-16: patched and visually resolved after user rebake.
+- Overhang/protrusion confidence handling that prevents upper-only geometry from becoming solid. Status 2026-06-15: protrusion confidence gating was present, but collision occupancy still needed a waterline-contact gate for top-down/down-ray hits. Status 2026-06-16: patched and the original large gap visually resolved/improved after user rebake; smaller view-dependent holes remain separately unclassified.
 - FLOW_ARROWS fallback and low-speed display rules that avoid overconfident wrong-looking arrows. Status 2026-06-15: present; safe probes mirror the behavior and pass.
 - Probe caveats for scripts that rebake and save resources.
 

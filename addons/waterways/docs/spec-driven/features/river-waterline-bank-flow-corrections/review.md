@@ -15,17 +15,18 @@
 
 ## Current Truth
 
-- Overall review status: Waterline overhang issue fixed and visually validated after user rebake; bank-flow issue remains open.
-- Blocking issues remaining: specific bank-inward-flow screenshot/location context is needed before code changes for that issue.
-- Important issues remaining: identify whether the reported bank-flow symptom is generated data, shader/debug display, stale data, seam/tile behavior, scene geometry, or expected low-magnitude residual flow.
-- Last validation relied on: 2026-06-16 user rebake after the waterline patch resolved the red-circled missing-water regions; 2026-06-15 focused probe showed `current_upper_open=0` after patch.
-- Next action: classify one representative bank inward patch with magnitude and location evidence.
+- Overall review status: Original large waterline overhang issue fixed/improved after user rebake, but smaller residual holes remain around objects and river banks and are view-angle dependent; bank-flow issue remains open.
+- Blocking issues remaining: residual angle-dependent hole screenshots/debug views and specific bank-inward-flow screenshot/location context are needed before further code changes.
+- Important issues remaining: identify whether residual small holes are shader/depth/clip artifacts, remaining occupancy false positives, legitimate collider/bank footprints, mesh/normal issues, stale generated data, or another view-dependent rendering edge case.
+- Last validation relied on: 2026-06-16 user rebake after the waterline patch resolved/improved the red-circled missing-water regions, followed by a user report that smaller holes remain and vary by viewing angle; 2026-06-15 focused probe showed `current_upper_open=0` after patch.
+- Next action: classify one representative residual angle-dependent hole with multi-angle and debug/occupancy evidence, then classify one representative bank inward patch.
 - Historical detail starts at: none yet.
 
 ## Findings
 
 ### Blocking
 
+- Residual angle-dependent hole evidence is not recorded with debug views, so that owning layer is unknown.
 - Bank-inward-flow screenshot/location evidence is still not recorded, so that owning layer is unknown.
 - No branch-safety decision has been recorded for future bank-flow code or generated-resource changes.
 
@@ -38,18 +39,18 @@
 
 ### Minor
 
-- `waterline_occupancy_probe.gd` now covers the confirmed missing-water case; a bank-flow probe is still not designed.
+- `waterline_occupancy_probe.gd` covers the confirmed large missing-water case; it may or may not classify the smaller view-dependent holes because they could be shader/depth rather than bake occupancy. A bank-flow probe is still not designed.
 
 ## Premise Review
 
 - Was the original premise correct, partially correct, or wrong?
-  - Correct for the missing-water issue: a screenshot-specific waterline-contact edge case remained in collision occupancy and was fixed. Still unproven for the bank-flow issue.
+  - Correct for the original large missing-water issue: a screenshot-specific waterline-contact edge case remained in collision occupancy and was fixed. The residual small angle-dependent holes and bank-flow issue are still unproven.
 - Did any evidence suggest the user or agent was overlooking scene/data/context?
   - Partly. Existing docs included similar fixed issues and debug-view caveats, but the user screenshots revealed a real remaining waterline occupancy defect.
 - If yes, was that raised with the user early enough?
   - Yes for the waterline issue; the focused probe classified it before production code was patched.
 - Was the final outcome a code/design fix, docs/validation clarification, or expected-behavior explanation?
-  - Code fix plus rebake for the missing-water issue; bank-flow outcome not decided.
+  - Code fix plus rebake for the original large missing-water issue; residual angle-dependent holes and bank-flow outcome not decided.
 
 ## Spec Compliance
 
@@ -58,7 +59,7 @@
 | Compare current project to old obstacle-flow baseline | Partial pass | Current code has the documented mechanisms; saved Demo bakes report projected occupancy data |
 | Classify each screenshot symptom | Partial pass | Missing-water screenshots classified as collision occupancy false positives; bank-flow screenshots still needed |
 | Add or identify probes | Partial pass | `waterline_occupancy_probe.gd` added for the confirmed gap; bank probe remains open |
-| Fix confirmed obstacle gaps | Pass | User rebake after patch resolved the red-circled missing-water regions |
+| Fix confirmed obstacle gaps | Partial pass | User rebake after patch resolved/improved the large red-circled missing-water regions; smaller view-dependent holes remain |
 | Fix confirmed bank inward flow | Not started | Requires diagnosis |
 | Preserve regressions | Not run | Existing obstacle/seam checks must be selected later |
 
@@ -82,13 +83,13 @@
   - Focused waterline probe after patch reported `current_upper_open=0` at `Cliffs/cliff2`.
   - Key caveat: `system_flow_compare_probe.gd` reported stale WaterSystem maps, so its thresholds remain report-only.
 - Human-assisted:
-  - User rebaked the affected river after the patch and reported the red-circled missing-water regions are resolved.
+  - User rebaked the affected river after the patch and reported the red-circled missing-water regions are resolved/improved, then reported smaller angle-dependent holes around objects and banks.
 - Shader:
   - None.
 - Editor:
   - None.
 - Visual:
-  - Missing-water issue passed after user rebake; bank-flow visual evidence remains open.
+  - Original large missing-water issue passed after user rebake; residual angle-dependent holes and bank-flow visual evidence remain open.
 - Bake output:
   - Current saved Demo river bakes report `flow_projected=true`; main solid coverage 14.12%, obstacle-test solid coverage 14.78%.
 - Runtime:
@@ -120,4 +121,4 @@
 
 Record any spec or plan changes discovered during review.
 
-- 2026-06-16: Waterline overhang issue is fixed and visually confirmed after user rebake; keep bank-flow issue as the remaining open diagnosis target.
+- 2026-06-16: Waterline overhang large-gap issue is fixed/improved after user rebake, but smaller holes remain around objects and banks and are view-angle dependent; keep residual-hole and bank-flow issues as open diagnosis targets.
